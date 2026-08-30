@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Platform Nav Wireframe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div class="app-frame">
+
+    <div class="meta-bar">
+      <div class="meta-bar__title">Platform 2.0 — nav wireframe</div>
+      <div class="meta-bar__scope">
+        <span>Account:</span>
+        <div class="scope-toggle" role="tablist" aria-label="Account scope">
+          <button class="is-active" data-scope="single">Single property</button>
+          <button data-scope="multi">Multi‑property</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-body">
+      <nav class="rail" id="rail" aria-label="Primary"></nav>
+      <aside class="secondary-panel" id="secondaryPanel" aria-label="Section navigation"></aside>
+      <main class="canvas" id="canvas"></main>
+    </div>
+
+    <div class="legend">
+      <span><b>Rail</b> — always visible, constant across the whole property-count spectrum</span>
+      <span><b>Panel</b> — sub-items for the selected rail item</span>
+      <span><b>Scope toggle</b> — simulates the property-scope layer collapsing/expanding</span>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
