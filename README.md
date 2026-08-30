@@ -5,6 +5,9 @@ Distribution / Transactions / Configuration) plus a wider secondary panel, Slack
 A scope toggle simulates the property-scope layer collapsing (single property) or expanding
 (multi-property).
 
+See [CONTEXT.md](./CONTEXT.md) for the full working context: decisions made so far, open
+threads, and links back to Confluence.
+
 Working log / decisions: [IA schemes — prototyping](https://siteminder-jira.atlassian.net/wiki/spaces/SMD/pages/1197277194/IA+schemes+prototyping)
 Parent proposal: [Platform 2.0 — draft proposal](https://siteminder-jira.atlassian.net/wiki/spaces/SMD/pages/1185284102/Platform+2.0+draft+proposal)
 
