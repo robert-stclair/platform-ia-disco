@@ -21,6 +21,11 @@ as decisions evolve; it drives the rail, panel, and canvas annotations directly.
 new kind of content sketch, and add to it (not a one-off) when a genuinely new pattern is
 needed.
 
+**See [NOTES-CLEANUP.md](./NOTES-CLEANUP.md)** for the current full sitemap, the coding
+standards this repo should hold to (especially around path/depth handling — the source of
+most bugs so far), known remaining inconsistencies, and a suggested order of work for the
+next cleanup pass.
+
 ## Decisions captured so far
 
 **Insights is home.** Intentional — Insights doubles as both the landing/dashboard section and
