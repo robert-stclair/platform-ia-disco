@@ -204,7 +204,20 @@ const BOOKING_ENGINE_LIST = {
   ],
 };
 
-export const CONTENT = {
+// Two independent settings axes control what renders:
+//   - accountType: 'SM' | 'LH' | 'MP' — SM is the only one with real content
+//     so far; LH/MP render empty until their nav differences are defined
+//     (deliberately not guessed at — no placeholder content).
+//   - propertyCount: 'single' | 'multiple' — drives the Properties list
+//     (Distribution's Properties tab, Configuration's Properties list),
+//     independent of account type: any account can have >1 property.
+//
+// Brands/Clusters specifically are gated further by account type (MP only)
+// via `mpOnly: true` — property count alone isn't sufficient for those two,
+// per the "brands/clusters may be MP-only, the properties list is not"
+// distinction. Rendering filters out `mpOnly` items unless accountType==='MP'.
+
+const SM_CONTENT = {
   single: {
     insights: {
       items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
@@ -228,7 +241,7 @@ export const CONTENT = {
       ],
     },
   },
-  multi: {
+  multiple: {
     insights: {
       items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
       ugc: ['Weekly performance', 'Channel comparison', 'Portfolio health'],
@@ -268,8 +281,8 @@ export const CONTENT = {
                   ],
                 },
               },
-              { key: 'brands', label: 'Brands', content: null },
-              { key: 'clusters', label: 'Clusters', content: null },
+              { key: 'brands', label: 'Brands', content: null, mpOnly: true },
+              { key: 'clusters', label: 'Clusters', content: null, mpOnly: true },
             ],
           },
         },
@@ -278,4 +291,10 @@ export const CONTENT = {
       ],
     },
   },
+};
+
+// LH and MP intentionally absent — accountType renders empty for them until
+// their real nav differences are defined.
+export const CONTENT = {
+  SM: SM_CONTENT,
 };

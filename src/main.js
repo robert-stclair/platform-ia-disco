@@ -18,7 +18,8 @@ import { RAIL_ICONS } from './icons.js';
 // tree: expanding ≠ selecting.
 
 const state = {
-  scope: 'single',
+  accountType: 'SM', // 'SM' | 'LH' | 'MP' — independent of propertyCount; only SM has real content so far
+  propertyCount: 'single', // 'single' | 'multiple' — independent of accountType
   section: 'insights',
   path: [], // e.g. ['property-settings', 'services'] or ['booking-engine', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
@@ -124,7 +125,8 @@ function renderPanel(data) {
   // folder doesn't select a child, so nothing looks selected until the user
   // explicitly clicks one.
   if (expandedItem?.content?.type === 'list') {
-    const items = expandedItem.content.items;
+    // `mpOnly` items (e.g. Brands/Clusters) only show for the MP account type.
+    const items = expandedItem.content.items.filter((s) => !s.mpOnly || state.accountType === 'MP');
     const explicitChildKey = state.path[0] === expandedItem.key ? state.path[1] : null;
     html += `<ul class="nav-sublist">${items
       .map(
@@ -342,17 +344,35 @@ function renderSketch(content) {
 // ---------------------------------------------------------------------------
 
 function render() {
-  const data = CONTENT[state.scope][state.section];
   renderRail();
+  // LH/MP have no content defined yet — render an honest empty state rather
+  // than guessing at their nav (no placeholders).
+  const data = CONTENT[state.accountType]?.[state.propertyCount]?.[state.section];
+  if (!data) {
+    panelEl.innerHTML = '';
+    canvasEl.innerHTML = '';
+    return;
+  }
   renderPanel(data);
   renderCanvas(data);
 }
 
-document.querySelectorAll('[data-scope]').forEach((el) => {
+document.querySelectorAll('[data-account-type]').forEach((el) => {
   el.addEventListener('click', () => {
-    state.scope = el.dataset.scope;
+    state.accountType = el.dataset.accountType;
     resetPath();
-    document.querySelectorAll('[data-scope]').forEach((b) => {
+    document.querySelectorAll('[data-account-type]').forEach((b) => {
+      b.classList.toggle('is-active', b === el);
+    });
+    render();
+  });
+});
+
+document.querySelectorAll('[data-property-count]').forEach((el) => {
+  el.addEventListener('click', () => {
+    state.propertyCount = el.dataset.propertyCount;
+    resetPath();
+    document.querySelectorAll('[data-property-count]').forEach((b) => {
       b.classList.toggle('is-active', b === el);
     });
     render();

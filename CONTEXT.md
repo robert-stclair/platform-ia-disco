@@ -42,7 +42,47 @@ changes is whether a property-scope layer is present:
 
 **Brands/Clusters are Configuration concepts, not a separate MP layer.** Brands, Clusters, and
 similar groupings are enablers/setup concerns — they live under Configuration → Properties,
-alongside per-property settings, not as their own top-level or MP-specific section.
+alongside per-property settings, not as their own top-level or MP-specific section. Refined
+further below: they're gated by account type (MP), not by property count.
+
+**Account type and property count are independent settings axes.** "MP" is a product some
+accounts have (Multi-Property), separate from how many properties an account manages — a
+non-MP account can still have many properties. The hidden settings sheet (press `` ` ``) models
+this as two independent controls: **Account type** (SM / LH / MP — only SM has real content so
+far; LH/MP intentionally render empty until their nav differences are defined) and **Number of
+properties** (Single / Multiple — drives the Properties list under Distribution/Configuration,
+independent of account type). Within that: the Properties list itself is gated by property
+count alone; Brands and Clusters specifically are gated further, only showing for account type
+MP (`mpOnly: true` in `nav-data.js`).
+
+**Property settings has direct tabs — no extra nesting layer.** General information / Property
+details / Services / Policies / Media library / Integrated systems sit directly on the
+"Property settings" panel item — there's no intervening "sublist" wrapping them. A real bug
+happened here: an earlier version added a fabricated sublist with invented "Users"/
+"Notifications" items sharing a duplicate key with the panel item itself, which caused Booking
+engine's content to bleed into Property settings' display. Fixed by giving every navigable node
+one consistent recursive shape (see `nav-data.js`'s top comment) — never reintroduce
+`tabs`/`sublist`/`properties` as competing sibling properties on the same object.
+
+**Booking engine has its own sublist**: Selling tools (tabs: Promotions/Extras) / Setup (tabs:
+Booking rules/Guest details/Email settings/Translations/About page/Contact page/Policies page)
+/ Branding (no content yet). Confirmed from real production screenshots.
+
+**Integrated systems (a Property settings tab) is system-count-aware.** With one connected
+system it collapses straight to that system's sections (General settings/Inventory settings/
+Reservation delivery failure emails/Reservation mappings/Credit card mappings — all real card
+titles from screenshots). With more than one system (toggled via the settings sheet) it shows a
+system-picker list first, then drills into the selected system's sections. This applies
+uniformly regardless of account type or property count — not an MP-only or multi-property-only
+concept.
+
+**Folder-style panel items (Booking engine, MP's "Properties" list) don't auto-navigate on
+open.** Clicking one only expands/reveals its children in the panel — the canvas keeps showing
+whatever was already routed until the user clicks a specific child. This mirrors a real folder
+tree (expanding ≠ selecting) and is visually distinct: an "open" folder is bold with no
+background pill; a truly routed/selected item gets the pill. Breadcrumbs only appear once
+there's a real multi-level trail (a single root crumb with nothing above/below it is
+suppressed as noise).
 
 ## Open threads (not yet resolved)
 
@@ -50,9 +90,16 @@ alongside per-property settings, not as their own top-level or MP-specific secti
   plans. MP's current production model (Group Rate Plan → Property Rate Plan → Property Room
   Rate) enforces one shared config across entities in bulk operations, where single-property
   Platform allows per-entity config — a real tension once this is actually designed.
-- Configuration's nested "item 1/2/3" and "Etc." haven't been walked through concretely yet.
+- Configuration's "Etc." item was removed per the no-placeholders rule — nothing stands in for
+  it currently; add real items here only once confirmed.
 - Transactions hasn't surfaced any multi-property-specific differences yet — worth checking
   whether that's really true or just unexamined.
+- **Channels Plus** (a Configuration panel item) has no content wired up yet.
+- **LH and MP account types** have no real nav content defined yet — they render empty by
+  design, not a bug. Fill in `CONTENT.LH` / `CONTENT.MP` in `nav-data.js` once real differences
+  are confirmed.
+- Distribution's MP "Properties" tab still uses the old pre-refactor shape (`data.sublist`, a
+  flat array with no recursive `content`) — hasn't been migrated to the current node model yet.
 
 ## Reference data points (from the platform knowledge base, not this repo)
 
@@ -69,6 +116,20 @@ alongside per-property settings, not as their own top-level or MP-specific secti
   reviewing given Brands/Clusters are now placed under Configuration → Properties.
 - SDS (design system) already has a five-level model (Foundations → Components → Systems →
   Flows → Page types) and a documented `sm-app-header` spec to build on.
+
+## Deployment
+
+Live at https://platform-ia-disco-rsc-6b3452000036.herokuapp.com/ — a static build served via
+`serve` (Heroku Node buildpack, `heroku-postbuild` runs `vite build`). Auto-deploys from GitHub
+on every push to `main`. Two GitHub remotes are configured: `origin` fans out pushes to both
+`platform-ia-disco` and `platform-ia-disco-rsc`; `rsc` targets `platform-ia-disco-rsc` alone.
+`heroku` remote also exists for direct manual deploys as a fallback.
+
+**Gotcha:** `package-lock.json` must be generated against the public npm registry
+(`registry.npmjs.org`), not a corporate registry mirror — if your local npm config points
+elsewhere (check `npm config get registry`), regenerate the lockfile with
+`npm install --registry=https://registry.npmjs.org/` before committing, or Heroku's build will
+fail with an npm 401 auth error trying to reach a registry it has no credentials for.
 
 ## Keeping this in sync
 

@@ -40,10 +40,20 @@
 
     <div class="settings-sheet__group">
       <div class="settings-sheet__label">Account type</div>
-      <div class="settings-sheet__hint">SiteMinder only, for now</div>
-      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Account scope">
-        <button class="is-active" data-scope="single">SM single user</button>
-        <button data-scope="multi">SM multi user</button>
+      <div class="settings-sheet__hint">MP is a product some accounts have, independent of property count</div>
+      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Account type">
+        <button class="is-active" data-account-type="SM">SM</button>
+        <button data-account-type="LH">LH</button>
+        <button data-account-type="MP">MP</button>
+      </div>
+    </div>
+
+    <div class="settings-sheet__group">
+      <div class="settings-sheet__label">Number of properties</div>
+      <div class="settings-sheet__hint">Independent of account type</div>
+      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Property count">
+        <button class="is-active" data-property-count="single">Single</button>
+        <button data-property-count="multiple">Multiple</button>
       </div>
     </div>
 

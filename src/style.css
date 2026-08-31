@@ -413,6 +413,12 @@ a { color: inherit; }
   background: var(--surface-sunken);
 }
 
+.nav-sublist a.is-active {
+  color: var(--text);
+  background: var(--surface-sunken);
+  font-weight: 700;
+}
+
 /* Pane 3: canvas — a tab strip (when the selected sublist item has tabs) plus
    a light structural sketch of the tab's content. Deliberately not real
    content — sketches only convey shape (list / cards / form). */
