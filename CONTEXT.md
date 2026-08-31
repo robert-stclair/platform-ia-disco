@@ -26,6 +26,10 @@ standards this repo should hold to (especially around path/depth handling — th
 most bugs so far), known remaining inconsistencies, and a suggested order of work for the
 next cleanup pass.
 
+**See [IA-BY-USER-TYPE.md](./IA-BY-USER-TYPE.md)** for how the IA differs (or doesn't) across
+account types and property counts — the working, more exploratory companion to the settled
+decisions below; edit it directly as new type-specific questions come up.
+
 ## Decisions captured so far
 
 **Insights is home.** Intentional — Insights doubles as both the landing/dashboard section and
