@@ -214,30 +214,52 @@ function renderCanvas(data) {
 //
 // `trail` is a breadcrumb — but the root panel item (depth 0) is NEVER
 // added to it: it's already shown via the panel's own highlight, so
-// repeating it as a crumb is redundant noise (this was the actual bug:
-// every 'tabs'/'properties'/'systems' node pushed itself onto the trail
-// unconditionally, even at the default/no-drill-down state, producing
-// crumbs like "Properties / Properties" before the user had gone anywhere).
-// A crumb only appears once the user has explicitly navigated to depth ≥ 1
-// — i.e. only when `state.path[depth]` is actually set for the level being
-// entered, not merely resolved via a default/active fallback.
+// repeating it as a crumb is redundant noise. A crumb only appears once the
+// user has explicitly navigated somewhere — i.e. only when `state.path` has
+// a real entry for the level being entered, not merely resolved via a
+// default/active fallback.
+//
+// Every trail entry carries `truncateTo`: the exact `state.path` LENGTH to
+// restore when that crumb is clicked (always `pathIndexOfThisSelection + 1`
+// at the point the entry is created). This must be computed fresh at each
+// push, from that push's own path index — never reuse another entry's
+// `truncateTo`/depth, even between entries that happen to share a recursion
+// `depth` number. `depth` (the recursion parameter) and "path index" often
+// coincide but are NOT the same concept: a node can hand off to another
+// node at the same `depth` (e.g. the `properties` branch recursing into
+// PROPERTY_NODE at `depth + 1` without incrementing further), and that
+// handed-off node's own tabs will push a crumb whose path index is one
+// deeper than the parent's, even though the recursion depth number matches.
+// Always compute `truncateTo` as `<path index used to resolve this
+// selection> + 1`, not from the raw recursion `depth` parameter.
 function buildCanvasBody(node, depth, trail) {
   const content = node.content;
 
   if (content.type === 'tabs') {
     // `mpOnly` tabs (e.g. Brands/Clusters) only show for the MP account type.
     const tabs = content.tabs.filter((t) => !t.mpOnly || state.accountType === 'MP');
-    const selectedTab = resolveSelected(tabs, depth + 1);
+    const tabPathIndex = depth + 1;
+    const selectedTab = resolveSelected(tabs, tabPathIndex);
+    // Once the selected tab is a `properties` picker that's been explicitly
+    // drilled into (a specific property picked), this tab strip's own level
+    // (Properties/Brands/Clusters) is no longer relevant — the user is now
+    // inside one property's own settings, which have their own tab strip.
+    // Showing both stacked is confusing duplication, so collapse straight
+    // through to the inner content instead of wrapping it in this strip.
+    const drilledIntoProperty = selectedTab?.content?.type === 'properties' && state.path[tabPathIndex + 1];
+    if (drilledIntoProperty) {
+      return buildCanvasBody(selectedTab, depth + 1, trail);
+    }
     const tabStrip =
       `<div class="tab-strip">` +
       tabs
-        .map((t) => `<button class="tab${t === selectedTab ? ' is-active' : ''}" data-path-key="${depth + 1}:${t.key}">${t.label}</button>`)
+        .map((t) => `<button class="tab${t === selectedTab ? ' is-active' : ''}" data-path-key="${tabPathIndex}:${t.key}">${t.label}</button>`)
         .join('') +
       `</div>`;
     // Only add a crumb for this tabs root once we're past the root panel
     // item (depth > 0) — e.g. Direct Booking → Setup's tabs are worth a
     // crumb, but Properties' own top-level tab strip (depth 0) is not.
-    const newTrail = depth > 0 ? trail.concat({ label: node.label, depth }) : trail;
+    const newTrail = depth > 0 ? trail.concat({ label: node.label, truncateTo: tabPathIndex }) : trail;
     const inner = selectedTab?.content ? buildCanvasBody(selectedTab, depth + 1, newTrail) : { trail: newTrail, bodyHtml: '' };
     return { trail: inner.trail, bodyHtml: tabStrip + `<div class="sketch">${inner.bodyHtml}</div>` };
   }
@@ -254,15 +276,19 @@ function buildCanvasBody(node, depth, trail) {
   }
 
   if (content.type === 'properties') {
-    const propKey = state.path[depth + 1];
+    const propPathIndex = depth + 1;
+    const propKey = state.path[propPathIndex];
     if (propKey) {
       // Explicit drill-down: NOW it's worth a crumb for this node, plus one
       // for the specific property.
-      const newTrail = trail.concat({ label: node.label, depth }, { label: propKey, depth: depth + 1 });
+      const newTrail = trail.concat(
+        { label: node.label, truncateTo: propPathIndex },
+        { label: propKey, truncateTo: propPathIndex + 1 }
+      );
       return buildCanvasBody(PROPERTY_NODE, depth + 1, newTrail);
     }
     // Still on the picker itself — no drill-down yet, no crumb.
-    return { trail, bodyHtml: renderPropertyPicker(content.names, depth + 1) };
+    return { trail, bodyHtml: renderPropertyPicker(content.names, propPathIndex) };
   }
 
   if (content.type === 'systems') {
@@ -271,13 +297,17 @@ function buildCanvasBody(node, depth, trail) {
       // Nothing to disambiguate — collapses straight to sections, no crumb.
       return { trail, bodyHtml: renderSectionsSketch(content.sections) };
     }
-    const systemKey = state.path[depth + 1];
+    const systemPathIndex = depth + 1;
+    const systemKey = state.path[systemPathIndex];
     if (systemKey) {
-      const newTrail = trail.concat({ label: node.label, depth }, { label: systemKey, depth: depth + 1 });
+      const newTrail = trail.concat(
+        { label: node.label, truncateTo: systemPathIndex },
+        { label: systemKey, truncateTo: systemPathIndex + 1 }
+      );
       return { trail: newTrail, bodyHtml: renderSectionsSketch(content.sections) };
     }
     // Still on the system picker — no drill-down yet, no crumb.
-    return { trail, bodyHtml: renderPropertyPicker(systems, depth + 1) };
+    return { trail, bodyHtml: renderPropertyPicker(systems, systemPathIndex) };
   }
 
   // content.type === 'sketch'
@@ -315,7 +345,7 @@ function breadcrumbHtml(trail) {
         const isLast = i === trail.length - 1;
         const piece = isLast
           ? `<span class="breadcrumb__current">${t.label}</span>`
-          : `<a href="#" data-crumb-depth="${t.depth}">${t.label}</a>`;
+          : `<a href="#" data-crumb-truncate="${t.truncateTo}">${t.label}</a>`;
         return i === 0 ? piece : `<span class="breadcrumb__sep">/</span>${piece}`;
       })
       .join('') +
@@ -324,10 +354,10 @@ function breadcrumbHtml(trail) {
 }
 
 function wireBreadcrumb() {
-  canvasEl.querySelectorAll('[data-crumb-depth]').forEach((el) => {
+  canvasEl.querySelectorAll('[data-crumb-truncate]').forEach((el) => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      collapse(Number(el.dataset.crumbDepth) + 1);
+      collapse(Number(el.dataset.crumbTruncate));
       render();
     });
   });
