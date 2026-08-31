@@ -130,7 +130,7 @@ export const DEFAULT_SYSTEMS = ['Opera ADS'];
 // settings sheet's "Integrated systems" toggle is set to "Multiple systems".
 export const MULTIPLE_SYSTEMS = ['Opera ADS', 'RMS Cloud'];
 
-// Booking engine's sublist — same across single- and multi-property.
+// Direct Booking's sublist — same across single- and multi-property.
 const BOOKING_ENGINE_LIST = {
   type: 'list',
   items: [
@@ -189,7 +189,6 @@ const BOOKING_ENGINE_LIST = {
           {
             key: 'contact-page',
             label: 'Contact page',
-            active: true,
             content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Property location', shape: 'field' }] },
           },
           {
@@ -204,97 +203,87 @@ const BOOKING_ENGINE_LIST = {
   ],
 };
 
-// Two independent settings axes control what renders:
-//   - accountType: 'SM' | 'LH' | 'MP' — SM is the only one with real content
-//     so far; LH/MP render empty until their nav differences are defined
-//     (deliberately not guessed at — no placeholder content).
-//   - propertyCount: 'single' | 'multiple' — drives the Properties list
-//     (Distribution's Properties tab, Configuration's Properties list),
-//     independent of account type: any account can have >1 property.
-//
-// Brands/Clusters specifically are gated further by account type (MP only)
-// via `mpOnly: true` — property count alone isn't sufficient for those two,
-// per the "brands/clusters may be MP-only, the properties list is not"
-// distinction. Rendering filters out `mpOnly` items unless accountType==='MP'.
+const SAMPLE_PROPERTIES = [
+  'Harbourview Hotel',
+  'The Grand Meridian',
+  'Coastal Breeze Inn',
+  'Alpine Lodge & Suites',
+  'Riverside Boutique Hotel',
+];
 
-const SM_CONTENT = {
-  single: {
-    insights: {
-      items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
-      ugc: ['Weekly performance', 'Channel comparison'],
-    },
-    distribution: {
-      items: [{ label: 'Inventory', active: true }, { label: 'Rate plans' }, { label: 'Yield rules' }],
-    },
-    transactions: {
-      items: [
-        { label: 'Reservations', active: true },
-        { label: 'Guest communications' },
-        { label: 'Payments' },
-      ],
-    },
-    configuration: {
-      items: [
-        { key: 'property-settings', label: 'Property settings', active: true, content: PROPERTY_NODE.content },
-        { key: 'channels-plus', label: 'Channels Plus', content: null },
-        { key: 'booking-engine', label: 'Booking engine', content: BOOKING_ENGINE_LIST },
-      ],
-    },
-  },
-  multiple: {
-    insights: {
-      items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
-      ugc: ['Weekly performance', 'Channel comparison', 'Portfolio health'],
-    },
-    distribution: {
-      items: [{ label: 'Inventory', active: true }, { label: 'Rate plans' }, { label: 'Yield rules' }],
-      sublist: [{ key: 'properties', label: 'Properties', active: true }],
-    },
-    transactions: {
-      items: [
-        { label: 'Reservations', active: true },
-        { label: 'Guest communications' },
-        { label: 'Payments' },
-      ],
-    },
-    configuration: {
-      items: [
+// The Properties section (Configuration's first item) is shown whenever
+// accountType === 'MP' OR propertyCount === 'multiple' — either condition on
+// its own is sufficient (an MP account with just one property still gets it;
+// a non-MP account with many properties also gets it). When neither is true,
+// Configuration's first item collapses to a plain "Property settings" —
+// the "one IA, not two" property-scope-collapses decision.
+//
+// Properties/Brands/Clusters are TABS (not a panel sublist) inside the
+// "Properties" item — Brands and Clusters are gated further, MP only
+// (mpOnly: true), filtered out of the tab strip unless accountType==='MP'.
+function buildConfigurationPropertiesItem(showProperties) {
+  if (!showProperties) {
+    return { key: 'property-settings', label: 'Property settings', active: true, content: PROPERTY_NODE.content };
+  }
+  return {
+    key: 'properties-config',
+    label: 'Properties',
+    active: true,
+    content: {
+      type: 'tabs',
+      tabs: [
         {
-          key: 'properties-config',
+          key: 'properties-list',
           label: 'Properties',
           active: true,
-          content: {
-            type: 'list',
-            items: [
-              {
-                key: 'properties-list',
-                label: 'Properties',
-                active: true,
-                content: {
-                  type: 'properties',
-                  names: [
-                    'Harbourview Hotel',
-                    'The Grand Meridian',
-                    'Coastal Breeze Inn',
-                    'Alpine Lodge & Suites',
-                    'Riverside Boutique Hotel',
-                  ],
-                },
-              },
-              { key: 'brands', label: 'Brands', content: null, mpOnly: true },
-              { key: 'clusters', label: 'Clusters', content: null, mpOnly: true },
-            ],
-          },
+          content: { type: 'properties', names: SAMPLE_PROPERTIES },
         },
-        { key: 'channels-plus', label: 'Channels Plus', content: null },
-        { key: 'booking-engine', label: 'Booking engine', content: BOOKING_ENGINE_LIST },
+        { key: 'brands', label: 'Brands', content: null, mpOnly: true },
+        { key: 'clusters', label: 'Clusters', content: null, mpOnly: true },
       ],
     },
-  },
-};
+  };
+}
 
-// LH and MP intentionally absent — accountType renders empty for them until
-// their real nav differences are defined.
-export const CONTENT = {
-  SM: SM_CONTENT,
-};
+function buildSmContentTree(showProperties) {
+  return {
+    insights: {
+      items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
+      ugc: showProperties
+        ? ['Weekly performance', 'Channel comparison', 'Portfolio health']
+        : ['Weekly performance', 'Channel comparison'],
+    },
+    distribution: {
+      items: [{ label: 'Inventory', active: true }, { label: 'Rate plans' }, { label: 'Yield rules' }],
+      ...(showProperties ? { sublist: [{ key: 'properties', label: 'Properties', active: true }] } : {}),
+    },
+    transactions: {
+      items: [
+        { label: 'Reservations', active: true },
+        { label: 'Guest communications' },
+        { label: 'Payments' },
+      ],
+    },
+    configuration: {
+      items: [
+        buildConfigurationPropertiesItem(showProperties),
+        { key: 'users', label: 'Users', content: { type: 'sketch', sketch: 'list' } },
+        { key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST },
+        { key: 'channels-plus', label: 'Channels Plus', content: null },
+      ],
+    },
+  };
+}
+
+// Two independent settings axes control what renders:
+//   - accountType: 'SM' | 'LH' | 'MP' — SM is the only one with real content
+//     so far; LH renders empty until its nav differences are defined
+//     (deliberately not guessed at — no placeholder content). MP reuses
+//     SM's structure (per decision) but always shows Properties.
+//   - propertyCount: 'single' | 'multiple' — independent of account type;
+//     also drives Properties, alongside accountType === 'MP'.
+export function getContent(accountType, propertyCount) {
+  if (accountType === 'LH') return null;
+  const showProperties = accountType === 'MP' || propertyCount === 'multiple';
+  return buildSmContentTree(showProperties);
+}

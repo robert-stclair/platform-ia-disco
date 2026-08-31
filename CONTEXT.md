@@ -16,6 +16,11 @@ Working IA decisions as clickable nav mockups rather than text sitemaps/trees �
 read a nav mock far more easily than a hierarchy diagram. `nav-data.js` is the thing to edit
 as decisions evolve; it drives the rail, panel, and canvas annotations directly.
 
+**See [PATTERNS.md](./PATTERNS.md)** for the catalog of reusable canvas sketch patterns
+(sections/media/list, section shapes, the `.wf-list` component) — check it before adding a
+new kind of content sketch, and add to it (not a one-off) when a genuinely new pattern is
+needed.
+
 ## Decisions captured so far
 
 **Insights is home.** Intentional — Insights doubles as both the landing/dashboard section and
@@ -64,9 +69,11 @@ engine's content to bleed into Property settings' display. Fixed by giving every
 one consistent recursive shape (see `nav-data.js`'s top comment) — never reintroduce
 `tabs`/`sublist`/`properties` as competing sibling properties on the same object.
 
-**Booking engine has its own sublist**: Selling tools (tabs: Promotions/Extras) / Setup (tabs:
-Booking rules/Guest details/Email settings/Translations/About page/Contact page/Policies page)
-/ Branding (no content yet). Confirmed from real production screenshots.
+**Direct Booking (renamed from "Booking engine") has its own sublist**: Selling tools (tabs:
+Promotions/Extras) / Setup (tabs: Booking rules/Guest details/Email settings/Translations/About
+page/Contact page/Policies page) / Branding (no content yet). Confirmed from real production
+screenshots. Configuration's item order is: Property settings, Users, Direct Booking, Channels
+Plus.
 
 **Integrated systems (a Property settings tab) is system-count-aware.** With one connected
 system it collapses straight to that system's sections (General settings/Inventory settings/
@@ -76,7 +83,7 @@ system-picker list first, then drills into the selected system's sections. This 
 uniformly regardless of account type or property count — not an MP-only or multi-property-only
 concept.
 
-**Folder-style panel items (Booking engine, MP's "Properties" list) don't auto-navigate on
+**Folder-style panel items (Direct Booking, MP's "Properties" list) don't auto-navigate on
 open.** Clicking one only expands/reveals its children in the panel — the canvas keeps showing
 whatever was already routed until the user clicks a specific child. This mirrors a real folder
 tree (expanding ≠ selecting) and is visually distinct: an "open" folder is bold with no

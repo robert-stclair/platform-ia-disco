@@ -1,4 +1,4 @@
-import { RAIL_ITEMS, CONTENT, PROPERTY_NODE, DEFAULT_SYSTEMS, MULTIPLE_SYSTEMS } from './nav-data.js';
+import { RAIL_ITEMS, getContent, PROPERTY_NODE, DEFAULT_SYSTEMS, MULTIPLE_SYSTEMS } from './nav-data.js';
 import { RAIL_ICONS } from './icons.js';
 
 // ---------------------------------------------------------------------------
@@ -12,7 +12,7 @@ import { RAIL_ICONS } from './icons.js';
 // for what's rendered in the canvas.
 //
 // `expandedKey` is separate and UI-only: which panel item's own sublist is
-// currently revealed (Booking engine → Selling tools/Setup/Branding).
+// currently revealed (Direct Booking → Selling tools/Setup/Branding).
 // Opening a folder-style item does NOT change the route/canvas — only
 // clicking a specific child inside it does. This mirrors a real folder
 // tree: expanding ≠ selecting.
@@ -21,7 +21,7 @@ const state = {
   accountType: 'SM', // 'SM' | 'LH' | 'MP' — independent of propertyCount; only SM has real content so far
   propertyCount: 'single', // 'single' | 'multiple' — independent of accountType
   section: 'insights',
-  path: [], // e.g. ['property-settings', 'services'] or ['booking-engine', 'setup', 'contact-page']
+  path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: false, // hidden-settings toggle: does every property have >1 connected system?
 };
@@ -86,8 +86,6 @@ function renderRail() {
 // still has its own separate legacy `data.sublist` for the MP case — passed
 // through untouched pending its own refactor.
 function renderPanel(data) {
-  let html = `<ul class="nav-list">`;
-
   const contentItems = data.items.filter((i) => i.key);
   // What's actually routed/showing in the canvas right now (falls back to
   // the default like everywhere else) — used to highlight 'tabs' items.
@@ -95,6 +93,12 @@ function renderPanel(data) {
   // Which 'list' item is expanded in the panel — UI-only, independent of
   // routing. No default: nothing is expanded until explicitly clicked.
   const expandedItem = contentItems.find((i) => i.key === state.expandedKey) ?? null;
+
+  // Sublist HTML must render immediately after its own parent item, inline
+  // within the same list — not appended as one block after the whole list.
+  // A parent whose sublist renders after unrelated later siblings only
+  // "looked right by accident" when it happened to be the last item.
+  let html = `<ul class="nav-list">`;
 
   data.items.forEach((item) => {
     const hasList = item.content?.type === 'list';
@@ -111,28 +115,32 @@ function renderPanel(data) {
         <a href="#" ${item.key ? `data-item-key="${item.key}"` : ''}>${item.label}${chevron}</a>
       </li>
     `;
+
+    // Legacy section-level sublist (Distribution's MP "Properties" tab) has
+    // no owning item to attach to — render it right after the item it
+    // conceptually belongs to isn't applicable here, so it stays keyed off
+    // `data.sublist` directly, rendered once per section rather than per item.
+
+    // This item's own expanded children, if it's the one currently open.
+    if (isOpen) {
+      // `mpOnly` items (e.g. Brands/Clusters) only show for the MP account type.
+      const items = item.content.items.filter((s) => !s.mpOnly || state.accountType === 'MP');
+      const explicitChildKey = state.path[0] === item.key ? state.path[1] : null;
+      html += `<ul class="nav-sublist">${items
+        .map(
+          (s) =>
+            `<li><a href="#" data-path-key="1:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${s.label}</a></li>`
+        )
+        .join('')}</ul>`;
+    }
   });
   html += `</ul>`;
 
-  // Legacy section-level sublist (Distribution's MP "Properties" tab).
+  // Legacy section-level sublist (Distribution's MP "Properties" tab) —
+  // not attached to any panel item, so it renders once at section level.
   if (data.sublist) {
     html += `<ul class="nav-sublist">${data.sublist
       .map((s) => `<li><a href="#" class="${s.active ? 'is-active' : ''}">${s.label}</a></li>`)
-      .join('')}</ul>`;
-  }
-
-  // The expanded item's own children. No default highlight — opening the
-  // folder doesn't select a child, so nothing looks selected until the user
-  // explicitly clicks one.
-  if (expandedItem?.content?.type === 'list') {
-    // `mpOnly` items (e.g. Brands/Clusters) only show for the MP account type.
-    const items = expandedItem.content.items.filter((s) => !s.mpOnly || state.accountType === 'MP');
-    const explicitChildKey = state.path[0] === expandedItem.key ? state.path[1] : null;
-    html += `<ul class="nav-sublist">${items
-      .map(
-        (s) =>
-          `<li><a href="#" data-path-key="1:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${s.label}</a></li>`
-      )
       .join('')}</ul>`;
   }
 
@@ -201,21 +209,35 @@ function renderCanvas(data) {
 }
 
 // Recursively descend into `node.content`, walking the selected path from
-// `depth`. Returns { trail, bodyHtml } — trail accumulates a breadcrumb
-// entry for every node worth one (tabs roots, properties/systems roots);
-// bodyHtml is the fully nested markup for everything below this node.
+// `depth`. Returns { trail, bodyHtml } — bodyHtml is the fully nested markup
+// for everything below this node.
+//
+// `trail` is a breadcrumb — but the root panel item (depth 0) is NEVER
+// added to it: it's already shown via the panel's own highlight, so
+// repeating it as a crumb is redundant noise (this was the actual bug:
+// every 'tabs'/'properties'/'systems' node pushed itself onto the trail
+// unconditionally, even at the default/no-drill-down state, producing
+// crumbs like "Properties / Properties" before the user had gone anywhere).
+// A crumb only appears once the user has explicitly navigated to depth ≥ 1
+// — i.e. only when `state.path[depth]` is actually set for the level being
+// entered, not merely resolved via a default/active fallback.
 function buildCanvasBody(node, depth, trail) {
   const content = node.content;
 
   if (content.type === 'tabs') {
-    const selectedTab = resolveSelected(content.tabs, depth + 1);
-    const newTrail = trail.concat({ label: node.label, depth });
+    // `mpOnly` tabs (e.g. Brands/Clusters) only show for the MP account type.
+    const tabs = content.tabs.filter((t) => !t.mpOnly || state.accountType === 'MP');
+    const selectedTab = resolveSelected(tabs, depth + 1);
     const tabStrip =
       `<div class="tab-strip">` +
-      content.tabs
+      tabs
         .map((t) => `<button class="tab${t === selectedTab ? ' is-active' : ''}" data-path-key="${depth + 1}:${t.key}">${t.label}</button>`)
         .join('') +
       `</div>`;
+    // Only add a crumb for this tabs root once we're past the root panel
+    // item (depth > 0) — e.g. Direct Booking → Setup's tabs are worth a
+    // crumb, but Properties' own top-level tab strip (depth 0) is not.
+    const newTrail = depth > 0 ? trail.concat({ label: node.label, depth }) : trail;
     const inner = selectedTab?.content ? buildCanvasBody(selectedTab, depth + 1, newTrail) : { trail: newTrail, bodyHtml: '' };
     return { trail: inner.trail, bodyHtml: tabStrip + `<div class="sketch">${inner.bodyHtml}</div>` };
   }
@@ -233,25 +255,29 @@ function buildCanvasBody(node, depth, trail) {
 
   if (content.type === 'properties') {
     const propKey = state.path[depth + 1];
-    const newTrail = trail.concat({ label: node.label, depth });
     if (propKey) {
-      const inner = buildCanvasBody(PROPERTY_NODE, depth + 1, newTrail.concat({ label: propKey, depth: depth + 1 }));
-      return inner;
+      // Explicit drill-down: NOW it's worth a crumb for this node, plus one
+      // for the specific property.
+      const newTrail = trail.concat({ label: node.label, depth }, { label: propKey, depth: depth + 1 });
+      return buildCanvasBody(PROPERTY_NODE, depth + 1, newTrail);
     }
-    return { trail: newTrail, bodyHtml: renderPropertyPicker(content.names, depth + 1) };
+    // Still on the picker itself — no drill-down yet, no crumb.
+    return { trail, bodyHtml: renderPropertyPicker(content.names, depth + 1) };
   }
 
   if (content.type === 'systems') {
     const systems = getSystemsForCurrentProperty();
-    const newTrail = trail.concat({ label: node.label, depth });
     if (systems.length <= 1) {
-      return { trail: newTrail, bodyHtml: renderSectionsSketch(content.sections) };
+      // Nothing to disambiguate — collapses straight to sections, no crumb.
+      return { trail, bodyHtml: renderSectionsSketch(content.sections) };
     }
     const systemKey = state.path[depth + 1];
     if (systemKey) {
-      return { trail: newTrail.concat({ label: systemKey, depth: depth + 1 }), bodyHtml: renderSectionsSketch(content.sections) };
+      const newTrail = trail.concat({ label: node.label, depth }, { label: systemKey, depth: depth + 1 });
+      return { trail: newTrail, bodyHtml: renderSectionsSketch(content.sections) };
     }
-    return { trail: newTrail, bodyHtml: renderPropertyPicker(systems, depth + 1) };
+    // Still on the system picker — no drill-down yet, no crumb.
+    return { trail, bodyHtml: renderPropertyPicker(systems, depth + 1) };
   }
 
   // content.type === 'sketch'
@@ -259,8 +285,11 @@ function buildCanvasBody(node, depth, trail) {
 }
 
 function renderPropertyPicker(names, depth) {
-  return `<ul class="property-list">${names
-    .map((name) => `<li><a href="#" data-path-key="${depth}:${name}">${name}</a></li>`)
+  return `<ul class="wf-list">${names
+    .map(
+      (name) =>
+        `<li><a href="#" class="wf-list__row wf-list__row--sketch" data-path-key="${depth}:${name}" aria-label="${name}"></a></li>`
+    )
     .join('')}</ul>`;
 }
 
@@ -307,6 +336,8 @@ function wireBreadcrumb() {
 // ---------------------------------------------------------------------------
 // Sketches — light structural wireframe blocks. No field-level labels or
 // real copy; card titles are real (confirmed from production screenshots).
+// See ../PATTERNS.md for the full pattern catalog — check it before adding a
+// new sketch/shape value, and add new patterns there, not just inline here.
 
 function skeletonField() {
   return `<div class="sketch-skel-field"><div class="sketch-skel-label"></div><div class="sketch-skel-value"></div></div>`;
@@ -338,6 +369,9 @@ function renderSketch(content) {
   if (content.sketch === 'media') {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
   }
+  if (content.sketch === 'list') {
+    return `<ul class="wf-list">${Array(6).fill('<li class="wf-list__row wf-list__row--sketch"></li>').join('')}</ul>`;
+  }
   return '';
 }
 
@@ -345,9 +379,10 @@ function renderSketch(content) {
 
 function render() {
   renderRail();
-  // LH/MP have no content defined yet — render an honest empty state rather
-  // than guessing at their nav (no placeholders).
-  const data = CONTENT[state.accountType]?.[state.propertyCount]?.[state.section];
+  // LH has no content defined yet — render an honest empty state rather
+  // than guessing at its nav (no placeholders).
+  const content = getContent(state.accountType, state.propertyCount);
+  const data = content?.[state.section];
   if (!data) {
     panelEl.innerHTML = '';
     canvasEl.innerHTML = '';
