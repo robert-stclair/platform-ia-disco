@@ -7,10 +7,6 @@
   --text: #1F2933;
   --text-secondary: #52606D;
   --text-muted: #8A96A3;
-  --accent: #006ADD;
-  --accent-wash: #E8F1FE;
-  --rail-bg: #FFFFFF;
-  --rail-active-bg: #E8F1FE;
   --tag-bg: #EEF1F4;
   --shadow: 0 1px 2px rgba(31, 41, 51, 0.06), 0 1px 1px rgba(31, 41, 51, 0.04);
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -27,10 +23,6 @@
     --text: #EDF0F3;
     --text-secondary: #A9B3BF;
     --text-muted: #6B7684;
-    --accent: #4C9AFF;
-    --accent-wash: #1B2A40;
-    --rail-bg: #171B21;
-    --rail-active-bg: #1B2A40;
     --tag-bg: #232A33;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
   }
@@ -45,10 +37,6 @@
   --text: #EDF0F3;
   --text-secondary: #A9B3BF;
   --text-muted: #6B7684;
-  --accent: #4C9AFF;
-  --accent-wash: #1B2A40;
-  --rail-bg: #171B21;
-  --rail-active-bg: #1B2A40;
   --tag-bg: #232A33;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
 }
@@ -72,31 +60,6 @@ a { color: inherit; }
   flex-direction: column;
   height: 100vh;
   min-height: 640px;
-}
-
-.meta-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.meta-bar__title {
-  font-weight: 600;
-  color: var(--text-secondary);
-  letter-spacing: 0.02em;
-}
-
-.meta-bar__scope {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 .scope-toggle {
@@ -127,6 +90,123 @@ a { color: inherit; }
   box-shadow: var(--shadow);
 }
 
+.scope-toggle--sheet {
+  padding: 3px;
+}
+
+.scope-toggle--sheet button {
+  font-size: 13.5px;
+  padding: 9px 16px;
+  flex: 1;
+}
+
+/* ---------- Settings bottom sheet ---------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 20, 26, 0.32);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 40;
+}
+
+.sheet-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.settings-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 24px rgba(15, 20, 26, 0.18);
+  padding: 10px 24px 28px;
+  max-width: 480px;
+  margin: 0 auto;
+  transform: translateY(100%);
+  transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.settings-sheet.is-open {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-sheet,
+  .sheet-backdrop {
+    transition: none;
+  }
+}
+
+.settings-sheet__handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+  margin: 0 auto 14px;
+}
+
+.settings-sheet__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.settings-sheet__title {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.settings-sheet__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.settings-sheet__close:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.settings-sheet__close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.settings-sheet__group + .settings-sheet__group {
+  margin-top: 20px;
+}
+
+.settings-sheet__label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+}
+
+.settings-sheet__hint {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
 .scope-toggle button:not(.is-active):hover {
   color: var(--text-secondary);
 }
@@ -137,56 +217,100 @@ a { color: inherit; }
   min-height: 0;
 }
 
-/* Pane 1: primary rail */
+/* Pane 1: primary rail — deliberately inverted (dark, greyscale) regardless
+   of light/dark theme. This is a fixed design choice for the rail specifically,
+   not a light/dark variant, so it uses its own token set rather than the
+   shared --surface/--text tokens. */
 .rail {
-  width: 88px;
+  --rail-ground: #26292E;
+  --rail-ground-raised: #34383F;
+  --rail-icon: #9AA0A8;
+  --rail-icon-active: #FFFFFF;
+  --rail-active-bg: #40444C;
+
+  width: 64px;
   flex-shrink: 0;
-  background: var(--rail-bg);
-  border-right: 1px solid var(--border);
-  padding: 16px 8px;
+  background: var(--rail-ground);
   display: flex;
   flex-direction: column;
-  gap: 4px;
 }
 
-.rail-item {
+.rail__brand {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 12px;
+  flex-shrink: 0;
+}
+
+.rail__brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--rail-ground-raised);
+  border: 1px dashed #565B64;
+}
+
+.rail__items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  padding: 10px 4px 9px;
+  padding: 4px 0;
+}
+
+.rail__user {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 16px;
+}
+
+.rail__user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--rail-ground-raised);
+  color: var(--rail-icon-active);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.rail-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   cursor: pointer;
   border: none;
   background: transparent;
-  font-family: var(--font-ui);
-  color: var(--text-secondary);
+  color: var(--rail-icon);
   transition: background 0.12s ease, color 0.12s ease;
   position: relative;
 }
 
-.rail-item:hover { background: var(--surface-sunken); }
+.rail-item:hover {
+  background: var(--rail-ground-raised);
+  color: #C4C8CE;
+}
 
 .rail-item.is-active {
   background: var(--rail-active-bg);
-  color: var(--accent);
-}
-
-.rail-item.is-active::before {
-  content: "";
-  position: absolute;
-  left: -8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 22px;
-  border-radius: 0 3px 3px 0;
-  background: var(--accent);
+  color: var(--rail-icon-active);
 }
 
 .rail-item__icon {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -200,12 +324,6 @@ a { color: inherit; }
   stroke-width: 1.7;
 }
 
-.rail-item__label {
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
 /* Pane 2: secondary panel */
 .secondary-panel {
   width: 240px;
@@ -214,15 +332,6 @@ a { color: inherit; }
   border-right: 1px solid var(--border);
   padding: 20px 12px;
   overflow-y: auto;
-}
-
-.secondary-panel__heading {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-  padding: 0 10px 12px;
 }
 
 .nav-list {
@@ -254,24 +363,30 @@ a { color: inherit; }
 }
 
 .nav-list-item.is-active a {
-  background: var(--accent-wash);
-  color: var(--accent);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-weight: 700;
 }
 
-.nav-list-item__badge {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 11px;
+/* "Open" (expanded folder, not routed) — bold like real selection so it's
+   still legible as the current focus of attention, but no background pill,
+   so it never reads as "this is what's showing in the canvas". */
+.nav-list-item.is-open:not(.is-active) a {
+  color: var(--text);
+  font-weight: 700;
+}
+
+/* Expand/collapse affordance — only on items with a panel sublist */
+.nav-list-item__chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
   color: var(--text-muted);
-  background: var(--tag-bg);
-  padding: 1px 6px;
-  border-radius: 5px;
+  transition: transform 0.15s ease;
 }
 
-.nav-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 12px 10px;
+.nav-list-item__chevron.is-open {
+  transform: rotate(90deg);
 }
 
 .nav-sublist {
@@ -298,109 +413,250 @@ a { color: inherit; }
   background: var(--surface-sunken);
 }
 
-.ugc-group {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px 4px;
-}
-
-.ugc-group__label {
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-}
-
-.ugc-group__add {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  color: var(--accent);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  font-weight: 600;
-}
-
-/* Pane 3: canvas — annotation only, not a built page */
+/* Pane 3: canvas — a tab strip (when the selected sublist item has tabs) plus
+   a light structural sketch of the tab's content. Deliberately not real
+   content — sketches only convey shape (list / cards / form). */
 .canvas {
   flex: 1;
   min-width: 0;
-  padding: 40px 48px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-strip {
+  display: flex;
+  gap: 4px;
+  padding: 14px 24px 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.tab {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 8px 4px 10px;
+  margin-right: 20px;
+  cursor: pointer;
+  position: relative;
+}
+
+.tab:hover { color: var(--text-secondary); }
+
+.tab.is-active {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 1px 1px 0 0;
+}
+
+.sketch {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: 24px;
 }
 
-.canvas__eyebrow {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--accent);
-  margin: 0 0 6px;
+.sketch-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
 }
 
-.canvas__title {
-  font-size: 26px;
-  font-weight: 700;
-  margin: 0 0 6px;
-  text-wrap: balance;
-  letter-spacing: -0.01em;
+.sketch-cards--media {
+  max-width: 640px;
 }
 
-.canvas__subtitle {
-  font-size: 14.5px;
-  color: var(--text-secondary);
-  margin: 0 0 28px;
-  max-width: 60ch;
+.sketch-card {
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
 }
 
-.canvas__note {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 10px;
-  max-width: 62ch;
+.sketch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+}
+
+.sketch-row {
+  height: 44px;
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+.sketch-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-width: 380px;
+}
+
+.sketch-field {
+  height: 36px;
+  border-radius: 7px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+/* Properties list (drills into a property's own tabs on click) */
+.property-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 480px;
+}
+
+.property-list a {
+  display: block;
+  padding: 12px 14px;
+  border-radius: 8px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
+  color: var(--text);
+  font-weight: 500;
   font-size: 13.5px;
-  color: var(--text-secondary);
-  box-shadow: var(--shadow);
+  text-decoration: none;
 }
 
-.canvas__note svg {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  margin-top: 2px;
-  stroke: var(--text-muted);
-  fill: none;
-  stroke-width: 1.7;
-}
-
-.placeholder-block {
-  margin-top: 24px;
-  border: 1px dashed var(--border-strong);
-  border-radius: 10px;
-  padding: 20px;
-  color: var(--text-muted);
-  font-size: 13px;
+.property-list a:hover {
   background: var(--surface-sunken);
+  border-color: var(--border-strong);
 }
 
-.legend {
-  flex-shrink: 0;
+/* Breadcrumb — shown above tabs only when drilled into a single property */
+.breadcrumb {
   display: flex;
-  gap: 20px;
-  padding: 10px 20px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-  font-size: 11.5px;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 24px 0;
+  font-size: 12.5px;
   color: var(--text-muted);
 }
 
-.legend span b { color: var(--text-secondary); }
+.breadcrumb a {
+  color: var(--text-muted);
+  text-decoration: none;
+}
 
-::selection { background: var(--accent-wash); }
+.breadcrumb a:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.breadcrumb__sep { color: var(--border-strong); }
+
+.breadcrumb__current {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* "sections" sketch — stacked settings cards (title bar + a distinct
+   content shape per card: field / chip row / two-column list / list) */
+.sketch-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 640px;
+}
+
+.sketch-section {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sketch-section__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sketch-field--sm {
+  max-width: 160px;
+}
+
+.sketch-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sketch-chip {
+  height: 28px;
+  width: 88px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+.sketch-cols {
+  display: flex;
+  gap: 32px;
+}
+
+.sketch-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sketch-line {
+  height: 12px;
+  width: 70%;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+/* Skeleton field — short label bar + value bar, both plain grey. Suggests a
+   labelled field without naming or measuring it (used inside 'cols'/'list'
+   section shapes, and as the plain default shape). */
+.sketch-skel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sketch-skel-label {
+  height: 8px;
+  width: 40%;
+  min-width: 60px;
+  border-radius: 3px;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
+.sketch-skel-value {
+  height: 14px;
+  width: 75%;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+::selection { background: var(--surface-sunken); }

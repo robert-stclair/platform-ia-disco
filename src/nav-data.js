@@ -2,159 +2,280 @@
 // Mirrors the decisions log on the "IA schemes — prototyping" Confluence page:
 // https://siteminder-jira.atlassian.net/wiki/spaces/SMD/pages/1197277194/IA+schemes+prototyping
 //
-// Edit this file to reflect new decisions as they're made — it's the single
-// source of truth the rail/panel/canvas render from.
+// ---------------------------------------------------------------------------
+// ONE recursive node shape, used at every level (rail item, panel item,
+// sublist item, tab). This replaced an earlier version that used three
+// competing shapes (`tabs`/`sublist`/`properties` as sibling properties on
+// the same object) — that produced duplicate-key bugs and lost content when
+// patched. Never reintroduce that pattern.
+//
+//   Node = {
+//     key, label,
+//     active?: true,        // default-selected among its siblings
+//     content: null | Content
+//   }
+//
+//   Content =
+//     | { type: 'tabs', tabs: Node[] }             // horizontal tab strip; each tab is a Node
+//     | { type: 'list', items: Node[] }            // vertical sub-nav list (packed away until its parent is clicked)
+//     | { type: 'properties', names: string[] }    // clickable property names; selecting one shows PROPERTY_NODE's content
+//     | { type: 'sketch', sketch: 'field'|'chips'|'cols'|'list'|'media', sections?: [{title, shape}] }
+//     | { type: 'systems' }                        // "Integrated systems"-style: system count drives whether a
+//                                                   //   systems list appears before the selected system's content
+//
+// No placeholder items (e.g. "Etc.") — only entries confirmed from
+// production screenshots or decided in conversation. Sketches show real
+// card titles where confirmed, but wireframe blocks underneath — no
+// field-level labels or copy.
 
 export const RAIL_ITEMS = [
-  {
-    key: 'insights',
-    label: 'Insights',
-    icon: 'insights',
-  },
-  {
-    key: 'distribution',
-    label: 'Distribution',
-    icon: 'distribution',
-  },
-  {
-    key: 'transactions',
-    label: 'Transactions',
-    icon: 'transactions',
-  },
-  {
-    key: 'configuration',
-    label: 'Configuration',
-    icon: 'configuration',
-  },
+  { key: 'insights', label: 'Insights', icon: 'insights' },
+  { key: 'distribution', label: 'Distribution', icon: 'distribution' },
+  { key: 'transactions', label: 'Transactions', icon: 'transactions' },
+  { key: 'configuration', label: 'Configuration', icon: 'configuration' },
 ];
 
-export const SECTION_LABELS = Object.fromEntries(RAIL_ITEMS.map((r) => [r.key, r.label]));
+// A single property's own settings — same structure regardless of whether
+// the account is single- or multi-property (the "one IA, not two" decision).
+// This is a Node with tabs content; reused directly as Property settings'
+// content, and as what a drilled-in property (from an MP properties list)
+// shows.
+export const PROPERTY_NODE = {
+  key: 'property',
+  label: 'Property settings',
+  content: {
+    type: 'tabs',
+    tabs: [
+      {
+        key: 'general-information',
+        label: 'General information',
+        active: true,
+        content: {
+          type: 'sketch',
+          sketch: 'sections',
+          sections: [
+            { title: 'Currency', shape: 'field' },
+            { title: 'Inventory', shape: 'field' },
+            { title: 'Language and region', shape: 'field' },
+          ],
+        },
+      },
+      {
+        key: 'property-details',
+        label: 'Property details',
+        content: {
+          type: 'sketch',
+          sketch: 'sections',
+          sections: [
+            { title: 'Property', shape: 'field' },
+            { title: 'Contact', shape: 'cols' },
+            { title: 'Extra information', shape: 'field' },
+          ],
+        },
+      },
+      {
+        key: 'services',
+        label: 'Services',
+        content: {
+          type: 'sketch',
+          sketch: 'sections',
+          sections: [
+            { title: 'Property description', shape: 'field' },
+            { title: 'Features', shape: 'field' },
+            { title: 'Instructions to the location', shape: 'field' },
+          ],
+        },
+      },
+      {
+        key: 'policies',
+        label: 'Policies',
+        content: {
+          type: 'sketch',
+          sketch: 'sections',
+          sections: [
+            { title: 'Check-in / Check-out', shape: 'field' },
+            { title: 'Smoking policy', shape: 'field' },
+            { title: 'Terms, conditions and privacy policy', shape: 'field' },
+          ],
+        },
+      },
+      {
+        key: 'media-library',
+        label: 'Media library',
+        content: { type: 'sketch', sketch: 'media' },
+      },
+      {
+        key: 'integrated-systems',
+        label: 'Integrated systems',
+        content: {
+          type: 'systems',
+          sections: [
+            { title: 'General settings', shape: 'field' },
+            { title: 'Inventory settings', shape: 'chips' },
+            { title: 'Reservation delivery failure emails', shape: 'field' },
+            { title: 'Reservation mappings', shape: 'cols' },
+            { title: 'Credit card mappings', shape: 'list' },
+          ],
+        },
+      },
+    ],
+  },
+};
+
+// Default: one connected system — 'systems' content collapses straight to
+// its sections, no system list.
+export const DEFAULT_SYSTEMS = ['Opera ADS'];
+
+// Applies to every property (single- or multi-property) when the hidden
+// settings sheet's "Integrated systems" toggle is set to "Multiple systems".
+export const MULTIPLE_SYSTEMS = ['Opera ADS', 'RMS Cloud'];
+
+// Booking engine's sublist — same across single- and multi-property.
+const BOOKING_ENGINE_LIST = {
+  type: 'list',
+  items: [
+    {
+      key: 'selling-tools',
+      label: 'Selling tools',
+      active: true,
+      content: {
+        type: 'tabs',
+        tabs: [
+          {
+            key: 'promotions',
+            label: 'Promotions',
+            active: true,
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Promotions', shape: 'list' }] },
+          },
+          {
+            key: 'extras',
+            label: 'Extras',
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Extras', shape: 'list' }] },
+          },
+        ],
+      },
+    },
+    {
+      key: 'setup',
+      label: 'Setup',
+      content: {
+        type: 'tabs',
+        tabs: [
+          {
+            key: 'booking-rules',
+            label: 'Booking rules',
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Booking rules', shape: 'field' }] },
+          },
+          {
+            key: 'guest-details',
+            label: 'Guest details',
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Guest details', shape: 'field' }] },
+          },
+          {
+            key: 'email-settings',
+            label: 'Email settings',
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Email settings', shape: 'field' }] },
+          },
+          {
+            key: 'translations',
+            label: 'Translations',
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Translations', shape: 'field' }] },
+          },
+          {
+            key: 'about-page',
+            label: 'About page',
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'About page', shape: 'field' }] },
+          },
+          {
+            key: 'contact-page',
+            label: 'Contact page',
+            active: true,
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Property location', shape: 'field' }] },
+          },
+          {
+            key: 'policies-page',
+            label: 'Policies page',
+            content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Policies page', shape: 'field' }] },
+          },
+        ],
+      },
+    },
+    { key: 'branding', label: 'Branding', content: null },
+  ],
+};
 
 export const CONTENT = {
   single: {
     insights: {
-      heading: 'Insights',
-      items: [
-        { label: 'Dashboard', active: true },
-        { label: 'Recommendations', badge: '3' },
-      ],
+      items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
       ugc: ['Weekly performance', 'Channel comparison'],
-      canvas: {
-        eyebrow: 'Insights → Dashboard',
-        title: 'Dashboard is the landing surface',
-        subtitle:
-          'Selecting the Insights rail item defaults straight to Dashboard. Recommendations sits alongside it, then any custom dashboards the user has built.',
-        note: 'Decision: Insights is intentionally doing double duty as both home and analytics — not split into a separate concept at this stage.',
-      },
     },
     distribution: {
-      heading: 'Distribution',
-      items: [
-        { label: 'Inventory', active: true },
-        { label: 'Rate plans' },
-      ],
-      canvas: {
-        eyebrow: 'Distribution → Inventory',
-        title: 'One centralised distribution surface',
-        subtitle:
-          'Replaces the current per-channel enumeration (OTAs, Direct Booking, Channels Plus each as siblings) with two workflow-first entries: Inventory and Rate plans.',
-        note: "Open thread: bulk rate distribution mechanics, once the Properties tab exists for multi-property — MP's current model enforces one shared config across entities in bulk ops, where single-property allows per-entity config.",
-      },
+      items: [{ label: 'Inventory', active: true }, { label: 'Rate plans' }, { label: 'Yield rules' }],
     },
     transactions: {
-      heading: 'Transactions',
       items: [
         { label: 'Reservations', active: true },
         { label: 'Guest communications' },
         { label: 'Payments' },
       ],
-      canvas: {
-        eyebrow: 'Transactions → Reservations',
-        title: 'Guest-facing activity, grouped',
-        subtitle:
-          'Reservations, guest communications, and payments — the things that happen after a booking exists — sit together under one rail item.',
-        note: null,
-      },
     },
     configuration: {
-      heading: 'Configuration',
       items: [
-        { label: 'Property settings', active: true },
-        { label: 'Channel setup' },
-        { label: 'Booking engine' },
-        { label: 'Etc.' },
+        { key: 'property-settings', label: 'Property settings', active: true, content: PROPERTY_NODE.content },
+        { key: 'channels-plus', label: 'Channels Plus', content: null },
+        { key: 'booking-engine', label: 'Booking engine', content: BOOKING_ENGINE_LIST },
       ],
-      sublist: ['General', 'Users', 'Notifications'],
-      canvas: {
-        eyebrow: 'Configuration → Property settings',
-        title: 'Single property: scope collapses upward',
-        subtitle:
-          'For the ~80% single-property accounts, there is one property — so no Properties list is shown. Settings apply directly.',
-        note: 'Decision: this is the same Configuration section as multi-property — only the presence of a Properties layer changes, not the structure.',
-      },
     },
   },
   multi: {
     insights: {
-      heading: 'Insights',
-      items: [
-        { label: 'Dashboard', active: true },
-        { label: 'Recommendations', badge: '12' },
-      ],
+      items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
       ugc: ['Weekly performance', 'Channel comparison', 'Portfolio health'],
-      canvas: {
-        eyebrow: 'Insights → Dashboard',
-        title: 'Defaults to all properties (or last selection)',
-        subtitle:
-          "Same Dashboard concept as single-property — it isn't a separate MP-specific Insights. The scope is just wider by default.",
-        note: "Decision: Insights defaults to an all-properties view for multi-property accounts, or the user's last-selected scope.",
-      },
     },
     distribution: {
-      heading: 'Distribution',
-      items: [
-        { label: 'Inventory', active: true },
-        { label: 'Rate plans' },
-      ],
-      sublist: ['Properties'],
-      canvas: {
-        eyebrow: 'Distribution → Rate plans',
-        title: 'Same top surface, plus a Properties tab',
-        subtitle:
-          'Rate plans looks identical to the single-property view at the top level — the difference is a Properties tab appears beneath it for bulk / per-property distribution work.',
-        note: "Open thread: MP's three-tier model (Group Rate Plan → Property Rate Plan → Property Room Rate) enforces one shared config across entities in bulk operations — a real tension against single-property's per-entity granularity.",
-      },
+      items: [{ label: 'Inventory', active: true }, { label: 'Rate plans' }, { label: 'Yield rules' }],
+      sublist: [{ key: 'properties', label: 'Properties', active: true }],
     },
     transactions: {
-      heading: 'Transactions',
       items: [
         { label: 'Reservations', active: true },
         { label: 'Guest communications' },
         { label: 'Payments' },
       ],
-      canvas: {
-        eyebrow: 'Transactions → Reservations',
-        title: 'Unchanged from single-property',
-        subtitle: 'No multi-property-specific differences identified yet for this section.',
-        note: null,
-      },
     },
     configuration: {
-      heading: 'Configuration',
       items: [
-        { label: 'Properties', active: true, badge: '18' },
-        { label: 'Channel setup' },
-        { label: 'Booking engine' },
-        { label: 'Etc.' },
+        {
+          key: 'properties-config',
+          label: 'Properties',
+          active: true,
+          content: {
+            type: 'list',
+            items: [
+              {
+                key: 'properties-list',
+                label: 'Properties',
+                active: true,
+                content: {
+                  type: 'properties',
+                  names: [
+                    'Harbourview Hotel',
+                    'The Grand Meridian',
+                    'Coastal Breeze Inn',
+                    'Alpine Lodge & Suites',
+                    'Riverside Boutique Hotel',
+                  ],
+                },
+              },
+              { key: 'brands', label: 'Brands', content: null },
+              { key: 'clusters', label: 'Clusters', content: null },
+            ],
+          },
+        },
+        { key: 'channels-plus', label: 'Channels Plus', content: null },
+        { key: 'booking-engine', label: 'Booking engine', content: BOOKING_ENGINE_LIST },
       ],
-      sublist: ['Brands', 'Clusters', 'Per‑property settings'],
-      canvas: {
-        eyebrow: 'Configuration → Properties',
-        title: 'Multi-property: scope expands to a list',
-        subtitle:
-          "Properties becomes an explicit list. Brands and Clusters live here too — they're enablement/setup concepts, not a separate MP-only section.",
-        note: 'Decision: Brands/Clusters nest under Configuration → Properties, alongside per-property settings — not their own top-level or MP-specific area.',
-      },
     },
   },
 };

@@ -12,29 +12,49 @@
 <body>
   <div class="app-frame">
 
-    <div class="meta-bar">
-      <div class="meta-bar__title">Platform 2.0 — nav wireframe</div>
-      <div class="meta-bar__scope">
-        <span>Account:</span>
-        <div class="scope-toggle" role="tablist" aria-label="Account scope">
-          <button class="is-active" data-scope="single">Single property</button>
-          <button data-scope="multi">Multi‑property</button>
-        </div>
-      </div>
-    </div>
-
     <div class="app-body">
-      <nav class="rail" id="rail" aria-label="Primary"></nav>
+      <nav class="rail" aria-label="Primary">
+        <div class="rail__brand" title="Brand mark placeholder">
+          <span class="rail__brand-mark" aria-hidden="true"></span>
+        </div>
+        <div class="rail__items" id="rail"></div>
+        <div class="rail__user">
+          <span class="rail__user-avatar" aria-hidden="true">RS</span>
+        </div>
+      </nav>
       <aside class="secondary-panel" id="secondaryPanel" aria-label="Section navigation"></aside>
       <main class="canvas" id="canvas"></main>
     </div>
 
-    <div class="legend">
-      <span><b>Rail</b> — always visible, constant across the whole property-count spectrum</span>
-      <span><b>Panel</b> — sub-items for the selected rail item</span>
-      <span><b>Scope toggle</b> — simulates the property-scope layer collapsing/expanding</span>
+  </div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop"></div>
+  <div class="settings-sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsSheetTitle">
+    <div class="settings-sheet__handle"></div>
+    <div class="settings-sheet__header">
+      <h2 class="settings-sheet__title" id="settingsSheetTitle">Prototype settings</h2>
+      <button class="settings-sheet__close" id="settingsClose" aria-label="Close settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
     </div>
 
+    <div class="settings-sheet__group">
+      <div class="settings-sheet__label">Account type</div>
+      <div class="settings-sheet__hint">SiteMinder only, for now</div>
+      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Account scope">
+        <button class="is-active" data-scope="single">SM single user</button>
+        <button data-scope="multi">SM multi user</button>
+      </div>
+    </div>
+
+    <div class="settings-sheet__group">
+      <div class="settings-sheet__label">Integrated systems</div>
+      <div class="settings-sheet__hint">Simulates how many systems a property has connected</div>
+      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Integrated systems count">
+        <button class="is-active" data-system-count="single">Single system</button>
+        <button data-system-count="multiple">Multiple systems</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/src/main.js"></script>
