@@ -61,6 +61,122 @@ function collapse(depth) {
 }
 
 // ---------------------------------------------------------------------------
+// Resolve state.path against the content tree ONCE per render into a flat
+// chain of steps — replaces two separate hand-rolled recursive walks
+// (one for the panel, one for the canvas) that each independently computed
+// "what's selected here" and "what path index is this," and had drifted out
+// of sync more than once. Both renderPanel and renderCanvas now read off
+// this same array instead of re-deriving it.
+//
+// Each step describes one level of the current selection:
+//   node        — the Node whose content this step is describing
+//   content     — node.content (convenience)
+//   pathIndex   — the state.path[] index that selects AMONG node's children
+//                 (i.e. state.path[pathIndex] picks which child comes next)
+//   selectedKey — the key/name of the child actually selected at this step
+//                 (via explicit path, active fallback, or first-child fallback)
+//   isExplicit  — true only if state.path[pathIndex] was actually set by a
+//                 user click, not resolved via active/first-child fallback.
+//                 A breadcrumb crumb is only ever added for an explicit step.
+//
+// Stops descending at the first 'list' step with no explicit child chosen
+// (a folder that's merely open, not navigated into — the canvas keeps
+// showing nothing further, matching "expanding ≠ selecting").
+function resolveChain(rootNode) {
+  const chain = [];
+  let node = rootNode;
+  // Starts at 1, not 0: state.path[0] already means "which top-level panel
+  // item is routed" (read by resolveSelected in renderPanel/renderCanvas
+  // BEFORE resolveChain is ever called). rootNode's own content selects its
+  // children starting at state.path[1] — starting this at 0 would collide
+  // the two meanings onto the same index (caught via Distribution's
+  // Properties item, whose content sits directly on the panel item with no
+  // wrapping tabs layer to absorb the offset).
+  let pathIndex = 1;
+
+  while (node?.content) {
+    const content = node.content;
+
+    if (content.type === 'tabs') {
+      const tabs = content.tabs.filter((t) => !t.mpOnly || state.accountType === 'MP');
+      const explicitKey = state.path[pathIndex];
+      const selected = (explicitKey && tabs.find((t) => t.key === explicitKey)) || tabs.find((t) => t.active) || tabs[0] || null;
+      chain.push({
+        node,
+        content,
+        pathIndex,
+        options: tabs,
+        selectedKey: selected?.key ?? null,
+        isExplicit: Boolean(explicitKey && selected?.key === explicitKey),
+      });
+      if (!selected) break;
+      node = selected;
+      pathIndex += 1;
+      continue;
+    }
+
+    if (content.type === 'list') {
+      // No default/active fallback — a folder stays un-navigated until an
+      // explicit child click sets state.path at this index.
+      const explicitKey = state.path[pathIndex];
+      const selected = explicitKey ? content.items.find((n) => n.key === explicitKey) : null;
+      chain.push({
+        node,
+        content,
+        pathIndex,
+        options: content.items,
+        selectedKey: selected?.key ?? null,
+        isExplicit: Boolean(selected),
+      });
+      if (!selected) break;
+      node = selected;
+      pathIndex += 1;
+      continue;
+    }
+
+    if (content.type === 'properties') {
+      const explicitKey = state.path[pathIndex];
+      chain.push({
+        node,
+        content,
+        pathIndex,
+        options: content.names,
+        selectedKey: explicitKey ?? null,
+        isExplicit: Boolean(explicitKey),
+      });
+      if (!explicitKey) break;
+      node = PROPERTY_NODE;
+      pathIndex += 1;
+      continue;
+    }
+
+    if (content.type === 'systems') {
+      // Always push a step, even with one system (options: []) — the caller
+      // (renderChainBody) uses an empty `options` to know "no picker needed,
+      // render sections directly," rather than the chain silently ending
+      // with no step at all (which would leave the sections unrendered).
+      const systems = getSystemsForCurrentProperty();
+      const hasPicker = systems.length > 1;
+      const explicitKey = hasPicker ? state.path[pathIndex] : null;
+      chain.push({
+        node,
+        content,
+        pathIndex,
+        options: hasPicker ? systems : [],
+        selectedKey: explicitKey ?? null,
+        isExplicit: Boolean(explicitKey),
+      });
+      break; // systems' own sections render directly once resolved — no further node to descend into
+    }
+
+    // 'sketch' (or anything else with no children to select among) — leaf.
+    break;
+  }
+
+  return chain;
+}
+
+// ---------------------------------------------------------------------------
 
 function renderRail() {
   railEl.innerHTML = RAIL_ITEMS.map(
@@ -81,68 +197,59 @@ function renderRail() {
   });
 }
 
-// The Configuration/legacy-shape panel: `data.items[]` are plain rail-item
-// siblings; some carry `content` (the new recursive node shape). Distribution
-// still has its own separate legacy `data.sublist` for the MP case — passed
-// through untouched pending its own refactor.
+// Every panel item is a real Node now — no legacy plain-object or
+// section-level-sublist special-casing. The panel only ever needs the FIRST
+// step of the chain (what's routed at the top level) plus `expandedKey`
+// (UI-only, independent of routing) — it doesn't call resolveChain itself
+// since it only cares about depth 0; renderCanvas does the full walk.
 function renderPanel(data) {
-  const contentItems = data.items.filter((i) => i.key);
-  // What's actually routed/showing in the canvas right now (falls back to
-  // the default like everywhere else) — used to highlight 'tabs' items.
-  const routedItem = contentItems.length ? resolveSelected(contentItems, 0) : null;
+  const items = data.items;
+  const routedItem = items.length ? resolveSelected(items, 0) : null;
   // Which 'list' item is expanded in the panel — UI-only, independent of
   // routing. No default: nothing is expanded until explicitly clicked.
-  const expandedItem = contentItems.find((i) => i.key === state.expandedKey) ?? null;
+  const expandedItem = items.find((i) => i.key === state.expandedKey) ?? null;
 
-  // Sublist HTML must render immediately after its own parent item, inline
+  // Sublist HTML renders immediately after its own parent item, inline
   // within the same list — not appended as one block after the whole list.
   // A parent whose sublist renders after unrelated later siblings only
   // "looked right by accident" when it happened to be the last item.
   let html = `<ul class="nav-list">`;
 
-  data.items.forEach((item) => {
+  items.forEach((item) => {
     const hasList = item.content?.type === 'list';
     // A 'list' item shows an "open" state (expanded, not routed) — visually
     // distinct from '.is-active' (actually routed/showing in the canvas),
     // so an expanded folder never looks the same as real selection.
-    const isRouted = !item.key ? item.active : !hasList && item === routedItem;
+    const isRouted = !hasList && item === routedItem;
     const isOpen = hasList && item === expandedItem;
     const chevron = hasList
       ? `<svg class="nav-list-item__chevron${isOpen ? ' is-open' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`
       : '';
     html += `
       <li class="nav-list-item${isRouted ? ' is-active' : ''}${isOpen ? ' is-open' : ''}">
-        <a href="#" ${item.key ? `data-item-key="${item.key}"` : ''}>${item.label}${chevron}</a>
+        <a href="#" data-item-key="${item.key}">${item.label}${chevron}</a>
       </li>
     `;
 
-    // Legacy section-level sublist (Distribution's MP "Properties" tab) has
-    // no owning item to attach to — render it right after the item it
-    // conceptually belongs to isn't applicable here, so it stays keyed off
-    // `data.sublist` directly, rendered once per section rather than per item.
-
     // This item's own expanded children, if it's the one currently open.
+    // Child path index is always 1 here because a folder-type item can only
+    // ever appear as a top-level panel item (pathIndex 0) today — if that
+    // changes, derive this from the item's own resolved pathIndex instead
+    // of hardcoding 1.
     if (isOpen) {
+      const childPathIndex = 1;
       // `mpOnly` items (e.g. Brands/Clusters) only show for the MP account type.
-      const items = item.content.items.filter((s) => !s.mpOnly || state.accountType === 'MP');
-      const explicitChildKey = state.path[0] === item.key ? state.path[1] : null;
-      html += `<ul class="nav-sublist">${items
+      const children = item.content.items.filter((s) => !s.mpOnly || state.accountType === 'MP');
+      const explicitChildKey = state.path[0] === item.key ? state.path[childPathIndex] : null;
+      html += `<ul class="nav-sublist">${children
         .map(
           (s) =>
-            `<li><a href="#" data-path-key="1:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${s.label}</a></li>`
+            `<li><a href="#" data-path-key="${childPathIndex}:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${s.label}</a></li>`
         )
         .join('')}</ul>`;
     }
   });
   html += `</ul>`;
-
-  // Legacy section-level sublist (Distribution's MP "Properties" tab) —
-  // not attached to any panel item, so it renders once at section level.
-  if (data.sublist) {
-    html += `<ul class="nav-sublist">${data.sublist
-      .map((s) => `<li><a href="#" class="${s.active ? 'is-active' : ''}">${s.label}</a></li>`)
-      .join('')}</ul>`;
-  }
 
   if (data.ugc) {
     html += `<ul class="nav-list">${data.ugc.map((u) => `<li class="nav-list-item"><a href="#">${u}</a></li>`).join('')}</ul>`;
@@ -154,7 +261,7 @@ function renderPanel(data) {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       const key = el.dataset.itemKey;
-      const item = contentItems.find((i) => i.key === key);
+      const item = items.find((i) => i.key === key);
       if (item?.content?.type === 'list') {
         // Expand/collapse only — does not touch the route/canvas.
         state.expandedKey = state.expandedKey === key ? null : key;
@@ -188,130 +295,94 @@ function renderPanel(data) {
 // properties/systems drill-down), consistent at every depth rather than
 // special-cased per feature.
 
-// Two-phase, no mid-recursion DOM access: (1) walk the tree purely in data
-// to build one HTML string plus a breadcrumb trail; (2) write it once; (3)
-// wire every interactive element. This replaced an id-based recursive
-// version that broke on nested tab levels (duplicate ids resolve to the
-// wrong element) — never reintroduce per-level DOM lookups here.
+// No mid-render DOM access: (1) resolve the chain, (2) build one HTML string
+// plus breadcrumb trail purely from it, (3) write it once, (4) wire every
+// interactive element. Never reintroduce per-level DOM lookups mid-walk —
+// an earlier id-based version broke on nested tab levels for exactly that
+// reason (duplicate ids resolved to the wrong element).
 function renderCanvas(data) {
-  const contentItems = data.items.filter((i) => i.key);
-  const selectedItem = contentItems.length ? resolveSelected(contentItems, 0) : null;
+  const rootItem = data.items.length ? resolveSelected(data.items, 0) : null;
 
-  if (!selectedItem?.content) {
+  if (!rootItem?.content) {
     canvasEl.innerHTML = '';
     return;
   }
 
-  const { trail, bodyHtml } = buildCanvasBody(selectedItem, 0, []);
+  const chain = resolveChain(rootItem);
+  const { trail, bodyHtml } = renderChainBody(chain, 0);
   canvasEl.innerHTML = breadcrumbHtml(trail) + bodyHtml;
   wirePathLinks();
   wireBreadcrumb();
 }
 
-// Recursively descend into `node.content`, walking the selected path from
-// `depth`. Returns { trail, bodyHtml } — bodyHtml is the fully nested markup
-// for everything below this node.
-//
-// `trail` is a breadcrumb — but the root panel item (depth 0) is NEVER
-// added to it: it's already shown via the panel's own highlight, so
-// repeating it as a crumb is redundant noise. A crumb only appears once the
-// user has explicitly navigated somewhere — i.e. only when `state.path` has
-// a real entry for the level being entered, not merely resolved via a
-// default/active fallback.
-//
-// Every trail entry carries `truncateTo`: the exact `state.path` LENGTH to
-// restore when that crumb is clicked (always `pathIndexOfThisSelection + 1`
-// at the point the entry is created). This must be computed fresh at each
-// push, from that push's own path index — never reuse another entry's
-// `truncateTo`/depth, even between entries that happen to share a recursion
-// `depth` number. `depth` (the recursion parameter) and "path index" often
-// coincide but are NOT the same concept: a node can hand off to another
-// node at the same `depth` (e.g. the `properties` branch recursing into
-// PROPERTY_NODE at `depth + 1` without incrementing further), and that
-// handed-off node's own tabs will push a crumb whose path index is one
-// deeper than the parent's, even though the recursion depth number matches.
-// Always compute `truncateTo` as `<path index used to resolve this
-// selection> + 1`, not from the raw recursion `depth` parameter.
-function buildCanvasBody(node, depth, trail) {
-  const content = node.content;
+// Render every step in `chain` from `i` onward into nested HTML, plus the
+// breadcrumb trail. A crumb is added for a step exactly when it's explicit
+// (a real user drill-down, not a default/active fallback) AND it's not the
+// chain's own root step (i === 0) — the root is already shown via the
+// panel's highlight, so crumbing it too would be redundant noise. This is
+// the one rule that replaces the old scattered `depth > 0` / "does this
+// content type deserve a crumb" special-casing per branch.
+function renderChainBody(chain, i) {
+  const step = chain[i];
+  if (!step) return { trail: [], bodyHtml: '' };
+
+  const { content, pathIndex, selectedKey, isExplicit } = step;
+  const crumb = i > 0 && isExplicit ? [{ label: step.node.label, truncateTo: pathIndex }] : [];
 
   if (content.type === 'tabs') {
-    // `mpOnly` tabs (e.g. Brands/Clusters) only show for the MP account type.
-    const tabs = content.tabs.filter((t) => !t.mpOnly || state.accountType === 'MP');
-    const tabPathIndex = depth + 1;
-    const selectedTab = resolveSelected(tabs, tabPathIndex);
-    // Once the selected tab is a `properties` picker that's been explicitly
-    // drilled into (a specific property picked), this tab strip's own level
-    // (Properties/Brands/Clusters) is no longer relevant — the user is now
-    // inside one property's own settings, which have their own tab strip.
-    // Showing both stacked is confusing duplication, so collapse straight
-    // through to the inner content instead of wrapping it in this strip.
-    const drilledIntoProperty = selectedTab?.content?.type === 'properties' && state.path[tabPathIndex + 1];
-    if (drilledIntoProperty) {
-      return buildCanvasBody(selectedTab, depth + 1, trail);
+    const nextStep = chain[i + 1];
+    // Once the next step is a `properties` picker explicitly drilled into (a
+    // specific property picked), THIS tab strip (e.g. Properties/Brands/
+    // Clusters) is no longer relevant — the user is inside one property's
+    // own settings, which have their own tab strip. Showing both stacked is
+    // confusing duplication, so skip straight to the inner content.
+    if (nextStep?.content?.type === 'properties' && nextStep.isExplicit) {
+      return renderChainBody(chain, i + 1);
     }
     const tabStrip =
       `<div class="tab-strip">` +
-      tabs
-        .map((t) => `<button class="tab${t === selectedTab ? ' is-active' : ''}" data-path-key="${tabPathIndex}:${t.key}">${t.label}</button>`)
+      step.options
+        .map((t) => `<button class="tab${t.key === selectedKey ? ' is-active' : ''}" data-path-key="${pathIndex}:${t.key}">${t.label}</button>`)
         .join('') +
       `</div>`;
-    // Only add a crumb for this tabs root once we're past the root panel
-    // item (depth > 0) — e.g. Direct Booking → Setup's tabs are worth a
-    // crumb, but Properties' own top-level tab strip (depth 0) is not.
-    const newTrail = depth > 0 ? trail.concat({ label: node.label, truncateTo: tabPathIndex }) : trail;
-    const inner = selectedTab?.content ? buildCanvasBody(selectedTab, depth + 1, newTrail) : { trail: newTrail, bodyHtml: '' };
-    return { trail: inner.trail, bodyHtml: tabStrip + `<div class="sketch">${inner.bodyHtml}</div>` };
+    const inner = renderChainBody(chain, i + 1);
+    return { trail: crumb.concat(inner.trail), bodyHtml: tabStrip + `<div class="sketch">${inner.bodyHtml}</div>` };
   }
 
   if (content.type === 'list') {
-    // Opening a folder-style list reveals its children in the panel but does
-    // NOT navigate the canvas — only an explicit click on a specific child
-    // does. So no default/active fallback here, unlike every other content
-    // type: no explicit path entry at this depth means "nothing selected yet".
-    const explicitKey = state.path[depth + 1];
-    const selectedChild = explicitKey ? content.items.find((n) => n.key === explicitKey) : null;
-    if (selectedChild?.content) return buildCanvasBody(selectedChild, depth + 1, trail);
-    return { trail, bodyHtml: '' };
+    // A folder that's merely open (no explicit child chosen) shows nothing
+    // further — expanding ≠ selecting. resolveChain already stopped here in
+    // that case, so reaching this branch with no selectedKey means "leaf".
+    if (!selectedKey) return { trail: [], bodyHtml: '' };
+    return renderChainBody(chain, i + 1);
   }
 
   if (content.type === 'properties') {
-    const propPathIndex = depth + 1;
-    const propKey = state.path[propPathIndex];
-    if (propKey) {
-      // Explicit drill-down: NOW it's worth a crumb for this node, plus one
-      // for the specific property.
-      const newTrail = trail.concat(
-        { label: node.label, truncateTo: propPathIndex },
-        { label: propKey, truncateTo: propPathIndex + 1 }
-      );
-      return buildCanvasBody(PROPERTY_NODE, depth + 1, newTrail);
+    if (!selectedKey) {
+      // Still on the picker itself — no drill-down yet, no crumb.
+      return { trail: [], bodyHtml: renderPropertyPicker(step.options, pathIndex) };
     }
-    // Still on the picker itself — no drill-down yet, no crumb.
-    return { trail, bodyHtml: renderPropertyPicker(content.names, propPathIndex) };
+    const propertyCrumb = { label: selectedKey, truncateTo: pathIndex + 1 };
+    const inner = renderChainBody(chain, i + 1);
+    return { trail: crumb.concat(propertyCrumb, inner.trail), bodyHtml: inner.bodyHtml };
   }
 
   if (content.type === 'systems') {
-    const systems = getSystemsForCurrentProperty();
-    if (systems.length <= 1) {
-      // Nothing to disambiguate — collapses straight to sections, no crumb.
-      return { trail, bodyHtml: renderSectionsSketch(content.sections) };
+    // options: [] means one connected system — collapses straight to
+    // sections, no picker, no crumb (nothing to disambiguate).
+    if (step.options.length === 0) {
+      return { trail: [], bodyHtml: renderSectionsSketch(content.sections) };
     }
-    const systemPathIndex = depth + 1;
-    const systemKey = state.path[systemPathIndex];
-    if (systemKey) {
-      const newTrail = trail.concat(
-        { label: node.label, truncateTo: systemPathIndex },
-        { label: systemKey, truncateTo: systemPathIndex + 1 }
-      );
-      return { trail: newTrail, bodyHtml: renderSectionsSketch(content.sections) };
+    if (!selectedKey) {
+      // A picker exists (>1 system) but none chosen yet — no crumb.
+      return { trail: [], bodyHtml: renderPropertyPicker(step.options, pathIndex) };
     }
-    // Still on the system picker — no drill-down yet, no crumb.
-    return { trail, bodyHtml: renderPropertyPicker(systems, systemPathIndex) };
+    const systemCrumb = { label: selectedKey, truncateTo: pathIndex + 1 };
+    return { trail: crumb.concat(systemCrumb), bodyHtml: renderSectionsSketch(content.sections) };
   }
 
   // content.type === 'sketch'
-  return { trail, bodyHtml: renderSketch(content) };
+  return { trail: [], bodyHtml: renderSketch(content) };
 }
 
 function renderPropertyPicker(names, depth) {

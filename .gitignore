@@ -1,3 +1,5 @@
 node_modules
 dist
 .DS_Store
+.obsidian
+Platform 2.0

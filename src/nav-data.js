@@ -245,23 +245,38 @@ function buildConfigurationPropertiesItem(showProperties) {
   };
 }
 
+// Every panel item is a real Node (key, label, content) — no more plain
+// {label, active} objects. A leaf item with nothing to click into (e.g.
+// "Inventory") is still a Node, just with content: null.
 function buildSmContentTree(showProperties) {
   return {
     insights: {
-      items: [{ label: 'Dashboard', active: true }, { label: 'Recommendations' }],
+      items: [
+        { key: 'dashboard', label: 'Dashboard', active: true, content: null },
+        { key: 'recommendations', label: 'Recommendations', content: null },
+      ],
       ugc: showProperties
         ? ['Weekly performance', 'Channel comparison', 'Portfolio health']
         : ['Weekly performance', 'Channel comparison'],
     },
     distribution: {
-      items: [{ label: 'Inventory', active: true }, { label: 'Rate plans' }, { label: 'Yield rules' }],
-      ...(showProperties ? { sublist: [{ key: 'properties', label: 'Properties', active: true }] } : {}),
+      items: [
+        { key: 'inventory', label: 'Inventory', active: true, content: null },
+        { key: 'rate-plans', label: 'Rate plans', content: null },
+        { key: 'yield-rules', label: 'Yield rules', content: null },
+        // Only appears when showProperties — same recursive 'properties' shape
+        // Configuration's Properties tab uses, now a real clickable/routable
+        // panel item instead of the old flat, unwired `data.sublist` array.
+        ...(showProperties
+          ? [{ key: 'properties', label: 'Properties', content: { type: 'properties', names: SAMPLE_PROPERTIES } }]
+          : []),
+      ],
     },
     transactions: {
       items: [
-        { label: 'Reservations', active: true },
-        { label: 'Guest communications' },
-        { label: 'Payments' },
+        { key: 'reservations', label: 'Reservations', active: true, content: null },
+        { key: 'guest-communications', label: 'Guest communications', content: null },
+        { key: 'payments', label: 'Payments', content: null },
       ],
     },
     configuration: {
