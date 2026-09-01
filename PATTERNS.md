@@ -77,14 +77,39 @@ rather than inventing a new list style.
 Properties picker) may show real names instead of skeleton bars specifically to make
 the resulting breadcrumb legible (so "Properties / [skeleton bar]" doesn't read as
 broken). This is a deliberate, narrow exception — NOT a blanket rule. Plain
-non-drilling lists (Users, systems picker rows that don't feed a crumb) stay
-skeleton-only. Don't let this exception creep to every list without a fresh
-decision each time.
+non-drilling lists (a user's own "Properties" access list, Health check's tabs)
+stay skeleton-only. Don't let this exception creep to every list without a
+fresh decision each time.
 
-Use `.wf-list` for: the properties picker, the systems picker, Users, Health
-check's tabs, and any future flat list of records with no more than one visible
-field per row (reach for `.sketch-table` instead once a row needs multiple
-visible fields).
+Use `.wf-list` for: the records picker (Properties, Users — see the Records
+pattern below), the systems picker, Health check's tabs, and any future flat
+list with no more than one visible field per row (reach for `.sketch-table`
+instead once a row needs multiple visible fields).
+
+## Navigation pattern: Records (`type: 'records'`)
+
+Not a canvas sketch — a NAVIGATION pattern (part of the content-model shape in
+`nav-data.js`, not a `sketch` value). Use whenever a flat list of clickable
+names should each open the SAME shared detail page.
+
+```js
+{ type: 'records', names: string[], detailNode: Node }
+```
+
+- `names` — real names, rendered via `renderRecordPicker` (`.wf-list`, real
+  text per the breadcrumb-clarity exception above).
+- `detailNode` — one shared Node (usually `type: 'tabs'`) that every record
+  opens. The SAME node reference for every name — there's one shared detail
+  shape, not one Node per record.
+- Breadcrumb: "[picker label] / [record name]" once a record is picked, then
+  the detail node's own tabs render with no additional crumb segment of their
+  own (the detail node is treated as a new root once reached this way — see
+  `renderChainBody`'s `isDetailNodeRoot` handling in `main.js`).
+
+**Existing instances:** Properties (`names: SAMPLE_PROPERTIES`, `detailNode:
+PROPERTY_NODE`) and Users (`names: SAMPLE_USERS`, `detailNode: buildUserNode(...)`).
+Both are the SAME mechanism — never add a new content type for "a picker that
+opens a shared detail page." Reuse `records` and give it a new `detailNode`.
 
 ## Not yet built
 

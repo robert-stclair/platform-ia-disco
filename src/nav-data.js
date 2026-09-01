@@ -18,7 +18,12 @@
 //   Content =
 //     | { type: 'tabs', tabs: Node[] }             // horizontal tab strip; each tab is a Node
 //     | { type: 'list', items: Node[] }            // vertical sub-nav list (packed away until its parent is clicked)
-//     | { type: 'properties', names: string[] }    // clickable property names; selecting one shows PROPERTY_NODE's content
+//     | { type: 'records', names: string[], detailNode: Node }
+//                                                   // GENERIC "clickable records list -> shared detail node" pattern
+//                                                   // (PATTERNS.md) — selecting a name shows `detailNode`'s content.
+//                                                   // Properties (-> PROPERTY_NODE) and Users (-> USER_NODE) are both
+//                                                   // instances of this ONE mechanism — never hardcode a new content
+//                                                   // type for "a picker that opens a shared detail page," reuse this.
 //     | { type: 'sketch', sketch, ... }            // see PATTERNS.md for every `sketch` value + its own options
 //     | { type: 'systems' }                        // "Integrated systems"-style: system count drives whether a
 //                                                   //   systems list appears before the selected system's content
@@ -35,13 +40,19 @@
 //
 //   Item                                    | Type              | Notes
 //   ----------------------------------------|--------------------|------
+//   Configuration/Distribution > Properties  | records (nav)      | type:'records' -> PROPERTY_NODE; picker
+//                                                                    rows are 'list' via renderRecordPicker
 //   PROPERTY_NODE's 6 tabs                  | stacked cards      | sketch:'sections'
 //   PROPERTY_NODE > Media library            | card grid (media)  | sketch:'media'
 //   PROPERTY_NODE > Integrated systems       | stacked cards      | sketch:'sections' via 'systems' type
 //   Direct Booking > Selling tools's 2 tabs  | stacked cards      | sketch:'sections'
 //   Direct Booking > Setup's 7 tabs          | stacked cards      | sketch:'sections'
 //   Direct Booking > Branding                | none yet           | content: null, stub
-//   Configuration > Users                    | list               | sketch:'list'
+//   Configuration > Users                    | records (nav)      | type:'records' -> buildUserNode; picker
+//                                                                    rows are 'list' via renderRecordPicker
+//   USER_NODE > User details                 | stacked cards      | sketch:'sections'
+//   USER_NODE > Properties (multi-prop only) | list               | sketch:'list' (which properties this
+//                                                                    user has access to)
 //   Configuration > Channels                 | none yet           | content: null, stub — page-type TBD
 //   Configuration > Channels Plus            | none yet           | content: null, stub
 //   Configuration > Metasearch               | none yet           | content: null, stub
@@ -173,6 +184,45 @@ export const PROPERTY_NODE = {
     ],
   },
 };
+
+// EXPLORATORY — sample user names for the generic `records` pattern
+// (CHANGE-QUEUE.md item 3). Generic realistic names, not real confirmed
+// user data, not placeholder-style labels — same treatment as
+// SAMPLE_PROPERTIES below.
+const SAMPLE_USERS = ['Jane Smith', 'Michael Chen', 'Priya Patel', 'Tom Reilly'];
+
+// A single user's own detail page — "User details" always, plus
+// "Properties" (which properties this user has access to) only for
+// multi-property accounts. Built as a function of `showProperties`
+// (same parameter `buildConfigurationPropertiesItem` uses) rather than a
+// static export like PROPERTY_NODE, since this tab strip's shape itself
+// varies by account state, not just its content.
+function buildUserNode(showProperties) {
+  return {
+    key: 'user',
+    label: 'User',
+    content: {
+      type: 'tabs',
+      tabs: [
+        {
+          key: 'user-details',
+          label: 'User details',
+          active: true,
+          content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'User details', shape: 'field' }] },
+        },
+        ...(showProperties
+          ? [
+              {
+                key: 'user-properties',
+                label: 'Properties',
+                content: { type: 'sketch', sketch: 'list' },
+              },
+            ]
+          : []),
+      ],
+    },
+  };
+}
 
 // Default: one connected system — 'systems' content collapses straight to
 // its sections, no system list.
@@ -343,7 +393,7 @@ function buildConfigurationPropertiesItem(showProperties) {
           key: 'properties-list',
           label: 'Properties',
           active: true,
-          content: { type: 'properties', names: SAMPLE_PROPERTIES },
+          content: { type: 'records', names: SAMPLE_PROPERTIES, detailNode: PROPERTY_NODE },
         },
         { key: 'brands', label: 'Brands', content: null, mpOnly: true },
         { key: 'clusters', label: 'Clusters', content: null, mpOnly: true },
@@ -410,11 +460,11 @@ function buildSmContentTree(showProperties) {
         { key: 'inventory', label: 'Inventory', active: true, content: null },
         { key: 'rate-plans', label: 'Rate plans', content: null },
         { key: 'yield-rules', label: 'Yield rules', content: null },
-        // Only appears when showProperties — same recursive 'properties' shape
+        // Only appears when showProperties — same generic `records` pattern
         // Configuration's Properties tab uses, now a real clickable/routable
         // panel item instead of the old flat, unwired `data.sublist` array.
         ...(showProperties
-          ? [{ key: 'properties', label: 'Properties', content: { type: 'properties', names: SAMPLE_PROPERTIES } }]
+          ? [{ key: 'properties', label: 'Properties', content: { type: 'records', names: SAMPLE_PROPERTIES, detailNode: PROPERTY_NODE } }]
           : []),
         HEALTH_CHECK_ITEM,
       ],
@@ -429,7 +479,14 @@ function buildSmContentTree(showProperties) {
     configuration: {
       items: [
         buildConfigurationPropertiesItem(showProperties),
-        { key: 'users', label: 'Users', content: { type: 'sketch', sketch: 'list' } },
+        // Clickable, using the generic `records` pattern — same mechanism
+        // Properties uses (CHANGE-QUEUE.md item 3), not a Users-specific
+        // one. Each user opens buildUserNode's shared detail tabs.
+        {
+          key: 'users',
+          label: 'Users',
+          content: { type: 'records', names: SAMPLE_USERS, detailNode: buildUserNode(showProperties) },
+        },
         // Channels sits ABOVE the Products heading, not inside it — user's
         // explicit reasoning: "its core functionality for all customers not
         // an add-on" (CHANGE-QUEUE.md item 9). Content/page-type TBD.

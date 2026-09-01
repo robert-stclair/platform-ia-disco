@@ -1,7 +1,6 @@
 import {
   getRailItems,
   getContent,
-  PROPERTY_NODE,
   DEFAULT_SYSTEMS,
   MULTIPLE_SYSTEMS,
   SCOPE_PROPERTIES,
@@ -152,7 +151,13 @@ function resolveChain(rootNode) {
       continue;
     }
 
-    if (content.type === 'properties') {
+    if (content.type === 'records') {
+      // Generic "clickable records list -> shared detail node" pattern
+      // (PATTERNS.md) — a list of names, each opening the SAME detail Node
+      // (`content.detailNode`) once picked. Properties (-> PROPERTY_NODE)
+      // and Users (-> USER_NODE) are both instances of this one mechanism,
+      // not separate ones — generalized from an earlier version hardcoded
+      // to `type: 'properties'` recursing into PROPERTY_NODE specifically.
       const explicitKey = state.path[pathIndex];
       chain.push({
         node,
@@ -163,7 +168,7 @@ function resolveChain(rootNode) {
         isExplicit: Boolean(explicitKey),
       });
       if (!explicitKey) break;
-      node = PROPERTY_NODE;
+      node = content.detailNode;
       pathIndex += 1;
       continue;
     }
@@ -424,21 +429,33 @@ function renderCanvas(data) {
 // panel's highlight, so crumbing it too would be redundant noise. This is
 // the one rule that replaces the old scattered `depth > 0` / "does this
 // content type deserve a crumb" special-casing per branch.
+//
+// Second exception: a step reached via an explicit `records` drill-down
+// (i.e. chain[i-1] was an explicit records pick) is ALSO treated as a root
+// — its own detailNode (PROPERTY_NODE, USER_NODE, ...) is conceptually the
+// root level for that record, even though it isn't literally chain index 0.
+// Without this, PROPERTY_NODE's own tab strip crumbed using its own stale
+// label ("Property settings") once inside a specific property — e.g.
+// "Properties / Harbourview Hotel / Property settings / Integrated
+// systems" — caught by the user; the detail node's own tabs shouldn't add
+// a crumb segment at all, same as any literal chain-root tabs step.
 function renderChainBody(chain, i) {
   const step = chain[i];
   if (!step) return { trail: [], bodyHtml: '' };
 
   const { content, pathIndex, selectedKey, isExplicit } = step;
-  const crumb = i > 0 && isExplicit ? [{ label: step.node.label, truncateTo: pathIndex }] : [];
+  const prevStep = chain[i - 1];
+  const isDetailNodeRoot = prevStep?.content?.type === 'records' && prevStep.isExplicit;
+  const crumb = i > 0 && !isDetailNodeRoot && isExplicit ? [{ label: step.node.label, truncateTo: pathIndex }] : [];
 
   if (content.type === 'tabs') {
     const nextStep = chain[i + 1];
-    // Once the next step is a `properties` picker explicitly drilled into (a
-    // specific property picked), THIS tab strip (e.g. Properties/Brands/
-    // Clusters) is no longer relevant — the user is inside one property's
-    // own settings, which have their own tab strip. Showing both stacked is
+    // Once the next step is a `records` picker explicitly drilled into (a
+    // specific record picked), THIS tab strip (e.g. Properties/Brands/
+    // Clusters) is no longer relevant — the user is inside one record's
+    // own detail node, which has its own tab strip. Showing both stacked is
     // confusing duplication, so skip straight to the inner content.
-    if (nextStep?.content?.type === 'properties' && nextStep.isExplicit) {
+    if (nextStep?.content?.type === 'records' && nextStep.isExplicit) {
       return renderChainBody(chain, i + 1);
     }
     const tabStrip =
@@ -465,14 +482,26 @@ function renderChainBody(chain, i) {
     return renderChainBody(chain, i + 1);
   }
 
-  if (content.type === 'properties') {
+  if (content.type === 'records') {
     if (!selectedKey) {
       // Still on the picker itself — no drill-down yet, no crumb.
-      return { trail: [], bodyHtml: renderPropertyPicker(step.options, pathIndex) };
+      return { trail: [], bodyHtml: renderRecordPicker(step.options, pathIndex) };
     }
-    const propertyCrumb = { label: selectedKey, truncateTo: pathIndex + 1 };
+    const recordCrumb = { label: selectedKey, truncateTo: pathIndex + 1 };
+    // A records picker's own crumb (`crumb`, e.g. "Properties") is normally
+    // only added when i > 0 (wrapped in an outer tabs strip, like
+    // Configuration → Properties/Brands/Clusters → Properties). But when a
+    // records picker sits DIRECTLY on the panel item with no wrapping tabs
+    // (like Users), i === 0, so `crumb` is empty and only `recordCrumb`
+    // would show — a single, genuinely useful crumb ("Jane Smith") that the
+    // generic `trail.length <= 1` suppression then hides as if it were
+    // redundant noise, when it isn't (nothing else shows the record name).
+    // Fix: always include this picker's own label crumb once a record is
+    // explicitly picked, even at i === 0, so the trail reads "Users / Jane
+    // Smith" instead of getting suppressed to nothing.
+    const ownCrumb = i === 0 ? [{ label: step.node.label, truncateTo: pathIndex }] : crumb;
     const inner = renderChainBody(chain, i + 1);
-    return { trail: crumb.concat(propertyCrumb, inner.trail), bodyHtml: inner.bodyHtml };
+    return { trail: ownCrumb.concat(recordCrumb, inner.trail), bodyHtml: inner.bodyHtml };
   }
 
   if (content.type === 'systems') {
@@ -483,7 +512,7 @@ function renderChainBody(chain, i) {
     }
     if (!selectedKey) {
       // A picker exists (>1 system) but none chosen yet — no crumb.
-      return { trail: [], bodyHtml: renderPropertyPicker(step.options, pathIndex) };
+      return { trail: [], bodyHtml: renderRecordPicker(step.options, pathIndex) };
     }
     const systemCrumb = { label: selectedKey, truncateTo: pathIndex + 1 };
     return { trail: crumb.concat(systemCrumb), bodyHtml: renderSectionsSketch(content.sections) };
@@ -496,12 +525,12 @@ function renderChainBody(chain, i) {
 // Shows REAL names, not skeleton bars — a deliberate, narrow exception to
 // the skeleton-only rule (PATTERNS.md), scoped specifically to lists that
 // feed a breadcrumb drill-down, so the resulting crumb reads as a real
-// property/system name instead of "[skeleton bar]" (CHANGE-QUEUE.md item
-// 7). Used for both the properties AND systems pickers — both feed a
-// crumb via the exact same mechanism, so both get the exception; applying
-// it to only one of the two would be an arbitrary inconsistency with no
-// real justification behind it.
-function renderPropertyPicker(names, depth) {
+// record/system name instead of "[skeleton bar]" (CHANGE-QUEUE.md item 7).
+// Used for the generic `records` picker (Properties, Users, ...) AND the
+// systems picker — all feed a crumb via the exact same mechanism, so all
+// get the exception; applying it to only some would be an arbitrary
+// inconsistency with no real justification behind it.
+function renderRecordPicker(names, depth) {
   return `<ul class="wf-list">${names
     .map((name) => `<li><a href="#" class="wf-list__row" data-path-key="${depth}:${name}">${name}</a></li>`)
     .join('')}</ul>`;
