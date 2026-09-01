@@ -12,63 +12,40 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: EVERY numbered item so far (1–21) is implemented and pushed** (see `## Done` below
-for a summary of each, and git log on `refactor/structure-cleanup` for full detail). Not yet
-merged to `main` — still on the refactor branch, awaiting review. The only unfinished thread is
-the foundational property/cluster/brand scope switcher (its own section below) — Distribution's
-shape is explicitly unsolved there, not a queue item to implement yet. Add new requests to a
-fresh numbered list below this status block as they come in.
+**Status: every queued item across all batches so far is implemented and pushed** — the
+original numbered batch (1–21, see `## Done` below) AND the Distribution batch (1–7, just
+below this status line). Not yet merged to `main` — still on the refactor branch, awaiting
+review. The only unfinished thread is the foundational property/cluster/brand scope switcher
+(its own section below) — Distribution's shape is explicitly unsolved there, not a queue item
+to implement yet. Add new requests to a fresh numbered list below this status block as they
+come in.
 
-## Queued (not yet implemented) — Distribution batch
+## Distribution batch — ALL 7 ITEMS DONE (commits `18a9dfd`, `5521c98`, `4396efe`)
 
-1. **Rate plans becomes a clickable `records` list** ("go deep" — drill into a specific rate
-   plan) — same generalized pattern as Properties/Users/Dashboards, not a new mechanism.
-   Generic realistic sample names (not real confirmed data), e.g. "Standard Rate,"
-   "Non-Refundable," etc. — confirm exact names at implementation time if it matters, otherwise
-   pick reasonable ones. Detail node: TBD what a single rate plan's own page looks like — start
-   simple (a stacked-cards or list shape) unless told otherwise.
-2. **Yield rules becomes a clickable `records` list too** — same pattern as Rate plans/item 1,
-   not a plain non-clickable list. Generic sample names, own shared detail node.
-3. **Health check simplified to ONE dashboard-cards page, replacing its 7-tab structure
-   entirely.** Each of the 7 current tabs (Failed PMS deliveries, Delayed updates, Disabled
-   channels, Channels awaiting connection setup, Mapping errors, Disabled channel rates,
-   Distribution and system status) becomes a CARD in a single dashboard-cards grid instead of
-   a separate tab — real card titles (these ARE the confirmed real names, unlike Insights'
-   Dashboard), likely `shape: 'stat'` (a count/status indicator) rather than `'chart'` for each,
-   since these are monitoring/status areas, not charts. No more tab strip for Health check.
-4. **Inventory becomes a grid page** — reuse the calendar grid's underlying mechanism, but
-   GENERALIZE it first so it isn't hardcoded to a 7-column month-calendar shape: needs to work
-   for both Front desk's calendar (7 weekday columns) and Inventory's own grid (likely a
-   room-type × date matrix, a different shape) — parameterize column count/labels and row
-   count rather than assuming every grid is a month view. Exact Inventory grid shape/columns:
-   TBD at implementation time, following the "generic enough for different contexts" direction.
-5. **Remove Distribution's "Properties" item entirely, for now.** User: "how did we end up with
-   properties in distribution? i think thats something i need to work through actually" —
-   followed by "i think remove for now." This is the item added in the original refactor
-   (`buildSmContentTree`'s `distribution.items`, gated on `showProperties`, using the generic
-   `records` pattern → `PROPERTY_NODE`). Remove it from Distribution's item list; DON'T touch
-   Configuration's own Properties item (unrelated, stays as-is) or `PROPERTY_NODE` itself
-   (still used elsewhere). Log the open question in `IA-BY-USER-TYPE.md`'s Distribution section
-   — why Distribution needs (or doesn't need) its own Properties concept, separate from
-   Configuration's, is unresolved and explicitly the user's own open thread to work through,
-   not something to guess an answer to.
-6. **Add "Room types" as a new PROPERTY_NODE tab** (per-property, since there's no generic/
-   shared room-type concept today — user: "i dont think there is a concept of a generic room
-   type"). Position: right after "Property details," so order becomes General information,
-   Property details, Room types, Services, Policies, Media library, Integrated systems, Users.
-   Content: `sketch: 'list'` (confirmed — not a stub, user corrected to "actually yep room
-   types is a list" after initially suggesting stub).
-   - **Speculative idea, NOT a commitment — log as an open question, don't design around it
-     yet:** user floated whether room types could ALSO be switchable/manageable centrally
-     across properties, if a customer prefers that ("i wonder if we can add that so user can
-     switch and manage centrally if they prefer"). This is the same shape of tension as the
-     foundational scope-switcher/portfolio-efficiency thread above (today's platform only has
-     single-property context, losing whole-portfolio efficiencies) — connect these when
-     working through the scope-switcher's Distribution case, don't solve Room types'
-     central-management idea in isolation or prematurely.
-7. **Transactions → Reservations becomes a plain list.** `content: null` → `sketch: 'list'` —
-   NOT the clickable `records` pattern (unlike Rate plans/Yield rules) — just the list shape,
-   no drill-down for now.
+1. **Rate plans** is now a clickable `records` list (same generalized pattern as Properties/
+   Users/Dashboards) — generic sample names (Standard Rate, Non-Refundable, Advance Purchase,
+   Long Stay), opening a simple shared `RATE_PLAN_NODE` (a basic stacked-cards stub).
+2. **Yield rules** — same pattern, own shared `YIELD_RULE_NODE`, generic sample names (Weekend
+   surcharge, Last-minute discount, Length-of-stay discount).
+3. **Health check** simplified to ONE dashboard-cards page, no more tab strip. Initially given
+   real card titles (the 7 confirmed names), then corrected — user: "health check is supposed
+   to be generic - no labels" — every card is now fully titleless, same treatment as Insights'
+   Dashboard.
+4. **Grid pattern generalized** — `sketch: 'calendar'` is now a named preset of a new generic
+   `sketch: 'grid'` (real or skeleton-only column headers, optional real or skeleton-only row
+   labels). **Inventory** wired up with a skeleton-only 7×6 grid — user: "just a skeleton
+   without words" — no real columns/rows decided yet, purely shape.
+5. **Distribution's "Properties" item removed entirely.** User wasn't sure why it existed
+   separately from Configuration's own Properties and wanted to work through the underlying
+   question themselves. Open question logged in `IA-BY-USER-TYPE.md`'s SM-multiple-properties
+   section — don't reintroduce without resolving that first.
+6. **"Room types"** added as a new PROPERTY_NODE tab (right after "Property details") — a
+   plain `sketch: 'list'`, per-property since there's no generic/shared room-type concept
+   today. A speculative "manage centrally across properties" idea was floated but not
+   designed — logged as connected to the foundational scope-switcher thread below, not solved
+   in isolation.
+7. **Reservations** changed from `content: null` to a plain `sketch: 'list'` (not the
+   clickable `records` pattern, unlike Rate plans/Yield rules).
 
 Two regressions were caught and fixed while implementing (see git log for full detail on
 each): `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
