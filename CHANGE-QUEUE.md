@@ -4,215 +4,37 @@
 > framing + confirmed decisions), `IA-BY-USER-TYPE.md` (decisions/open questions per account
 > type), `NOTES-CLEANUP.md` (sitemap + coding standards — why path-index bugs kept happening),
 > `REFACTOR-PLAN.md` (what this branch's refactor did and why), `PATTERNS.md` (reusable
-> wireframe pattern catalog), then this file last. You're most likely on the
-> `refactor/structure-cleanup` branch, not `main` — check with `git branch --show-current`.
-> The 4 page-skeleton types in item 7 below are a starting set, not a closed list — the user
-> adds new types as new page needs come up, so don't treat 7 as "done" once those 4 exist.
+> wireframe pattern catalog, including `nav-data.js`'s item-by-item type retrofit table), then
+> this file last. You're most likely on the `refactor/structure-cleanup` branch, not `main` —
+> check with `git branch --show-current`. The 4 page-skeleton types are a starting set, not a
+> closed list — the user adds new types as new page needs come up.
 
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-## Progress so far (updated live while implementing — user stepped away, said to keep going)
+**Status: items 1, 3, 4, 5, 6, 7, 8, 9 are all implemented and pushed** (see `## Done` below
+for a summary of each, and git log on `refactor/structure-cleanup` for full detail). Item 2
+was already done before this queue existed. Not yet merged to `main` — still on the refactor
+branch, awaiting review. The only unfinished thread is the foundational property/cluster/brand
+scope switcher (its own section below) — Distribution's shape is explicitly unsolved there,
+not a queue item to implement yet.
 
-Implemented and pushed, in this order: the Insights scope-switcher sketch (foundational
-section below), item 5 (LH + Front desk), items 1/3/4/6/9 together (Property rename, Channels,
-Products heading, Health check real content, Metasearch), item 8 (My insights + starring),
-and item 7's standard-margin sub-piece. Two real regressions were caught and fixed along the
-way — see git log on `refactor/structure-cleanup` for full detail on both:
-- `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
-  content across the whole app silently stopped rendering after the prior session's chain
-  refactor — not just something touched today.
-- The standard content-margin wrapper was being applied per-nesting-level instead of once,
-  double-padding any tabs-within-tabs case to 48px instead of 24px.
+Two regressions were caught and fixed while implementing (see git log for full detail on
+each): `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
+content across the whole app had silently stopped rendering since the prior session's chain
+refactor; and the standard content-margin wrapper was being applied per-nesting-level instead
+of once, double-padding any tabs-within-tabs case to 48px instead of 24px.
 
-Two decisions were made without live user input, since they were reversible/low-risk and the
-user had explicitly said to just keep going rather than wait: the exact 2 items chosen to
-illustrate My insights' starring (Weekly performance/Channel comparison, plus Portfolio health
-for multi-property — arbitrary, no significance to which ones), and Health check's tabs given
-`sketch: 'list'` as a first-pass page-type (flagged inline to reconsider once `table` exists).
-Neither is a real fork — cheap to change on review.
-
-**Update:** `table` and dashboard-card-grid patterns built, full-width list done, the real-names
-breadcrumb exception applied to BOTH the properties and systems pickers (both feed a crumb via
-the identical mechanism — applying it to only one would've been an arbitrary inconsistency with
-no real reason behind it; flagging this call since it wasn't explicitly asked). **Deliberately
-NOT wiring the dashboard-card-grid pattern onto Insights' own Dashboard item** (which still has
-`content: null`) — doing so would require inventing card titles, and only one real one is
-confirmed anywhere in the docs ("Property Status," from `CONTEXT.md`'s usage-data reference
-points). The pattern is built and documented, ready to use once real dashboard card titles are
-confirmed — not forced on with guesses. Flag this back to the user for real titles before
-Insights' Dashboard gets built out.
-
-**Still remaining from item 7:** the full retrofit pass assigning a page-type to every
-existing item. Continuing now.
-
-## Suggested implementation order (added after a pre-implementation review)
-
-Reviewed the queue against the current code to catch dependencies before starting:
-
-1. **#5 (LH + Front desk) first.** Touches `RAIL_ITEMS`'s shape itself (constant -> function
-   of `accountType`) — better to land this structural change on its own before #7's broad
-   `nav-data.js` retrofit pass touches the same file, to avoid merge friction between two
-   large edits. Scope check: `RAIL_ITEMS` is imported in exactly one place in `main.js`
-   (`renderRail()`, `main.js:182`) — small blast radius, but `renderRail()` currently takes no
-   arguments and will need `state.accountType` threaded through, same pattern as
-   `getContent(state.accountType, state.propertyCount)` already uses. Call it out explicitly
-   so it isn't a surprise mid-implementation.
-2. **#1, #3, #4, #6, #8 next**, any order among themselves — all independent of each other and
-   of #5, all touch `buildSmContentTree`/`buildConfigurationPropertiesItem` (or, for #8,
-   Insights' own section) in `nav-data.js`, don't touch `RAIL_ITEMS`.
-3. **#7 last**, specifically the "full retrofit pass" part — it assigns a page-type to EVERY
-   panel item, so it should run after #1/#3/#4/#6/#8 exist (Metasearch, Health check, Manage
-   products, the renamed Property item, My insights/Dashboards/Charts) rather than before, or
-   it'll need re-doing once those land. The new pattern-building part of #7 (table, dashboard
-   card grid, full-width list, standard margin, folder-vs-heading rule, starred-row indicator)
-   has no ordering dependency and could technically start anytime, but logically pairs with
-   the retrofit since the retrofit is what exercises the new patterns — and #8 specifically
-   NEEDS the starred-row pattern from #7 to exist before it can render its star indicators, so
-   build that particular sub-piece of #7 before or alongside #8, even though the rest of #7
-   (the retrofit proper) still comes last.
-
-## Queued (not yet implemented)
-
-1. **Rename Configuration's first panel item.** "Property settings" -> "Property" for the
-   single-property case. The multi-property case is already labelled "Properties" (the tabs
-   item) — no change needed there. Scope: just this panel item's label; PROPERTY_NODE itself
-   (the shared tab-strip shown once you drill into a specific property) keeps its current
-   label/key, not renamed.
-2. **Users** — already exists (Configuration -> Users, top-level, wireframe list sketch).
-   Confirmed as correct/already done — no action needed.
-3. **Add "Metasearch"** as a new Configuration L2 item, grouped under the new Products
-   heading (see #4) — not a standalone flat item.
-4. **Add a "Products" grouping** in Configuration's panel — RESOLVED:
-   - New heading "Products", placed after Property(/Properties), Users, and Channels (#9 —
-     Channels sits ABOVE Products, not inside it; see #9's resolved placement note).
-   - Items moved under it: Direct Booking, Channels Plus, Metasearch (new, from #3).
-   - After the grouped items, a "Manage products" row — RESOLVED: stub, `content: null`, same
-     treatment as Channels Plus today (renders, selectable, empty canvas).
-   - Resulting Configuration order: Property/Properties, Users, Channels, — Products —
-     Direct Booking, Channels Plus, Metasearch, Manage products.
-5. **LH gets real content for the first time — same as SM, plus a new "Front desk" L1 item.**
-   Supersedes LH's previous "renders fully empty, undefined by design" status
-   (`getContent` returning `null` for `accountType === 'LH'`). New behavior:
-   - LH's rail = Front desk (new, FIRST/topmost) + Insights, Distribution, Transactions,
-     Configuration — i.e. everything SM gets, unchanged, with Front desk prepended.
-   - LH's Insights/Distribution/Transactions/Configuration content is otherwise IDENTICAL to
-     SM's (reuses `buildSmContentTree`/`getContent`'s existing logic rather than a separate
-     LH-specific tree) — only the extra rail item is LH-specific.
-   - Front desk itself: icon + rail item only for now (bell icon, unattended-counter style —
-     needs a new SVG added to `icons.js`'s `RAIL_ICONS`). Clicking it shows an empty
-     panel/canvas — no L2/L3 content defined yet, consistent with "no placeholder content."
-   - **Structural note:** this is the first time the RAIL ITSELF differs by account type —
-     today `RAIL_ITEMS` is one constant list shared by everyone (the "one IA" decision was
-     that the rail is constant; differences live in L2/L3). This changes that: `RAIL_ITEMS`
-     needs to become a function of `accountType` (parallel to how `getContent` already takes
-     `accountType`/`propertyCount`), not a bolted-on `lhOnly` flag on the existing constant
-     array. Also updates `CONTEXT.md`'s "the rail... is constant across the entire spectrum"
-     decision and `IA-BY-USER-TYPE.md`'s LH section (currently "fully undefined by design").
-6. **Add "Health check" to Distribution's panel — now with real confirmed content.** New L2
-   item, LAST in the order: Inventory, Rate plans, Yield rules, (Properties if shown), Health
-   check. **Updated from stub to real content**, sourced from confirmed production MP routes
-   (`/all-properties/health-check/*`) found via knowledge-base research: Health check is a
-   TABS page (not a single sketch) with these tabs — Failed PMS deliveries, Delayed updates,
-   Disabled channels, Channels awaiting connection setup, Mapping errors, Disabled channel
-   rates, Distribution and system status. Page-skeleton type for these tabs TBD per item #7's
-   per-item prompting process — ask when implementing.
-   **Note: Health check and Channels (#9) are separate, unrelated items** — a couple of Health
-   check's tab labels happen to mention "channel" (they're diagnostics/error monitoring
-   generally, covering PMS sync and distribution status too, not just channels specifically),
-   but that's incidental wording overlap, not a real product relationship. Don't place them
-   near each other or treat one as informing the other's design — user explicitly flagged this
-   after an earlier draft of this queue conflated them.
-7. **Lightweight page-skeleton "design system" — 4 canonical page types + full retrofit.**
-   Goal: a small, consistent set of page-shape patterns to choose from per item, prompted
-   per-item rather than invented ad hoc. Four types (against what's already in PATTERNS.md):
-   - **List** — already exists (`sketch: 'list'`, `.wf-list`). Change: make it full-width
-     (currently constrained, `.wf-list` has `max-width: 520px`). Real item names (not pure
-     skeleton bars) become allowed ONLY for lists that feed a breadcrumb drill-down (e.g. the
-     Properties picker) — NOT a blanket change; plain lists (Users, systems picker) stay
-     skeleton-only. This is a deliberate exception to the existing no-real-content-in-lists
-     rule, scoped narrowly — document the exception explicitly in PATTERNS.md so it doesn't
-     silently creep to every list later.
-   - **Table** — genuinely new, flagged as "not yet built" in PATTERNS.md already. Build as
-     `sketch: 'table'` — skeleton rows+columns with a header row, same "skeleton only, no
-     real values" rule as everything else.
-   - **Card grid (dashboard)** — genuinely new, distinct from the existing `media` card grid
-     (4:3 photo cards). This one: metric/chart-style cards (title bar + skeleton chart/stat
-     block), for dashboard-style landing pages (e.g. Insights). New `sketch` value needed
-     (not reusing `'media'`) — e.g. `sketch: 'dashboard-cards'` or similar, name TBD.
-   - **Stacked cards** — already exists (`sketch: 'sections'`, used for Property settings
-     today). No structural change, just formalize it as one of the 4 canonical types in
-     PATTERNS.md's framing.
-   - **Standard content-area margin**: codify a single standard margin/max-width/padding rule
-     for the canvas content area in PATTERNS.md, then AUDIT every existing sketch (sections,
-     media, list) against it and fix any that drift, so all 4 (well, all N) patterns share one
-     consistent outer spacing rule rather than each having evolved its own.
-   - **Full retrofit pass**: go through every existing panel item and explicitly assign/
-     confirm which of the 4 types it is (e.g. Property settings -> stacked cards, Users ->
-     list, a future Rate plans -> table?), updating `nav-data.js` comments and PATTERNS.md
-     together so the mapping is explicit rather than implicit.
-   - **View vs. edit mode** — explicitly DEFERRED, not in this batch. Noted here so it isn't
-     lost, to tackle later once the 4 base types are solid.
-   - Process note: user wants to be PROMPTED per page/item for which of the 4 types fits,
-     rather than have it decided unilaterally — when implementing, ask before assigning a
-     type to any item where it isn't already obvious/existing.
-   - **New standing rule, decided while queuing #8 below — add to PATTERNS.md as part of this
-     item's pass:** FOLDER (chevron, collapsed by default, like Direct Booking) vs. GROUPING
-     HEADING (like Products, always-expanded, no chevron) — use a folder when the label is
-     itself a nav concept whose children are hidden until opened; use a heading when you're
-     just visually clustering already-visible sibling items with no expand/collapse. This
-     governs both #4 (Products = heading) and #8 (My insights = folder) below.
-8. **Insights: add "My insights" (folder) containing Dashboards + Charts, both list pages,
-   with a non-functional "starred" visual indicator.** Replaces the existing informal `ugc`
-   array (`insights.ugc`: Weekly performance/Channel comparison/Portfolio health — currently a
-   flat, unlabeled block rendered below Dashboard/Recommendations) with a proper structured
-   item:
-   - "My insights" is a FOLDER-type L2 item (per the new rule above) — collapsed by default,
-     chevron, expand reveals two children: "Dashboards" and "Charts". Both are `sketch: 'list'`
-     pages (users create their own dashboards/charts here).
-   - **Starring, visual only — not functional yet:** a couple of items in the Dashboards/
-     Charts lists show a filled-star indicator (to communicate the concept), AND the same
-     starred items appear promoted/duplicated up into the MAIN Insights item list (alongside
-     Dashboard/Recommendations at the top), also with a star shown. This is purely illustrative
-     — no actual starring interaction, no real click-to-star toggle; just enough to show the
-     idea visually. Confirm with user before/while implementing exactly which 1-2 items in
-     each list get the illustrative star, since "a couple" wasn't more specific.
-   - **New pattern needed:** a star indicator on a list row — doesn't exist in PATTERNS.md yet
-     (`.wf-list__row` has no starred variant). Add as part of #7's pattern-building pass.
-   - **Structural note:** promoting a starred item from a nested folder up into the TOP-LEVEL
-     item list is new — today the top-level item list (`data.items`) and a folder's children
-     are two separate, non-overlapping renders. This needs either (a) a small amount of
-     synthetic/duplicated data (the promoted items literally appear in both places in
-     `nav-data.js`, simplest for a static wireframe), or (b) an actual "promoted" flag read at
-     render time from the same underlying list. Given this is illustrative/non-functional per
-     the confirmed answer above, favor (a) — simplest, no new render logic needed — unless
-     asked otherwise.
-9. **Add "Channels" — the actual OTA subscription/management list (Booking.com, Expedia,
-   etc.) — PLACEMENT RESOLVED.** A completely separate item from Health check (#6) — see the
-   note on #6 above; not related, don't place them near each other or design one against the
-   other. Scoping resolved via knowledge-base research: confirmed production MP routes
-   include a "Channel adoption view" (`/all-properties/distribution/adoption`) working across
-   multi-property accounts today, so channel management DOES span multi-property, at the
-   account/portfolio level — not purely per-property. Scope for this item: a list of
-   currently-subscribed channels/OTAs + their management (add/remove/configure a channel
-   connection).
-   - **Placement: Configuration, ABOVE the new Products heading (#4) — NOT grouped inside it.**
-     User's explicit reasoning: "its core functionality for all customers not an add-on" —
-     Channels is core/expected functionality every customer needs, unlike Direct
-     Booking/Channels Plus/Metasearch under Products, which read more as optional add-on
-     products. Resulting Configuration order: Property/Properties, Users, Channels, —
-     Products — Direct Booking, Channels Plus, Metasearch, Manage products.
-   - Page-skeleton type / exact content TBD per item #7's per-item prompting process.
+A handful of small, reversible calls were made without live user input (user had stepped away
+and said to keep going rather than wait) — each flagged inline in `## Done` below for a quick
+look on review: which 2 items illustrate My insights' starring, Health check's tabs given
+`list` as a first-pass type (flagged to reconsider once real column data suggests `table`),
+applying the real-names breadcrumb exception to both the properties AND systems pickers, and
+not wiring the new dashboard-card-grid pattern onto Insights' Dashboard (needs real card
+titles first — only "Property Status" is confirmed anywhere in the docs).
 
 ## Open questions
 
-- **Products heading visual treatment** — this is a new nav pattern (a plain grouping label
-  within a panel list, not a clickable item). Need to add this as a real pattern (pure CSS
-  label, not a Node) — confirm this shouldn't itself be tracked in PATTERNS.md once built.
-  **Efficiency note:** since #7 already has PATTERNS.md open for a broad pass (new page-skeleton
-  types + standard margin + retrofit), document the Products heading as a PANEL-LIST pattern
-  in that same PATTERNS.md pass rather than as a separate later edit — they're touching the
-  same file for related "codify a nav pattern" reasons, no reason to split into two passes.
 - **LH's account-type-specific rail differences beyond Front desk** — is Front desk the ONLY
   rail difference for LH, or are there other L1/L2/L3 differences from SM still to come? Also:
   does LH's "same as SM" content include the account-type/property-count Properties-gating
@@ -290,6 +112,40 @@ the rest by seeing it, NOT a finished implementation:**
   first implementation choices (e.g. where the switcher control lives, exact interaction) as
   locked in.
 
-## Done (moved here once implemented, then cleared)
+## Done
 
-<!-- implemented items land here temporarily so you can see what just shipped, then get cleared next time this file is reset -->
+1. **Configuration's first item renamed** "Property settings" → "Property" (single-property
+   case only; multi-property's "Properties" tabs item unchanged; `PROPERTY_NODE` itself
+   unchanged).
+2. **Users** — already existed before this queue; confirmed correct, no action taken.
+3. **"Metasearch"** added as a Configuration item under the new Products heading.
+4. **"Products" grouping heading** added to Configuration (a new non-clickable panel-list
+   pattern — see PATTERNS.md's folder-vs-heading rule), containing Direct Booking/Channels
+   Plus/Metasearch, with a "Manage products" stub row (`content: null`) after them.
+5. **LH gets full SM content** (`getContent` no longer special-cases LH to `null`) **plus a
+   new "Front desk" rail item** (bell icon, first/topmost) — `getRailItems(accountType)`
+   replaces the old constant `RAIL_ITEMS`, the first case of the rail itself varying by
+   account type. Front desk has no L2/L3 content yet (no placeholders); switching account
+   type away from LH while on Front desk falls back to Insights.
+6. **Health check** added to Distribution (last in order) with real confirmed content — a
+   tabs page: Failed PMS deliveries, Delayed updates, Disabled channels, Channels awaiting
+   connection setup, Mapping errors, Disabled channel rates, Distribution and system status
+   (sourced from production MP routes via knowledge-base research). Currently `sketch: 'list'`
+   per tab — flagged to reconsider as `table` once real column data is known. Kept
+   deliberately separate from Channels (item 9) per explicit user correction mid-session.
+7. **Page-skeleton design system**: standard content-area margin (`.sketch`, 24px, applied
+   exactly once in `renderCanvas` — this fixed the two regressions noted above), full-width
+   `.wf-list` (was max-width 520px), new `table` pattern (`.sketch-table`, real header row),
+   new `dashboard-cards` pattern (`.sketch-dashboard-cards`, built but not yet wired to any
+   real page — needs real card titles first), the real-names breadcrumb exception (properties
+   + systems pickers), the folder-vs-heading panel-list distinction, and a full retrofit
+   table in `nav-data.js`'s top comment mapping every existing item to its page-type. View vs.
+   edit mode deliberately deferred, not started.
+8. **Insights → "My insights"** folder (replaces the old flat `ugc` array) containing
+   Dashboards + Charts (both `sketch: 'list'`), with non-functional illustrative starring — a
+   couple of rows get a star icon (`.wf-list__row--starred`) and the same items are duplicated
+   as starred top-level entries (`.nav-list-item__star`) alongside Dashboard/Recommendations.
+9. **"Channels"** added to Configuration, placed ABOVE the Products heading (core
+   functionality, not an add-on, per explicit user reasoning) — stub content for now. Scoping
+   question resolved via research: channel connections confirmed to already span
+   multi-property accounts today (real production "Channel adoption view" route).
