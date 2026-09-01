@@ -215,6 +215,48 @@ const BOOKING_ENGINE_LIST = {
   ],
 };
 
+// Distribution's Health check — real content confirmed from production MP
+// routes (/all-properties/health-check/*), not a stub. CHANGE-QUEUE.md
+// item 6 — separate from and unrelated to "Channels" (item 9): a couple
+// of these tab labels mention "channel" but that's incidental, not an IA
+// relationship between the two items — don't let one inform the other.
+// Page-skeleton type: 'list' as a first-pass choice (these are error/status
+// listings) — reconsider once item 7's 'table' pattern exists; flagged for
+// that retrofit pass, not locked in.
+const HEALTH_CHECK_ITEM = {
+  key: 'health-check',
+  label: 'Health check',
+  content: {
+    type: 'tabs',
+    tabs: [
+      {
+        key: 'failed-pms-deliveries',
+        label: 'Failed PMS deliveries',
+        active: true,
+        content: { type: 'sketch', sketch: 'list' },
+      },
+      { key: 'delayed-updates', label: 'Delayed updates', content: { type: 'sketch', sketch: 'list' } },
+      { key: 'disabled-channels', label: 'Disabled channels', content: { type: 'sketch', sketch: 'list' } },
+      {
+        key: 'channels-awaiting-setup',
+        label: 'Channels awaiting connection setup',
+        content: { type: 'sketch', sketch: 'list' },
+      },
+      { key: 'mapping-errors', label: 'Mapping errors', content: { type: 'sketch', sketch: 'list' } },
+      {
+        key: 'disabled-channel-rates',
+        label: 'Disabled channel rates',
+        content: { type: 'sketch', sketch: 'list' },
+      },
+      {
+        key: 'distribution-system-status',
+        label: 'Distribution and system status',
+        content: { type: 'sketch', sketch: 'list' },
+      },
+    ],
+  },
+};
+
 const SAMPLE_PROPERTIES = [
   'Harbourview Hotel',
   'The Grand Meridian',
@@ -244,7 +286,11 @@ export const SCOPE_CLUSTERS = ['East Coast', 'West Coast', 'Inland'];
 // (mpOnly: true), filtered out of the tab strip unless accountType==='MP'.
 function buildConfigurationPropertiesItem(showProperties) {
   if (!showProperties) {
-    return { key: 'property-settings', label: 'Property settings', active: true, content: PROPERTY_NODE.content };
+    // Renamed from "Property settings" to "Property" (CHANGE-QUEUE.md item
+    // 1) — scoped to just this panel item's label; PROPERTY_NODE itself
+    // (the shared tab-strip shown once drilled into a specific property)
+    // keeps its own label/key unchanged.
+    return { key: 'property-settings', label: 'Property', active: true, content: PROPERTY_NODE.content };
   }
   return {
     key: 'properties-config',
@@ -295,6 +341,7 @@ function buildSmContentTree(showProperties) {
         ...(showProperties
           ? [{ key: 'properties', label: 'Properties', content: { type: 'properties', names: SAMPLE_PROPERTIES } }]
           : []),
+        HEALTH_CHECK_ITEM,
       ],
     },
     transactions: {
@@ -308,8 +355,18 @@ function buildSmContentTree(showProperties) {
       items: [
         buildConfigurationPropertiesItem(showProperties),
         { key: 'users', label: 'Users', content: { type: 'sketch', sketch: 'list' } },
+        // Channels sits ABOVE the Products heading, not inside it — user's
+        // explicit reasoning: "its core functionality for all customers not
+        // an add-on" (CHANGE-QUEUE.md item 9). Content/page-type TBD.
+        { key: 'channels', label: 'Channels', content: null },
+        // "Products" — a grouping HEADING (see PATTERNS.md's folder-vs-
+        // heading rule), not a folder: always-expanded, no chevron, purely
+        // clusters the already-visible items below it under one label.
+        { heading: true, label: 'Products' },
         { key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST },
         { key: 'channels-plus', label: 'Channels Plus', content: null },
+        { key: 'metasearch', label: 'Metasearch', content: null },
+        { key: 'manage-products', label: 'Manage products', content: null },
       ],
     },
   };

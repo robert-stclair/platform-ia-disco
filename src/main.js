@@ -188,6 +188,16 @@ function resolveChain(rootNode) {
     }
 
     // 'sketch' (or anything else with no children to select among) — leaf.
+    // Push a step for it too, even though it has no `options`/`selectedKey`
+    // — every node the walk passes through gets a chain entry, so
+    // renderChainBody never has to guess whether "no next step" means
+    // "nothing to render" vs. "render this leaf's own content directly."
+    // BUG FIX: an earlier version of this function silently stopped WITHOUT
+    // pushing a step here, so any tabs/list/properties branch recursing to
+    // `chain[i+1]` for a leaf tab hit "no such step" and rendered nothing —
+    // caught via Health check's tabs (each one a sketch leaf) rendering
+    // empty tab bodies.
+    chain.push({ node, content, pathIndex, options: [], selectedKey: null, isExplicit: false });
     break;
   }
 
@@ -263,7 +273,14 @@ function wireScopeSwitcher() {
 // since it only cares about depth 0; renderCanvas does the full walk.
 function renderPanel(data) {
   const items = data.items;
-  const routedItem = items.length ? resolveSelected(items, 0) : null;
+  // Grouping headings (e.g. "Products" — a plain label clustering already-
+  // visible sibling items, never itself clickable/routable — see
+  // PATTERNS.md's folder-vs-heading rule) are invisible to routing
+  // entirely: filtered out before resolveSelected ever sees them, so one
+  // can never accidentally become "the routed item" via the nodes[0]
+  // fallback if it happened to sit first in the array.
+  const routableItems = items.filter((i) => !i.heading);
+  const routedItem = routableItems.length ? resolveSelected(routableItems, 0) : null;
   // Which 'list' item is expanded in the panel — UI-only, independent of
   // routing. No default: nothing is expanded until explicitly clicked.
   const expandedItem = items.find((i) => i.key === state.expandedKey) ?? null;
@@ -283,6 +300,12 @@ function renderPanel(data) {
   html += `<ul class="nav-list">`;
 
   items.forEach((item) => {
+    if (item.heading) {
+      // Grouping heading — plain label, never clickable/routable/expandable.
+      // See PATTERNS.md's folder-vs-heading rule.
+      html += `<li class="nav-list-heading">${item.label}</li>`;
+      return;
+    }
     const hasList = item.content?.type === 'list';
     // A 'list' item shows an "open" state (expanded, not routed) — visually
     // distinct from '.is-active' (actually routed/showing in the canvas),
