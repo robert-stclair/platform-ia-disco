@@ -78,12 +78,15 @@ outstanding work); the rest are still-open follow-ups worth a look.
 
 ## Queued (not yet implemented) — new batch
 
-**Progress: item 3 (generalized `records` pattern + Users) is DONE**, along with the breadcrumb
-bug fix from the "Known bugs" list above (both implemented together per the dependency note,
-commit `cf4a20b`) — a real second bug was also found and fixed while testing: a records picker
-with no wrapping tabs layer (Users) never got its own label crumb, so the record-name crumb
-alone was suppressed by the generic single-crumb-is-noise rule. Full detail in the commit
-message. Items 1, 2, and the new item 4 (below) are still queued.
+**Progress: items 3 and 4 are DONE.** Item 3 (generalized `records` pattern + Users), along
+with the breadcrumb bug fix from the "Known bugs" list above (both implemented together per
+the dependency note, commit `cf4a20b`) — a real second bug was also found and fixed while
+testing: a records picker with no wrapping tabs layer (Users) never got its own label crumb, so
+the record-name crumb alone was suppressed by the generic single-crumb-is-noise rule. Item 4
+(single-tab strips collapse, no strip shown) implemented as a general rule on the `tabs`
+content type itself (commit after this note), reusing the same `options: []` convention the
+`systems` branch already used for "one connected system, no picker." Full detail in each
+commit message. Items 1 and 2 are still queued.
 
 1. **Front desk becomes a calendar page with NO L2 panel at all.** Currently a stub rail item
    with empty panel/canvas. New behavior:

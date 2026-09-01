@@ -122,7 +122,14 @@ function resolveChain(rootNode) {
         node,
         content,
         pathIndex,
-        options: tabs,
+        // A single visible tab (after mpOnly filtering) collapses straight
+        // to its content — no strip shown, same rule `type: 'systems'`
+        // already applies for one connected system. `options: []` signals
+        // this to renderChainBody, same convention the systems branch uses
+        // for "no picker needed." Caught via a single-property account's
+        // USER_NODE (only "User details", no "Properties" tab) — but this
+        // is a general rule for the `tabs` content type, not case-specific.
+        options: tabs.length > 1 ? tabs : [],
         selectedKey: selected?.key ?? null,
         isExplicit: Boolean(explicitKey && selected?.key === explicitKey),
       });
@@ -458,12 +465,16 @@ function renderChainBody(chain, i) {
     if (nextStep?.content?.type === 'records' && nextStep.isExplicit) {
       return renderChainBody(chain, i + 1);
     }
+    // `options: []` means a single visible tab — collapse straight to its
+    // content, no strip shown (see the standing rule in resolveChain).
     const tabStrip =
-      `<div class="tab-strip">` +
-      step.options
-        .map((t) => `<button class="tab${t.key === selectedKey ? ' is-active' : ''}" data-path-key="${pathIndex}:${t.key}">${t.label}</button>`)
-        .join('') +
-      `</div>`;
+      step.options.length === 0
+        ? ''
+        : `<div class="tab-strip">` +
+          step.options
+            .map((t) => `<button class="tab${t.key === selectedKey ? ' is-active' : ''}" data-path-key="${pathIndex}:${t.key}">${t.label}</button>`)
+            .join('') +
+          `</div>`;
     const inner = renderChainBody(chain, i + 1);
     // No `.sketch` wrapper here — renderCanvas now applies it exactly once,
     // around the whole rendered body. Wrapping it again per nested tabs
