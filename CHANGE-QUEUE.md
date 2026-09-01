@@ -49,15 +49,14 @@ Reviewed the queue against the current code to catch dependencies before startin
    Confirmed as correct/already done — no action needed.
 3. **Add "Metasearch"** as a new Configuration L2 item, grouped under the new Products
    heading (see #4) — not a standalone flat item.
-4. **Add a "Products" grouping** in Configuration's panel:
-   - New heading "Products", placed after Property(/Properties) and Users.
+4. **Add a "Products" grouping** in Configuration's panel — RESOLVED:
+   - New heading "Products", placed after Property(/Properties), Users, and Channels (#9 —
+     Channels sits ABOVE Products, not inside it; see #9's resolved placement note).
    - Items moved under it: Direct Booking, Channels Plus, Metasearch (new, from #3).
-   - After the grouped items, a "Manage products" row.
-   - Resulting Configuration order: Property/Properties, Users, — Products — Direct Booking,
-     Channels Plus, Metasearch, Manage products.
-   - Open question: does "Manage products" need any content/click-through yet, or is it a
-     stub row for now (no placeholder content per project rules, but confirm it should even
-     render as clickable)?
+   - After the grouped items, a "Manage products" row — RESOLVED: stub, `content: null`, same
+     treatment as Channels Plus today (renders, selectable, empty canvas).
+   - Resulting Configuration order: Property/Properties, Users, Channels, — Products —
+     Direct Booking, Channels Plus, Metasearch, Manage products.
 5. **LH gets real content for the first time — same as SM, plus a new "Front desk" L1 item.**
    Supersedes LH's previous "renders fully empty, undefined by design" status
    (`getContent` returning `null` for `accountType === 'LH'`). New behavior:
@@ -155,24 +154,24 @@ Reviewed the queue against the current code to catch dependencies before startin
      the confirmed answer above, favor (a) — simplest, no new render logic needed — unless
      asked otherwise.
 9. **Add "Channels" — the actual OTA subscription/management list (Booking.com, Expedia,
-   etc.).** A completely separate item from Health check (#6) — see the note on #6 above; not
-   related, don't place them near each other or design one against the other. Originally
-   raised as an open scoping question (does this exist per-property or account-wide for
-   multi-property?) — now partially resolved via knowledge-base research: confirmed production
-   MP routes include a "Channel adoption view" (`/all-properties/distribution/adoption`)
-   working across multi-property accounts today, so channel management DOES span
-   multi-property, at the account/portfolio level — not purely per-property. Scope for this
-   item: a list of currently-subscribed channels/OTAs + their management (add/remove/configure
-   a channel connection).
-   - **Placement still open** — Distribution vs. Configuration both remain plausible; not yet
-     decided. See open question below.
+   etc.) — PLACEMENT RESOLVED.** A completely separate item from Health check (#6) — see the
+   note on #6 above; not related, don't place them near each other or design one against the
+   other. Scoping resolved via knowledge-base research: confirmed production MP routes
+   include a "Channel adoption view" (`/all-properties/distribution/adoption`) working across
+   multi-property accounts today, so channel management DOES span multi-property, at the
+   account/portfolio level — not purely per-property. Scope for this item: a list of
+   currently-subscribed channels/OTAs + their management (add/remove/configure a channel
+   connection).
+   - **Placement: Configuration, ABOVE the new Products heading (#4) — NOT grouped inside it.**
+     User's explicit reasoning: "its core functionality for all customers not an add-on" —
+     Channels is core/expected functionality every customer needs, unlike Direct
+     Booking/Channels Plus/Metasearch under Products, which read more as optional add-on
+     products. Resulting Configuration order: Property/Properties, Users, Channels, —
+     Products — Direct Booking, Channels Plus, Metasearch, Manage products.
+   - Page-skeleton type / exact content TBD per item #7's per-item prompting process.
 
 ## Open questions
 
-- **"Manage products" row** — what should clicking it do? Leave as `content: null` (renders,
-  selectable, empty canvas) like Channels Plus currently does, or is this meant to be
-  something more specific? Default assumption unless told otherwise: same stub treatment as
-  Channels Plus today.
 - **Products heading visual treatment** — this is a new nav pattern (a plain grouping label
   within a panel list, not a clickable item). Need to add this as a real pattern (pure CSS
   label, not a Node) — confirm this shouldn't itself be tracked in PATTERNS.md once built.
@@ -185,15 +184,6 @@ Reviewed the queue against the current code to catch dependencies before startin
   does LH's "same as SM" content include the account-type/property-count Properties-gating
   logic unchanged (i.e. an LH account with multiple properties still gets a Properties tab
   the same way SM does), or does LH have its own property-count story?
-- **Channels (#9) placement — Distribution vs. Configuration, decide on its own merits.**
-  Both remain plausible: Distribution (a distribution-channel concept, alongside
-  Inventory/Rate plans/Yield rules) vs. Configuration (a setup/connection concern, alongside
-  Direct Booking/Channels Plus/the new Products heading — "configure this account's
-  connections" rather than "distribute inventory"). Note: Channels and Health check share a
-  domain relationship in the real product (both concern OTA/channel connections generally),
-  but NOT an IA relationship — Health check's location should not be used as a reason for or
-  against where Channels sits; decide Channels' placement independently. Not yet decided —
-  ask before implementing #9.
 - **Channels (#9) bulk-management story** — the redesign's stated goal is better bulk-action
   support across properties for the multi-property cohort. Given channel connections are
   confirmed to already work across multi-property accounts (MP's existing Channel adoption
