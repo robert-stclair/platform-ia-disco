@@ -136,16 +136,44 @@ suppressed as noise).
 ## Deployment
 
 Live at https://platform-ia-disco-rsc-6b3452000036.herokuapp.com/ — a static build served via
-`serve` (Heroku Node buildpack, `heroku-postbuild` runs `vite build`). Auto-deploys from GitHub
-on every push to `main`. Two GitHub remotes are configured: `origin` fans out pushes to both
-`platform-ia-disco` and `platform-ia-disco-rsc`; `rsc` targets `platform-ia-disco-rsc` alone.
-`heroku` remote also exists for direct manual deploys as a fallback.
+a small custom Node server (`server.js`, Heroku Node buildpack, `heroku-postbuild` runs `vite
+build`). Auto-deploys from GitHub on every push to `main`. Two GitHub remotes are configured:
+`origin` fans out pushes to both `platform-ia-disco` and `platform-ia-disco-rsc`; `rsc` targets
+`platform-ia-disco-rsc` alone. `heroku` remote also exists for direct manual deploys as a
+fallback.
 
 **Gotcha:** `package-lock.json` must be generated against the public npm registry
 (`registry.npmjs.org`), not a corporate registry mirror — if your local npm config points
 elsewhere (check `npm config get registry`), regenerate the lockfile with
 `npm install --registry=https://registry.npmjs.org/` before committing, or Heroku's build will
 fail with an npm 401 auth error trying to reach a registry it has no credentials for.
+
+### Access control — Basic Auth on the deployed site only
+
+The deployed Heroku site sits behind HTTP Basic Auth — anyone hitting the live URL gets a
+browser credential prompt before seeing anything. **Local dev (`npm run dev`) is completely
+unaffected** — this only applies to the deployed build served via `npm start`.
+
+- **Credentials:** username `platform-ia`, password `futurestate` — these are the DEFAULT
+  fallback values baked into `server.js` (`BASIC_AUTH_USER`/`BASIC_AUTH_PASS`), used only if
+  the equivalent Heroku config vars aren't set. **To actually rotate/change them, set Heroku
+  config vars instead of editing the code:**
+  ```
+  heroku config:set BASIC_AUTH_USER=platform-ia BASIC_AUTH_PASS=futurestate -a platform-ia-disco-rsc
+  ```
+  (or whatever new values are wanted — the code default only matters if these vars are unset).
+- **Implementation:** `server.js` is a small custom static-file server (Node's built-in `http`/
+  `fs`, no new dependency) that checks every request's `Authorization` header before serving
+  anything from `dist/`, replacing the previous plain `serve` static-server setup. Any
+  unauthenticated or wrong-credential request gets a 401 with a `WWW-Authenticate` challenge,
+  which is what triggers the browser's native login prompt. Unknown paths still fall through to
+  `index.html` (this is a client-side-routed single-page app, so a hard refresh on a deep link
+  must not 404).
+- **Why this exists:** the prototype is explorable IA content, not meant to be indexed or
+  stumbled on by anyone outside the people actually reviewing it — a lightweight gate, not a
+  real security boundary (Basic Auth sends credentials base64-encoded, not encrypted, on every
+  request — fine over HTTPS for a low-stakes internal wireframe, not appropriate for anything
+  actually sensitive).
 
 ## Keeping this in sync
 
