@@ -1,5 +1,14 @@
 # Change queue
 
+> **New Claude session starting here?** Read in this order first: `CONTEXT.md` (project
+> framing + confirmed decisions), `IA-BY-USER-TYPE.md` (decisions/open questions per account
+> type), `NOTES-CLEANUP.md` (sitemap + coding standards — why path-index bugs kept happening),
+> `REFACTOR-PLAN.md` (what this branch's refactor did and why), `PATTERNS.md` (reusable
+> wireframe pattern catalog), then this file last. You're most likely on the
+> `refactor/structure-cleanup` branch, not `main` — check with `git branch --show-current`.
+> The 4 page-skeleton types in item 7 below are a starting set, not a closed list — the user
+> adds new types as new page needs come up, so don't treat 7 as "done" once those 4 exist.
+
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
