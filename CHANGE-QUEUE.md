@@ -52,6 +52,20 @@ fresh numbered list below this status block as they come in.
    — why Distribution needs (or doesn't need) its own Properties concept, separate from
    Configuration's, is unresolved and explicitly the user's own open thread to work through,
    not something to guess an answer to.
+6. **Add "Room types" as a new PROPERTY_NODE tab** (per-property, since there's no generic/
+   shared room-type concept today — user: "i dont think there is a concept of a generic room
+   type"). Position: right after "Property details," so order becomes General information,
+   Property details, Room types, Services, Policies, Media library, Integrated systems, Users.
+   Content: `sketch: 'list'` (confirmed — not a stub, user corrected to "actually yep room
+   types is a list" after initially suggesting stub).
+   - **Speculative idea, NOT a commitment — log as an open question, don't design around it
+     yet:** user floated whether room types could ALSO be switchable/manageable centrally
+     across properties, if a customer prefers that ("i wonder if we can add that so user can
+     switch and manage centrally if they prefer"). This is the same shape of tension as the
+     foundational scope-switcher/portfolio-efficiency thread above (today's platform only has
+     single-property context, losing whole-portfolio efficiencies) — connect these when
+     working through the scope-switcher's Distribution case, don't solve Room types'
+     central-management idea in isolation or prematurely.
 
 Two regressions were caught and fixed while implementing (see git log for full detail on
 each): `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
@@ -170,6 +184,11 @@ technically could go.
 - Brands/Clusters (Configuration → Properties, MP-gated) are already a confirmed grouping
   concept in the app; this switcher reusing them as scoping units (not just organizational
   labels) is a new use for something that already exists structurally.
+- Room types' speculative "manage centrally across properties" idea (Distribution batch item
+  6) is the SAME shape of problem again — a per-property concept a customer might want scoped/
+  switched across their portfolio. Don't solve any of these one at a time in isolation; they're
+  all facets of the same underlying "single-property-only context loses portfolio efficiencies"
+  tension the user articulated as the whole reason this exploration exists.
 
 **Next step when picked back up:** work through Distribution specifically first (the stated
 hard case), since Insights/Health check sound closer to "apply the same simple pattern" and
