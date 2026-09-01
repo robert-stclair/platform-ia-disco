@@ -424,6 +424,19 @@ a { color: inherit; }
   transform: rotate(90deg);
 }
 
+/* EXPLORATORY, non-functional — illustrative "promoted from My insights"
+   star (CHANGE-QUEUE.md item 8). Greyscale only, per the project rule. */
+.nav-list-item__star {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  background: var(--text-muted);
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
+    50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
+  );
+}
+
 .nav-sublist {
   list-style: none;
   margin: 2px 0 4px 11px;
@@ -594,6 +607,22 @@ a.wf-list__row:hover {
   border-radius: 4px;
   background: var(--border-strong);
   opacity: 0.6;
+}
+
+/* EXPLORATORY, non-functional — illustrative star for "My insights"
+   (CHANGE-QUEUE.md item 8). Greyscale (weight/fill only, no color) per the
+   project's strict-greyscale rule — same as every other "selected" state. */
+.wf-list__row--starred::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  background: var(--text);
+  opacity: 0.5;
+  clip-path: polygon(
+    50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%,
+    50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%
+  );
 }
 
 /* Breadcrumb — shown above tabs only when drilled into a single property */

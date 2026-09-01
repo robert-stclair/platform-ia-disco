@@ -318,13 +318,48 @@ function buildConfigurationPropertiesItem(showProperties) {
 function buildSmContentTree(showProperties) {
   return {
     insights: {
+      // "My insights" (CHANGE-QUEUE.md item 8) REPLACES the old informal
+      // flat `ugc` array. It's a FOLDER (per the folder-vs-heading rule —
+      // collapsed by default, chevron, children hidden until expanded),
+      // containing Dashboards and Charts, both list pages the user
+      // populates themselves. Starring is illustrative/non-functional —
+      // `starredRows` marks a couple of rows with a star icon in each list,
+      // AND the same starred items are duplicated as their own top-level
+      // entries below (simplest approach for a static wireframe, since this
+      // isn't a real interaction — see CHANGE-QUEUE.md item 8's structural
+      // note). Which rows are "starred" is arbitrary illustration, not
+      // meaningful data — indices 0 and 2 chosen with no significance.
       items: [
         { key: 'dashboard', label: 'Dashboard', active: true, content: null },
         { key: 'recommendations', label: 'Recommendations', content: null },
+        {
+          key: 'my-insights',
+          label: 'My insights',
+          content: {
+            type: 'list',
+            items: [
+              {
+                key: 'dashboards',
+                label: 'Dashboards',
+                content: { type: 'sketch', sketch: 'list', starredRows: [0, 2] },
+              },
+              {
+                key: 'charts',
+                label: 'Charts',
+                content: { type: 'sketch', sketch: 'list', starredRows: [1] },
+              },
+            ],
+          },
+        },
+        // Promoted/starred items — illustrative duplicates of a couple of
+        // the starred rows above, surfaced at the top level. Real content:
+        // none (sketch-only), so these carry no `content` of their own.
+        { key: 'starred-dashboard-1', label: 'Weekly performance', content: null, starred: true },
+        { key: 'starred-chart-1', label: 'Channel comparison', content: null, starred: true },
+        ...(showProperties
+          ? [{ key: 'starred-dashboard-2', label: 'Portfolio health', content: null, starred: true }]
+          : []),
       ],
-      ugc: showProperties
-        ? ['Weekly performance', 'Channel comparison', 'Portfolio health']
-        : ['Weekly performance', 'Channel comparison'],
       // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
       // section. Only Insights and (once built) Health check carry this;
       // Configuration/Distribution/Transactions deliberately don't yet.

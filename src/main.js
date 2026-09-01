@@ -315,9 +315,13 @@ function renderPanel(data) {
     const chevron = hasList
       ? `<svg class="nav-list-item__chevron${isOpen ? ' is-open' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`
       : '';
+    // `starred` — EXPLORATORY, non-functional (CHANGE-QUEUE.md item 8): a
+    // couple of Insights' promoted items show a star to illustrate "this
+    // was promoted from My insights because the user starred it."
+    const star = item.starred ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
     html += `
       <li class="nav-list-item${isRouted ? ' is-active' : ''}${isOpen ? ' is-open' : ''}">
-        <a href="#" data-item-key="${item.key}">${item.label}${chevron}</a>
+        <a href="#" data-item-key="${item.key}">${item.label}${star}${chevron}</a>
       </li>
     `;
 
@@ -563,7 +567,14 @@ function renderSketch(content) {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
   }
   if (content.sketch === 'list') {
-    return `<ul class="wf-list">${Array(6).fill('<li class="wf-list__row wf-list__row--sketch"></li>').join('')}</ul>`;
+    // `starredRows` (optional): indices that get an illustrative star icon —
+    // EXPLORATORY, non-functional (CHANGE-QUEUE.md item 8's "My insights").
+    // No real starring interaction, just enough to show the concept.
+    const starred = new Set(content.starredRows ?? []);
+    return `<ul class="wf-list">${Array(6)
+      .fill(null)
+      .map((_, i) => `<li class="wf-list__row wf-list__row--sketch${starred.has(i) ? ' wf-list__row--starred' : ''}"></li>`)
+      .join('')}</ul>`;
   }
   return '';
 }
