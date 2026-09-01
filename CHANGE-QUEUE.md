@@ -66,6 +66,9 @@ fresh numbered list below this status block as they come in.
      single-property context, losing whole-portfolio efficiencies) — connect these when
      working through the scope-switcher's Distribution case, don't solve Room types'
      central-management idea in isolation or prematurely.
+7. **Transactions → Reservations becomes a plain list.** `content: null` → `sketch: 'list'` —
+   NOT the clickable `records` pattern (unlike Rate plans/Yield rules) — just the list shape,
+   no drill-down for now.
 
 Two regressions were caught and fixed while implementing (see git log for full detail on
 each): `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
