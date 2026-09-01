@@ -708,35 +708,53 @@ function renderSketch(content) {
   if (content.sketch === 'grid') {
     // GENERIC grid pattern (Distribution batch item 4) — generalized from
     // the calendar pattern so the same mechanism works for both a month
-    // calendar (columns only, no row labels) and a room-type x date matrix
-    // like Inventory (real row labels down the left, e.g. room type names).
-    // `content.columns` (required): column header labels, real text.
-    // `content.rows` (optional): real row label text, one row per entry —
-    // when given, `content.rowCount` is ignored (row count = rows.length).
+    // calendar (real column labels, no row labels) and a room-type x date
+    // matrix like Inventory (skeleton-only — "just a skeleton without
+    // words", confirmed by user; real column/row TEXT is optional, not
+    // required, unlike the calendar case).
+    // `content.columns` (required): either an array of real header labels
+    // (real text, like the calendar's weekdays), OR a plain number — a
+    // column COUNT with no real labels, rendering skeleton bars instead
+    // (Inventory's case: shape only, nothing confirmed to say yet).
+    // `content.rows` (optional): either an array of real row label text,
+    // OR a plain number — a row count with skeleton bars instead of real
+    // labels. When given (either form), `content.rowCount` is ignored.
     // `content.rowCount` (optional, default 5): used only when `rows` is
-    // omitted, for a plain grid with no row labels (calendar's case).
+    // omitted entirely, for a plain grid with no row-label column at all
+    // (calendar's case).
     return renderGridSketch(content);
   }
   return '';
 }
 
 function renderGridSketch({ columns, rows, rowCount = 5 }) {
+  const hasColumnLabels = Array.isArray(columns);
+  const columnCount = hasColumnLabels ? columns.length : columns;
+  const hasRowLabels = Array.isArray(rows);
+  const hasRows = rows !== undefined && rows !== null;
   // Same grid-template-columns applied to BOTH the header and the body —
   // they must match exactly or the header's labels drift out of alignment
   // with the body's actual columns (caught visually: header stacked
   // vertically instead of aligning with the day columns below it, since
   // only .sketch-grid__body had this set inline, not .sketch-grid__header).
-  const gridStyle = `grid-template-columns: ${rows ? 'minmax(120px, auto) ' : ''}repeat(${columns.length}, 1fr);`;
+  const gridStyle = `grid-template-columns: ${hasRows ? 'minmax(120px, auto) ' : ''}repeat(${columnCount}, 1fr);`;
+  const columnHeaderCells = hasColumnLabels
+    ? columns.map((c) => `<div>${c}</div>`).join('')
+    : Array(columnCount).fill('<div class="sketch-grid__header-skel"></div>').join('');
   const header = `<div class="sketch-grid__header" style="${gridStyle}">${
-    rows ? '<div class="sketch-grid__row-label-spacer"></div>' : ''
-  }${columns.map((c) => `<div>${c}</div>`).join('')}</div>`;
-  const totalRows = rows ? rows.length : rowCount;
+    hasRows ? '<div class="sketch-grid__row-label-spacer"></div>' : ''
+  }${columnHeaderCells}</div>`;
+  const totalRows = hasRows ? (hasRowLabels ? rows.length : rows) : rowCount;
   const body = Array(totalRows)
     .fill(null)
     .map((_, r) => {
-      const rowLabel = rows ? `<div class="sketch-grid__row-label">${rows[r]}</div>` : '';
-      const cells = columns
-        .map(() => `<div class="sketch-grid__cell"><div class="sketch-grid__cell-fill"></div></div>`)
+      const rowLabel = hasRows
+        ? hasRowLabels
+          ? `<div class="sketch-grid__row-label">${rows[r]}</div>`
+          : `<div class="sketch-grid__row-label"><div class="sketch-grid__row-label-skel"></div></div>`
+        : '';
+      const cells = Array(columnCount)
+        .fill('<div class="sketch-grid__cell"><div class="sketch-grid__cell-fill"></div></div>')
         .join('');
       return rowLabel + cells;
     })

@@ -70,18 +70,18 @@
 //                                                                    (actionIcon: '+'), renamed from "Manage
 //                                                                    products" — see PATTERNS.md
 //   Configuration > Brands, Clusters (MP)     | none yet           | content: null, stub
-//   Distribution > Inventory                  | none yet           | content: null, stub. The generic 'grid'
-//                                                                    sketch (Distribution batch item 4) is
-//                                                                    BUILT and ready — Inventory's own real
-//                                                                    columns/rows just aren't decided yet,
-//                                                                    don't guess them in
+//   Distribution > Inventory                  | grid               | sketch:'grid', SKELETON-ONLY (numeric
+//                                                                    columns/rows, no real labels — "just a
+//                                                                    skeleton without words") — real
+//                                                                    columns/rows not decided, don't guess
 //   Distribution > Rate plans                 | records (nav)      | type:'records' -> RATE_PLAN_NODE (a
 //                                                                    simple stacked-cards stub for now)
 //   Distribution > Yield rules                | records (nav)      | type:'records' -> YIELD_RULE_NODE (same
 //                                                                    simple treatment)
-//   Distribution > Health check's 7 tabs     | list               | sketch:'list' — TO BE REPLACED with ONE
-//                                                                    dashboard-cards page (Distribution batch
-//                                                                    item 3), not reconsidered as 'table'
+//   Distribution > Health check                | dashboard cards    | sketch:'dashboard-cards' — ONE page, 7
+//                                                                    TITLELESS stat-shaped cards ("generic -
+//                                                                    no labels"), no more tab strip (was 7
+//                                                                    separate list tabs)
 //   Insights > Dashboard                      | dashboard cards    | sketch:'dashboard-cards', ALL cards
 //                                                                    titleless (skeleton title bar) — page
 //                                                                    shape only, confirmed no titles needed
@@ -396,44 +396,31 @@ const BOOKING_ENGINE_LIST = {
   ],
 };
 
-// Distribution's Health check — real content confirmed from production MP
-// routes (/all-properties/health-check/*), not a stub. CHANGE-QUEUE.md
-// item 6 — separate from and unrelated to "Channels" (item 9): a couple
-// of these tab labels mention "channel" but that's incidental, not an IA
-// relationship between the two items — don't let one inform the other.
-// Page-skeleton type: 'list' as a first-pass choice (these are error/status
-// listings) — reconsider once item 7's 'table' pattern exists; flagged for
-// that retrofit pass, not locked in.
+// Distribution's Health check — CHANGE-QUEUE.md Distribution batch item 3:
+// SIMPLIFIED from a 7-tab structure (Failed PMS deliveries, Delayed
+// updates, Disabled channels, Channels awaiting connection setup, Mapping
+// errors, Disabled channel rates, Distribution and system status — real
+// confirmed names, previously each its own tab) to ONE dashboard-cards
+// page. Confirmed GENERIC/titleless (user: "health check is supposed to be
+// generic - no labels") — same treatment as Insights' own Dashboard, even
+// though these 7 areas ARE real confirmed names; the page itself is meant
+// to read as a generic status-dashboard shape, not display them. No more
+// tab strip for Health check. Separate from and unrelated to "Channels"
+// (a different Configuration item) — don't let one inform the other.
 const HEALTH_CHECK_ITEM = {
   key: 'health-check',
   label: 'Health check',
   content: {
-    type: 'tabs',
-    tabs: [
-      {
-        key: 'failed-pms-deliveries',
-        label: 'Failed PMS deliveries',
-        active: true,
-        content: { type: 'sketch', sketch: 'list' },
-      },
-      { key: 'delayed-updates', label: 'Delayed updates', content: { type: 'sketch', sketch: 'list' } },
-      { key: 'disabled-channels', label: 'Disabled channels', content: { type: 'sketch', sketch: 'list' } },
-      {
-        key: 'channels-awaiting-setup',
-        label: 'Channels awaiting connection setup',
-        content: { type: 'sketch', sketch: 'list' },
-      },
-      { key: 'mapping-errors', label: 'Mapping errors', content: { type: 'sketch', sketch: 'list' } },
-      {
-        key: 'disabled-channel-rates',
-        label: 'Disabled channel rates',
-        content: { type: 'sketch', sketch: 'list' },
-      },
-      {
-        key: 'distribution-system-status',
-        label: 'Distribution and system status',
-        content: { type: 'sketch', sketch: 'list' },
-      },
+    type: 'sketch',
+    sketch: 'dashboard-cards',
+    cards: [
+      { shape: 'stat' },
+      { shape: 'stat' },
+      { shape: 'stat' },
+      { shape: 'stat' },
+      { shape: 'stat' },
+      { shape: 'stat' },
+      { shape: 'stat' },
     ],
   },
 };
@@ -594,7 +581,16 @@ function buildSmContentTree(showProperties) {
     },
     distribution: {
       items: [
-        { key: 'inventory', label: 'Inventory', active: true, content: null },
+        // Skeleton-only grid (Distribution batch item 4) — "just a
+        // skeleton without words" (confirmed by user): a plain column
+        // count + row count, no real labels at all — shape only, nothing
+        // about Inventory's real columns/rows is decided yet.
+        {
+          key: 'inventory',
+          label: 'Inventory',
+          active: true,
+          content: { type: 'sketch', sketch: 'grid', columns: 7, rows: 6 },
+        },
         // Clickable `records` list (Distribution batch item 1 — "go
         // deep"), same generic pattern as Properties/Users/Dashboards.
         {

@@ -759,6 +759,27 @@ a { color: inherit; }
   border-right: 1px solid var(--border);
 }
 
+/* Skeleton variants — used when a grid has real dimensions (columns/rows)
+   but no real label TEXT to show yet (e.g. Inventory: "just a skeleton
+   without words"). Distinct from the calendar case, which has real column
+   labels (weekday names) but no row labels at all. */
+.sketch-grid__header-skel {
+  width: 60%;
+  height: 10px;
+  margin: 0 auto;
+  border-radius: 3px;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
+.sketch-grid__row-label-skel {
+  width: 70%;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
 .wf-list__row {
   display: flex;
   align-items: center;
