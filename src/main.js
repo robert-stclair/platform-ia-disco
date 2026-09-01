@@ -269,7 +269,7 @@ function renderScopeSwitcher() {
 }
 
 function wireScopeSwitcher() {
-  const select = panelEl.querySelector('.scope-switcher');
+  const select = canvasEl.querySelector('.scope-switcher');
   if (!select) return;
   select.addEventListener('change', () => {
     const [type, key] = select.value.split(':');
@@ -297,13 +297,10 @@ function renderPanel(data) {
   // routing. No default: nothing is expanded until explicitly clicked.
   const expandedItem = items.find((i) => i.key === state.expandedKey) ?? null;
 
-  // EXPLORATORY scope switcher — only when this section opts in
-  // (`data.scopeSwitcher`) AND there's more than one property to scope
-  // across. Hidden entirely for single-property accounts, per the sketch.
+  // EXPLORATORY scope switcher moved to the canvas's top-right (see
+  // renderCanvas/renderScopeSwitcher) — repositioned per user feedback,
+  // no longer rendered here in the panel.
   let html = '';
-  if (data.scopeSwitcher && state.propertyCount === 'multiple') {
-    html += renderScopeSwitcher();
-  }
 
   // Sublist HTML renders immediately after its own parent item, inline
   // within the same list — not appended as one block after the whole list.
@@ -403,8 +400,6 @@ function renderPanel(data) {
       render();
     });
   });
-
-  wireScopeSwitcher();
 }
 
 // ---------------------------------------------------------------------------
@@ -422,8 +417,21 @@ function renderPanel(data) {
 function renderCanvas(data) {
   const rootItem = data.items.length ? resolveSelected(data.items, 0) : null;
 
+  // EXPLORATORY scope switcher (see renderScopeSwitcher) — lives top-right
+  // of the canvas, not the L2 panel (repositioned per user feedback: didn't
+  // want it eating into the panel's own space). Rendered here, BEFORE the
+  // early-return below, so it still shows even when the routed item has no
+  // content of its own (e.g. Insights' Dashboard) — the switcher is a
+  // property-scoping control for the whole SECTION, independent of whether
+  // this particular item happens to have canvas content.
+  const switcherHtml =
+    data.scopeSwitcher && state.propertyCount === 'multiple'
+      ? `<div class="canvas-scope-switcher">${renderScopeSwitcher()}</div>`
+      : '';
+
   if (!rootItem?.content) {
-    canvasEl.innerHTML = '';
+    canvasEl.innerHTML = switcherHtml;
+    wireScopeSwitcher();
     return;
   }
 
@@ -435,7 +443,8 @@ function renderCanvas(data) {
   // tabs anywhere in its ancestry (Users, Channels, Manage products) got no
   // padding at all, rendering flush against the canvas edges — caught
   // while building item 7's standard-margin audit.
-  canvasEl.innerHTML = breadcrumbHtml(trail) + `<div class="sketch">${bodyHtml}</div>`;
+  canvasEl.innerHTML = switcherHtml + breadcrumbHtml(trail) + `<div class="sketch">${bodyHtml}</div>`;
+  wireScopeSwitcher();
   wirePathLinks();
   wireBreadcrumb();
 }

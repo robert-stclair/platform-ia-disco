@@ -337,10 +337,21 @@ a { color: inherit; }
 /* EXPLORATORY — property/cluster/brand scope switcher sketch. See
    CHANGE-QUEUE.md "Foundational, unsolved" section: expect this to change
    once Distribution's (unsolved) shape informs the final mechanism. */
+/* EXPLORATORY — property/cluster/brand scope switcher, repositioned to
+   the canvas's top-right per user feedback (was previously at the top of
+   the L2 panel — didn't want it eating into the panel's own space). See
+   CHANGE-QUEUE.md "Foundational, unsolved" section: expect this to change
+   further once Distribution's (unsolved) shape informs the final
+   mechanism. */
+.canvas-scope-switcher {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 24px 0;
+}
+
 .scope-switcher {
   display: block;
-  width: 100%;
-  margin-bottom: 16px;
+  min-width: 180px;
   padding: 8px 10px;
   font-size: 13px;
   font-weight: 500;
