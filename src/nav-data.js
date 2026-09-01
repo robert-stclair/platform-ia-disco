@@ -430,13 +430,27 @@ function buildSmContentTree(showProperties) {
       // populates themselves. Starring is illustrative/non-functional —
       // `starredRows` marks a couple of rows with a star icon in each list,
       // AND the same starred items are duplicated as their own top-level
-      // entries below (simplest approach for a static wireframe, since this
+      // entries (simplest approach for a static wireframe, since this
       // isn't a real interaction — see CHANGE-QUEUE.md item 8's structural
       // note). Which rows are "starred" is arbitrary illustration, not
       // meaningful data — indices 0 and 2 chosen with no significance.
+      //
+      // Order (CHANGE-QUEUE.md item 2, reshuffled): Dashboard, then the
+      // starred/pinned items appended directly below it (forming one
+      // combined default-dashboards list), then My insights, then
+      // Recommendations LAST — a separate concept from dashboards, per
+      // user's reasoning, so it no longer sits second.
       items: [
         { key: 'dashboard', label: 'Dashboard', active: true, content: null },
-        { key: 'recommendations', label: 'Recommendations', content: null },
+        // Promoted/starred items — illustrative duplicates of a couple of
+        // My insights' starred rows below, surfaced at the top level,
+        // directly appended after Dashboard. Real content: none
+        // (sketch-only), so these carry no `content` of their own.
+        { key: 'starred-dashboard-1', label: 'Weekly performance', content: null, starred: true },
+        { key: 'starred-chart-1', label: 'Channel comparison', content: null, starred: true },
+        ...(showProperties
+          ? [{ key: 'starred-dashboard-2', label: 'Portfolio health', content: null, starred: true }]
+          : []),
         {
           key: 'my-insights',
           label: 'My insights',
@@ -456,14 +470,7 @@ function buildSmContentTree(showProperties) {
             ],
           },
         },
-        // Promoted/starred items — illustrative duplicates of a couple of
-        // the starred rows above, surfaced at the top level. Real content:
-        // none (sketch-only), so these carry no `content` of their own.
-        { key: 'starred-dashboard-1', label: 'Weekly performance', content: null, starred: true },
-        { key: 'starred-chart-1', label: 'Channel comparison', content: null, starred: true },
-        ...(showProperties
-          ? [{ key: 'starred-dashboard-2', label: 'Portfolio health', content: null, starred: true }]
-          : []),
+        { key: 'recommendations', label: 'Recommendations', content: null },
       ],
       // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
       // section. Only Insights and (once built) Health check carry this;
