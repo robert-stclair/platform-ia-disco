@@ -12,6 +12,28 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
+## Suggested implementation order (added after a pre-implementation review)
+
+Reviewed the queue against the current code to catch dependencies before starting:
+
+1. **#5 (LH + Front desk) first.** Touches `RAIL_ITEMS`'s shape itself (constant -> function
+   of `accountType`) — better to land this structural change on its own before #7's broad
+   `nav-data.js` retrofit pass touches the same file, to avoid merge friction between two
+   large edits. Scope check: `RAIL_ITEMS` is imported in exactly one place in `main.js`
+   (`renderRail()`, `main.js:182`) — small blast radius, but `renderRail()` currently takes no
+   arguments and will need `state.accountType` threaded through, same pattern as
+   `getContent(state.accountType, state.propertyCount)` already uses. Call it out explicitly
+   so it isn't a surprise mid-implementation.
+2. **#1, #3, #4, #6 next**, any order among themselves — all independent, all touch
+   `buildSmContentTree`/`buildConfigurationPropertiesItem` in `nav-data.js` (Configuration +
+   Distribution items), don't touch `RAIL_ITEMS`.
+3. **#7 last**, specifically the "full retrofit pass" part — it assigns a page-type to EVERY
+   panel item, so it should run after #1/#3/#4/#6 exist (Metasearch, Health check, Manage
+   products, the renamed Property item) rather than before, or it'll need re-doing once those
+   land. The new pattern-building part of #7 (table, dashboard card grid, full-width list,
+   standard margin) has no ordering dependency and could technically start anytime, but
+   logically pairs with the retrofit since the retrofit is what exercises the new patterns.
+
 ## Queued (not yet implemented)
 
 1. **Rename Configuration's first panel item.** "Property settings" -> "Property" for the
@@ -97,6 +119,10 @@ Add to this as you type out requests; nothing here gets implemented until you sa
 - **Products heading visual treatment** — this is a new nav pattern (a plain grouping label
   within a panel list, not a clickable item). Need to add this as a real pattern (pure CSS
   label, not a Node) — confirm this shouldn't itself be tracked in PATTERNS.md once built.
+  **Efficiency note:** since #7 already has PATTERNS.md open for a broad pass (new page-skeleton
+  types + standard margin + retrofit), document the Products heading as a PANEL-LIST pattern
+  in that same PATTERNS.md pass rather than as a separate later edit — they're touching the
+  same file for related "codify a nav pattern" reasons, no reason to split into two passes.
 - **LH's account-type-specific rail differences beyond Front desk** — is Front desk the ONLY
   rail difference for LH, or are there other L1/L2/L3 differences from SM still to come? Also:
   does LH's "same as SM" content include the account-type/property-count Properties-gating
