@@ -153,6 +153,40 @@ commit message. Items 1 and 2 are still queued.
    not just this one case. Likely affects: `buildUserNode`'s single-property case (just
    confirmed), and worth checking whether any other existing `tabs` node could ever resolve to
    exactly one visible tab under some account-type/property-count combination.
+5. **PROPERTY_NODE gets a new "Users" tab — the mirror of USER_NODE's new "Properties" tab.**
+   Shows which users have access to this property (the reverse relationship of item 3's
+   USER_NODE "Properties" tab, which shows which properties a user has access to).
+   - **Position:** last, after Integrated systems — PROPERTY_NODE's tab order becomes General
+     information, Property details, Services, Policies, Media library, Integrated systems,
+     Users.
+   - **Gating: ALWAYS shown, not property-count-gated.** Unlike USER_NODE's "Properties" tab
+     (multi-property-only, since a single-property account has nothing to scope), every
+     property — single- or multi-property account alike — has users with access to it, so this
+     tab is unconditional. Confirmed with user, not assumed by symmetry with the reverse tab.
+   - **Consequence worth noting:** because this tab is always present, PROPERTY_NODE will
+     always have ≥7 visible tabs regardless of account state — the new single-tab-collapse
+     rule (item 4) never applies to PROPERTY_NODE itself, only to USER_NODE's single-property
+     case. Don't read this item as contradicting item 4; they apply to different nodes.
+   - Content: same page-type as USER_NODE's "Properties" tab (a list/picker) — a list of users
+     with access to this property, sketch-only for now, no real access data.
+
+6. **Rename "Manage products" → "Add products," give it a distinct visual treatment.**
+   Confirmed with user: "Add products" more precisely signals its action (adding a new
+   product to the account) than the settings-page items above it (Direct Booking, Channels
+   Plus, Metasearch).
+   - **Visual treatment: small "+" icon before the label** — same greyscale rules as
+     everything else (no color), just an icon marking this as an ACTION row rather than a
+     navigable settings destination, so it doesn't read as just another item in the list.
+   - **New panel-list pattern, third kind alongside folder/heading** (PATTERNS.md's
+     folder-vs-heading rule currently only names two categories): this is neither a folder
+     (no children to expand) nor a grouping heading (it IS clickable, unlike a heading) — it's
+     a plain clickable item like Direct Booking/Channels Plus, just with a leading icon marking
+     it as an action rather than a page. Document this as its own small addition to
+     PATTERNS.md's panel-list patterns section (e.g. "action row" or similar naming) rather
+     than leaving it as a one-off — same "keep this pattern-based" direction as items 3/4.
+   - Implementation: rename the `label` in `nav-data.js`'s Configuration items array; add a
+     leading-icon rendering option to `renderPanel`'s item loop in `main.js` (a new per-item
+     flag, e.g. `actionIcon: '+'` or similar — exact shape TBD at implementation time).
 
 ## Open questions
 
