@@ -203,6 +203,69 @@ Reviewed the queue against the current code to catch dependencies before startin
   `IA-BY-USER-TYPE.md` (MP enforces one shared config across bulk-selected entities, where
   single-property Platform allows per-entity config) — Channels may hit the identical tension.
 
+## Foundational, unsolved — property/cluster/brand switcher
+
+Seeded by the user as explicitly **foundational to the entire redesign** and **not yet
+solved** — kept as its own section rather than a numbered queue item, since it's design work
+still in progress, not a scoped implementation request. Don't attempt to implement any of
+this until it's actually worked through; this is a placeholder to keep the shape of the
+problem visible across sessions, not a spec.
+
+**The core idea:** a property switcher — letting a multi-property user scope what they're
+viewing to all properties, a specific property, or (for MP accounts) a cluster/brand — needs
+to exist "in sections where it makes sense," but which sections, and how the switcher itself
+behaves, varies and isn't uniform across the app. This is a different mechanism from the
+existing Properties tab/picker (Configuration → Properties, Distribution → Properties) — that
+picker is for navigating TO one specific property's own settings; this switcher is about
+SCOPING a whole section's view (its data, dashboards, lists) across some subset of the
+account's properties, without necessarily navigating anywhere.
+
+**Per-section state, as described so far:**
+- **Insights** — the clear/easy case. Defaults to "all properties" for a multi-property
+  group. Hidden entirely for a single-property account (mirrors the existing property-scope-
+  collapses-when-single decision already established elsewhere in the app). Selector allows
+  choosing between individual properties, and for MP accounts specifically, also
+  clusters/brands as scoping units (not just individual properties).
+- **Health check** — "would do the same" as Insights (same switcher behavior/defaults).
+- **Configuration** — likely NOT relevant / doesn't need this switcher, since most
+  Configuration work happens one property at a time anyway (aligns with Configuration's
+  existing Properties-tab-then-drill-into-one-property model).
+- **Distribution** — **the hard, unsolved case.** User explicitly said they haven't solved
+  this one. Distribution already has its own Properties tab/picker (bulk rate distribution
+  tension already flagged elsewhere in `IA-BY-USER-TYPE.md`/`CONTEXT.md`) — how a
+  section-wide scope switcher interacts with that existing per-entity picker, and with bulk
+  operations across a scoped subset of properties, is unresolved. This is likely where the
+  real design difficulty of the whole feature concentrates.
+- **Transactions** — not yet discussed at all; no stated position either way.
+
+**Known open threads this connects to (don't design in isolation from these):**
+- The bulk rate distribution tension (`IA-BY-USER-TYPE.md`, SM multi-property section) — MP's
+  production model enforces one shared config across bulk-selected entities; a scope switcher
+  that lets you select "a cluster" or "3 properties" needs to reckon with the same tension.
+- Channels' (queue item #9) own bulk-management question — same shape of problem again.
+- Brands/Clusters (Configuration → Properties, MP-gated) are already a confirmed grouping
+  concept in the app; this switcher reusing them as scoping units (not just organizational
+  labels) is a new use for something that already exists structurally.
+
+**Next step when picked back up:** work through Distribution specifically first (the stated
+hard case), since Insights/Health check sound closer to "apply the same simple pattern" and
+Configuration sounds like "doesn't need it" — Distribution is where the actual design
+thinking still needs to happen before this becomes an implementable queue item.
+
+**First-pass sketch (in progress, exploratory, done live in the running prototype rather
+than only in this doc) — user asked to sketch the solved-shape cases to help reason through
+the rest by seeing it, NOT a finished implementation:**
+- Building a first rough version of the switcher for Insights and Health check only (the two
+  "would do the same, easy" cases) — all-properties default for multi-property, hidden for
+  single-property, individual properties + clusters/brands as scoping options for MP.
+- Distribution and Transactions are deliberately NOT touched by this sketch — sketching them
+  would mean guessing at the unsolved part, which defeats the purpose.
+- This is throwaway/exploratory — expect it to change once Distribution's shape is worked
+  out, since whatever mechanism this sketch invents for Insights/Health check needs to also
+  make sense once Distribution's harder requirements are known. Don't treat this sketch's
+  first implementation choices (e.g. where the switcher control lives, exact interaction) as
+  locked in.
+
 ## Done (moved here once implemented, then cleared)
 
 <!-- implemented items land here temporarily so you can see what just shipped, then get cleared next time this file is reset -->

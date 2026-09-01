@@ -115,6 +115,17 @@ Known relevant context from the knowledge base (not yet translated into nav deci
   DS/LLMOps + Channels Plus "Optimise" → one engine) will likely touch Insights →
   Recommendations for every type eventually — worth designing Recommendations with that
   consolidation in mind rather than the current fragmented state, regardless of account type.
+- **Property/cluster/brand scope switcher — explicitly called out by the user as foundational
+  to the entire redesign, and explicitly NOT yet solved.** Full detail kept in
+  `CHANGE-QUEUE.md`'s dedicated "Foundational, unsolved" section rather than duplicated here.
+  Short version: a section-wide scope switcher (all properties / one property / a
+  cluster-or-brand for MP) is needed in some sections but not others — Insights and Health
+  check are the easy/solved-shape cases (default to all-properties, hidden for single-property
+  accounts), Configuration likely doesn't need it, Distribution is the hard unsolved case, and
+  Transactions hasn't been discussed. This is a DIFFERENT mechanism from the existing
+  Properties tab/picker (which navigates to one property's own settings) — this one scopes a
+  section's whole view. Don't design new sections' property/multi-property behavior without
+  checking whether this switcher is meant to apply there first.
 
 ## How to use this doc
 
