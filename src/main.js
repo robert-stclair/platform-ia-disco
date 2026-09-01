@@ -516,7 +516,10 @@ function renderChainBody(chain, i) {
   if (content.type === 'records') {
     if (!selectedKey) {
       // Still on the picker itself — no drill-down yet, no crumb.
-      return { trail: [], bodyHtml: renderRecordPicker(step.options, pathIndex) };
+      // `content.starredNames` (optional, e.g. My insights' Dashboards/
+      // Charts): shows the illustrative star on specific rows.
+      const starredNames = content.starredNames ? new Set(content.starredNames) : null;
+      return { trail: [], bodyHtml: renderRecordPicker(step.options, pathIndex, starredNames) };
     }
     const recordCrumb = { label: selectedKey, truncateTo: pathIndex + 1 };
     // A records picker's own crumb (`crumb`, e.g. "Properties") is normally
@@ -561,9 +564,18 @@ function renderChainBody(chain, i) {
 // systems picker — all feed a crumb via the exact same mechanism, so all
 // get the exception; applying it to only some would be an arbitrary
 // inconsistency with no real justification behind it.
-function renderRecordPicker(names, depth) {
+// `starredNames` (optional): a Set of names that get the illustrative star
+// indicator (CHANGE-QUEUE.md item 8's My insights) — shows the same
+// starred/promoted relationship on the actual picker row, not just on the
+// duplicated top-level entry, so it "gets across" visually in both places
+// (user's explicit direction). Only meaningful for the `records` pattern's
+// custom-dashboard pickers; the properties/systems pickers never pass this.
+function renderRecordPicker(names, depth, starredNames) {
   return `<ul class="wf-list">${names
-    .map((name) => `<li><a href="#" class="wf-list__row" data-path-key="${depth}:${name}">${name}</a></li>`)
+    .map((name) => {
+      const star = starredNames?.has(name) ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
+      return `<li><a href="#" class="wf-list__row" data-path-key="${depth}:${name}">${name}${star}</a></li>`;
+    })
     .join('')}</ul>`;
 }
 
@@ -644,16 +656,22 @@ function renderSketch(content) {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
   }
   if (content.sketch === 'dashboard-cards') {
-    // Dashboard card grid (CHANGE-QUEUE.md item 7's 4th pattern) — distinct
-    // from 'media': a metric/chart-style card (real title + a skeleton
-    // chart/stat block), for dashboard landing pages. `content.cards`:
-    // [{title, shape: 'chart'|'stat'}] — real titles confirmed, same rule
-    // as everywhere else.
+    // Dashboard card grid (PATTERNS.md's 4th canonical type) — distinct
+    // from 'media': a metric/chart-style card, for dashboard landing
+    // pages. `content.cards`: [{title?, shape: 'chart'|'stat'}] — `title`
+    // is OPTIONAL: give it when a real card title is confirmed (same
+    // "real titles, skeleton content" rule as everywhere else); omit it
+    // to render a skeleton title bar instead, for indicating the page
+    // SHAPE only, with no real content confirmed yet (e.g. Insights'
+    // Dashboard — confirmed with user: doesn't need real titles, just
+    // needs to read as a dashboard-style page).
     return `<div class="sketch-dashboard-cards">${content.cards
-      .map(
-        (c) =>
-          `<div class="sketch-dashboard-card"><h3 class="sketch-dashboard-card__title">${c.title}</h3><div class="sketch-dashboard-card__${c.shape === 'stat' ? 'stat' : 'chart'}"></div></div>`
-      )
+      .map((c) => {
+        const title = c.title
+          ? `<h3 class="sketch-dashboard-card__title">${c.title}</h3>`
+          : `<div class="sketch-dashboard-card__title-skel"></div>`;
+        return `<div class="sketch-dashboard-card">${title}<div class="sketch-dashboard-card__${c.shape === 'stat' ? 'stat' : 'chart'}"></div></div>`;
+      })
       .join('')}</div>`;
   }
   if (content.sketch === 'list') {

@@ -128,16 +128,35 @@ PROPERTY_NODE`) and Users (`names: SAMPLE_USERS`, `detailNode: buildUserNode(...
 Both are the SAME mechanism — never add a new content type for "a picker that
 opens a shared detail page." Reuse `records` and give it a new `detailNode`.
 
+## Dashboard card grid (`sketch: 'dashboard-cards'`)
+
+Distinct from `'media'` (4:3 photo cards): a metric/chart-style card, for
+dashboard-style landing pages (Insights' own Dashboard, and every custom
+dashboard/chart via `CUSTOM_DASHBOARD_NODE` — same skeleton for both, per
+user's direction: "the custom dashboards would use the same skeleton").
+
+```js
+{ type: 'sketch', sketch: 'dashboard-cards', cards: [{ title?, shape: 'chart' | 'stat' }] }
+```
+
+**Confirmed: NO titles at all, ever, even a single confirmed one.** An earlier
+version put one real title ("Property Status") on the first card and left the
+rest titleless — user explicitly reversed this: mixing a real title with
+skeleton ones "gets weird," and the page is meant to read as a full page of
+cards, not one confirmed metric plus filler. `title` stays supported as an
+option in the code (in case a fully-titled dashboard is confirmed later) but
+every dashboard-cards instance in this project uses skeleton titles only —
+don't add a real title without explicit confirmation this has changed.
+
+The skeleton title bar (`.sketch-dashboard-card__title-skel`) is sized larger
+than a typical skeleton label, per "make them larger" — it's standing in for
+a real heading, not a minor field label.
+
 ## Not yet built
 
 - **Card list** — a list where each row is a card-shaped block (bigger than
   `.wf-list__row`, room for more visual weight) rather than a thin row. Not
   implemented yet.
-- **Dashboard card grid** — distinct from `'media'` (4:3 photo cards): a
-  metric/chart-style card (title bar + a skeleton chart or stat block), for
-  dashboard-style landing pages (e.g. Insights' own Dashboard). Not implemented
-  yet — build as a new `sketch` value (not reusing `'media'`) when a real
-  dashboard-style page is ready to wire up.
 
 ## Design constraints (apply to every pattern)
 

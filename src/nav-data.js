@@ -68,24 +68,20 @@
 //   Distribution > Health check's 7 tabs     | list               | sketch:'list' — RECONSIDER as 'table' once
 //                                                                    real column data is known (these are error/
 //                                                                    status listings; a table may fit better)
-//   Insights > Dashboard, Recommendations     | none yet           | content: null, stub. Dashboard is the
-//                                                                    obvious 'dashboard-cards' candidate once
-//                                                                    real card titles are confirmed — only
-//                                                                    "Property Status" is confirmed so far
-//                                                                    (CONTEXT.md's usage-data reference points)
-//   Insights > My insights > Dashboards,      | list               | sketch:'list', starredRows (illustrative)
-//     Charts
+//   Insights > Dashboard                      | dashboard cards    | sketch:'dashboard-cards', ALL cards
+//                                                                    titleless (skeleton title bar) — page
+//                                                                    shape only, confirmed no titles needed
+//   Insights > Recommendations                | list               | sketch:'list'
+//   Insights > My insights > Dashboards,      | records (nav)      | type:'records' -> CUSTOM_DASHBOARD_NODE;
+//     Charts                                                        starredNames marks illustrative rows;
+//                                                                    picker rows are 'list' via
+//                                                                    renderRecordPicker
+//   CUSTOM_DASHBOARD_NODE (any custom          | dashboard cards    | sketch:'dashboard-cards', same titleless
+//     dashboard/chart, incl. promoted items)                        skeleton as Insights' own Dashboard
 //   Transactions > Reservations, Guest        | none yet           | content: null, stub
 //     communications, Payments
 //   Front desk (LH only) > Calendar           | calendar           | sketch:'calendar'; section has
 //                                                                    noPanel: true (max width, no L2)
-//
-// 'table' and 'dashboard-cards' patterns exist (PATTERNS.md) but nothing
-// currently uses 'dashboard-cards' — every real content item so far has fit
-// 'sections' (stacked cards), 'media' (card grid), 'list', 'table', or
-// 'calendar'. Assign 'dashboard-cards' only once a real page confirms it
-// fits better than what's already there — don't force a type onto content
-// just to use it.
 
 const BASE_RAIL_ITEMS = [
   { key: 'insights', label: 'Insights', icon: 'insights' },
@@ -241,6 +237,33 @@ function buildUserNode(showProperties) {
     },
   };
 }
+
+// A single custom dashboard/chart's own content — every custom dashboard
+// (whether a plain "Dashboards"/"Charts" list entry or a starred/promoted
+// top-level item) opens the SAME shared detail node, per the generic
+// `records` pattern (PATTERNS.md) — "the custom dashboards would use the
+// same skeleton" (user's direction, confirmed easy to treat them all the
+// same rather than special-casing just the starred ones). Titleless
+// dashboard-cards grid, same as Insights' own Dashboard — indicates page
+// shape only, no real card content.
+export const CUSTOM_DASHBOARD_NODE = {
+  key: 'custom-dashboard',
+  label: 'Dashboard',
+  content: {
+    type: 'sketch',
+    sketch: 'dashboard-cards',
+    cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
+  },
+};
+
+// EXPLORATORY — sample custom-dashboard names for the generic `records`
+// pattern, same treatment as SAMPLE_PROPERTIES/SAMPLE_USERS. "Weekly
+// performance" and "Portfolio health" are included here (not just as
+// standalone promoted top-level items) so the illustrative star on these
+// specific rows visually lines up with their promoted duplicates —
+// same names in both places, not just the same concept.
+const SAMPLE_DASHBOARDS = ['Weekly performance', 'Occupancy overview', 'Portfolio health', 'Revenue trends'];
+const SAMPLE_CHARTS = ['Channel comparison', 'ADR by channel', 'Length of stay'];
 
 // Default: one connected system — 'systems' content collapses straight to
 // its sections, no system list.
@@ -429,14 +452,15 @@ function buildSmContentTree(showProperties) {
       // "My insights" (CHANGE-QUEUE.md item 8) REPLACES the old informal
       // flat `ugc` array. It's a FOLDER (per the folder-vs-heading rule —
       // collapsed by default, chevron, children hidden until expanded),
-      // containing Dashboards and Charts, both list pages the user
-      // populates themselves. Starring is illustrative/non-functional —
-      // `starredRows` marks a couple of rows with a star icon in each list,
-      // AND the same starred items are duplicated as their own top-level
+      // containing Dashboards and Charts — both clickable `records`
+      // pickers (the generic pattern Properties/Users use), each name
+      // opening CUSTOM_DASHBOARD_NODE's shared titleless dashboard-cards
+      // content. Starring is illustrative/non-functional — a couple of
+      // custom dashboards are duplicated as their own starred top-level
       // entries (simplest approach for a static wireframe, since this
       // isn't a real interaction — see CHANGE-QUEUE.md item 8's structural
-      // note). Which rows are "starred" is arbitrary illustration, not
-      // meaningful data — indices 0 and 2 chosen with no significance.
+      // note). Which ones are "starred" is arbitrary illustration, not
+      // meaningful data.
       //
       // Order (CHANGE-QUEUE.md item 2, reshuffled): Dashboard, then the
       // starred/pinned items appended directly below it (forming one
@@ -444,15 +468,35 @@ function buildSmContentTree(showProperties) {
       // Recommendations LAST — a separate concept from dashboards, per
       // user's reasoning, so it no longer sits second.
       items: [
-        { key: 'dashboard', label: 'Dashboard', active: true, content: null },
+        {
+          key: 'dashboard',
+          label: 'Dashboard',
+          active: true,
+          // Dashboard card grid (PATTERNS.md) — confirmed with user: NO
+          // titles at all, even confirmed ones — a mix of real + skeleton
+          // titles reads oddly ("gets weird"), and this is meant to read
+          // as a full page of cards, not one confirmed metric. Every card
+          // is titleless (skeleton title bar, sized larger per user's
+          // "full page of titles, make them larger" direction) — shape
+          // only, not real content.
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }],
+          },
+        },
         // Promoted/starred items — illustrative duplicates of a couple of
         // My insights' starred rows below, surfaced at the top level,
-        // directly appended after Dashboard. Real content: none
-        // (sketch-only), so these carry no `content` of their own.
-        { key: 'starred-dashboard-1', label: 'Weekly performance', content: null, starred: true },
-        { key: 'starred-chart-1', label: 'Channel comparison', content: null, starred: true },
+        // directly appended after Dashboard. Each opens the same
+        // CUSTOM_DASHBOARD_NODE content every custom dashboard/chart uses
+        // ("the custom dashboards would use the same skeleton" — user's
+        // direction) — same titleless dashboard-cards grid, not a
+        // Dashboards-list drill-down (these are standalone top-level
+        // items, not literally the same node reached two ways).
+        { key: 'starred-dashboard-1', label: 'Weekly performance', content: CUSTOM_DASHBOARD_NODE.content, starred: true },
+        { key: 'starred-chart-1', label: 'Channel comparison', content: CUSTOM_DASHBOARD_NODE.content, starred: true },
         ...(showProperties
-          ? [{ key: 'starred-dashboard-2', label: 'Portfolio health', content: null, starred: true }]
+          ? [{ key: 'starred-dashboard-2', label: 'Portfolio health', content: CUSTOM_DASHBOARD_NODE.content, starred: true }]
           : []),
         {
           key: 'my-insights',
@@ -460,20 +504,35 @@ function buildSmContentTree(showProperties) {
           content: {
             type: 'list',
             items: [
+              // "Dashboards"/"Charts" are clickable records lists (same
+              // generic pattern as Properties/Users) — each name opens
+              // CUSTOM_DASHBOARD_NODE's shared titleless dashboard-cards
+              // content. Real item names shown (the breadcrumb-clarity
+              // exception, PATTERNS.md), same as Properties/Users pickers.
               {
                 key: 'dashboards',
                 label: 'Dashboards',
-                content: { type: 'sketch', sketch: 'list', starredRows: [0, 2] },
+                content: {
+                  type: 'records',
+                  names: SAMPLE_DASHBOARDS,
+                  detailNode: CUSTOM_DASHBOARD_NODE,
+                  starredNames: showProperties
+                    ? ['Weekly performance', 'Portfolio health']
+                    : ['Weekly performance'],
+                },
               },
               {
                 key: 'charts',
                 label: 'Charts',
-                content: { type: 'sketch', sketch: 'list', starredRows: [1] },
+                content: { type: 'records', names: SAMPLE_CHARTS, detailNode: CUSTOM_DASHBOARD_NODE, starredNames: ['Channel comparison'] },
               },
             ],
           },
         },
-        { key: 'recommendations', label: 'Recommendations', content: null },
+        // "Recommendations" is a list page (per user's direction), same
+        // as the other stub list-shaped items (Users, Health check's
+        // tabs) — sketch:'list' rather than content: null.
+        { key: 'recommendations', label: 'Recommendations', content: { type: 'sketch', sketch: 'list' } },
       ],
       // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
       // section. Only Insights and (once built) Health check carry this;
