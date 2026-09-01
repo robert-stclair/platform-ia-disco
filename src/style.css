@@ -543,6 +543,45 @@ a { color: inherit; }
   border: 1px solid var(--border);
 }
 
+/* Dashboard card grid (CHANGE-QUEUE.md item 7) — metric/chart-style cards
+   for dashboard landing pages, distinct from the photo-grid '.sketch-cards
+   --media' above. Real title + a skeleton chart/stat block. See
+   PATTERNS.md. */
+.sketch-dashboard-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.sketch-dashboard-card {
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.sketch-dashboard-card__title {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sketch-dashboard-card__chart {
+  height: 120px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, var(--surface-sunken) 0%, var(--border) 100%);
+  opacity: 0.6;
+}
+
+.sketch-dashboard-card__stat {
+  height: 40px;
+  width: 60%;
+  border-radius: 6px;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
 .sketch-form {
   display: flex;
   flex-direction: column;
@@ -568,7 +607,39 @@ a { color: inherit; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-width: 520px;
+  /* Full-width (CHANGE-QUEUE.md item 7) — was max-width: 520px. */
+  width: 100%;
+}
+
+/* Table pattern (CHANGE-QUEUE.md item 7) — skeleton rows/columns with a
+   real header row. Header labels are the one place real text appears
+   (confirmed column names), same "real titles, skeleton content" rule as
+   card titles elsewhere. See PATTERNS.md. */
+.sketch-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.sketch-table th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.sketch-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sketch-table-cell {
+  height: 10px;
+  width: 70%;
+  border-radius: 4px;
+  background: var(--border-strong);
+  opacity: 0.6;
 }
 
 .wf-list__row {

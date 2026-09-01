@@ -493,12 +493,17 @@ function renderChainBody(chain, i) {
   return { trail: [], bodyHtml: renderSketch(content) };
 }
 
+// Shows REAL names, not skeleton bars — a deliberate, narrow exception to
+// the skeleton-only rule (PATTERNS.md), scoped specifically to lists that
+// feed a breadcrumb drill-down, so the resulting crumb reads as a real
+// property/system name instead of "[skeleton bar]" (CHANGE-QUEUE.md item
+// 7). Used for both the properties AND systems pickers — both feed a
+// crumb via the exact same mechanism, so both get the exception; applying
+// it to only one of the two would be an arbitrary inconsistency with no
+// real justification behind it.
 function renderPropertyPicker(names, depth) {
   return `<ul class="wf-list">${names
-    .map(
-      (name) =>
-        `<li><a href="#" class="wf-list__row wf-list__row--sketch" data-path-key="${depth}:${name}" aria-label="${name}"></a></li>`
-    )
+    .map((name) => `<li><a href="#" class="wf-list__row" data-path-key="${depth}:${name}">${name}</a></li>`)
     .join('')}</ul>`;
 }
 
@@ -578,6 +583,19 @@ function renderSketch(content) {
   if (content.sketch === 'media') {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
   }
+  if (content.sketch === 'dashboard-cards') {
+    // Dashboard card grid (CHANGE-QUEUE.md item 7's 4th pattern) — distinct
+    // from 'media': a metric/chart-style card (real title + a skeleton
+    // chart/stat block), for dashboard landing pages. `content.cards`:
+    // [{title, shape: 'chart'|'stat'}] — real titles confirmed, same rule
+    // as everywhere else.
+    return `<div class="sketch-dashboard-cards">${content.cards
+      .map(
+        (c) =>
+          `<div class="sketch-dashboard-card"><h3 class="sketch-dashboard-card__title">${c.title}</h3><div class="sketch-dashboard-card__${c.shape === 'stat' ? 'stat' : 'chart'}"></div></div>`
+      )
+      .join('')}</div>`;
+  }
   if (content.sketch === 'list') {
     // `starredRows` (optional): indices that get an illustrative star icon —
     // EXPLORATORY, non-functional (CHANGE-QUEUE.md item 8's "My insights").
@@ -587,6 +605,19 @@ function renderSketch(content) {
       .fill(null)
       .map((_, i) => `<li class="wf-list__row wf-list__row--sketch${starred.has(i) ? ' wf-list__row--starred' : ''}"></li>`)
       .join('')}</ul>`;
+  }
+  if (content.sketch === 'table') {
+    // `columns` (required): real header labels, confirmed from a production
+    // screenshot or explicit decision — same "real titles, skeleton content"
+    // rule as everywhere else. Cells are always skeleton bars, never real
+    // values. See PATTERNS.md.
+    const columns = content.columns ?? [];
+    const header = `<tr>${columns.map((c) => `<th>${c}</th>`).join('')}</tr>`;
+    const rows = Array(6)
+      .fill(null)
+      .map(() => `<tr>${columns.map(() => `<td><div class="sketch-table-cell"></div></td>`).join('')}</tr>`)
+      .join('');
+    return `<table class="sketch-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
   }
   return '';
 }

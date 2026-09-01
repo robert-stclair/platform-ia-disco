@@ -16,9 +16,15 @@ These render as the whole content of a `sketch`-type node (a tab, a leaf item).
 
 | `sketch` value | Renders | Use for |
 |---|---|---|
-| `'sections'` | Stacked cards, each with a real title + a section-shape sub-pattern (below) | Settings pages made of multiple labelled cards (Property settings' tabs, Integrated systems) |
+| `'sections'` (aka **stacked cards**) | Stacked cards, each with a real title + a section-shape sub-pattern (below) | Settings pages made of multiple labelled cards (Property settings' tabs, Integrated systems) |
 | `'media'` | A grid of `.sketch-card` blocks (4:3 aspect ratio) | Photo/media grids (Media library) |
-| `'list'` | A `.wf-list` of skeleton rows | A flat list of records with no further per-row detail (Users) |
+| `'list'` | A `.wf-list` of skeleton rows, full-width | A flat list of records with no further per-row detail (Users, Health check's tabs) |
+| `'table'` | A `.sketch-table` — real header row (`content.columns`), skeleton cells | A record list needing more than one visible field per row |
+
+These four are the project's canonical page-skeleton types (list / table / stacked cards /
+card grid — see "Dashboard card grid" below for the fourth). Not a closed set — add a new one
+here first when a genuinely new page shape comes up, following the same "skeleton content,
+real titles/headers only" rule as everything else.
 
 ## Section-shape sub-patterns (`shape`, inside a `'sections'` card)
 
@@ -49,27 +55,43 @@ rather than inventing a new list style.
 </ul>
 ```
 
-- `.wf-list` — the container: consistent margin, gap, and max-width (520px).
+- `.wf-list` — the container: consistent margin, gap, full-width (was max-width
+  520px; changed per CHANGE-QUEUE.md item 7 to fill the available content area).
 - `.wf-list__row` — one row: bordered card, 48px tall, centered content.
 - `.wf-list__row--sketch` — renders a centered skeleton bar instead of real text.
   Used for both the properties/systems picker (rows are real links, `data-path-key`
   drives navigation, but the *visible* content is still a skeleton bar — no real
-  property/system names shown) and plain sketch lists (Users).
+  property/system names shown) and plain sketch lists (Users, Health check's tabs).
+- `.wf-list__row--starred` — adds a small greyscale star icon to a row (see
+  `.nav-list-item__star` for the matching panel-list version). EXPLORATORY,
+  non-functional — illustrates "this was starred," no real interaction.
 - Add `a.wf-list__row` (an `<a>` tag with the class) when a row needs to be
   clickable; a plain `<li class="wf-list__row ...">` when it's static.
 
-Use `.wf-list` for: the properties picker, the systems picker, Users, and any
-future flat list of records.
+**Exception — real item names ARE allowed, narrowly.** The default is skeleton-only
+(no real names), but a list whose selection feeds a breadcrumb drill-down (e.g. the
+Properties picker) may show real names instead of skeleton bars specifically to make
+the resulting breadcrumb legible (so "Properties / [skeleton bar]" doesn't read as
+broken). This is a deliberate, narrow exception — NOT a blanket rule. Plain
+non-drilling lists (Users, systems picker rows that don't feed a crumb) stay
+skeleton-only. Don't let this exception creep to every list without a fresh
+decision each time.
+
+Use `.wf-list` for: the properties picker, the systems picker, Users, Health
+check's tabs, and any future flat list of records with no more than one visible
+field per row (reach for `.sketch-table` instead once a row needs multiple
+visible fields).
 
 ## Not yet built
 
-- **Table** — rows + columns with headers, for record lists needing more than one
-  visible field per row. Not implemented yet — build it as `sketch: 'table'` when
-  a real need for it comes up, following the same "skeleton only, no real values"
-  rule as everything else here.
 - **Card list** — a list where each row is a card-shaped block (bigger than
   `.wf-list__row`, room for more visual weight) rather than a thin row. Not
   implemented yet.
+- **Dashboard card grid** — distinct from `'media'` (4:3 photo cards): a
+  metric/chart-style card (title bar + a skeleton chart or stat block), for
+  dashboard-style landing pages (e.g. Insights' own Dashboard). Not implemented
+  yet — build as a new `sketch` value (not reusing `'media'`) when a real
+  dashboard-style page is ready to wire up.
 
 ## Design constraints (apply to every pattern)
 

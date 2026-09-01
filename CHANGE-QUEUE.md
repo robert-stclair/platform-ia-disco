@@ -32,9 +32,19 @@ for multi-property — arbitrary, no significance to which ones), and Health che
 `sketch: 'list'` as a first-pass page-type (flagged inline to reconsider once `table` exists).
 Neither is a real fork — cheap to change on review.
 
-**Still remaining from item 7** (not yet done): the `table` and dashboard-card-grid patterns,
-full-width list treatment (+ the narrow breadcrumb-clarity exception for real item names),
-and the full retrofit pass assigning a page-type to every existing item. Continuing now.
+**Update:** `table` and dashboard-card-grid patterns built, full-width list done, the real-names
+breadcrumb exception applied to BOTH the properties and systems pickers (both feed a crumb via
+the identical mechanism — applying it to only one would've been an arbitrary inconsistency with
+no real reason behind it; flagging this call since it wasn't explicitly asked). **Deliberately
+NOT wiring the dashboard-card-grid pattern onto Insights' own Dashboard item** (which still has
+`content: null`) — doing so would require inventing card titles, and only one real one is
+confirmed anywhere in the docs ("Property Status," from `CONTEXT.md`'s usage-data reference
+points). The pattern is built and documented, ready to use once real dashboard card titles are
+confirmed — not forced on with guesses. Flag this back to the user for real titles before
+Insights' Dashboard gets built out.
+
+**Still remaining from item 7:** the full retrofit pass assigning a page-type to every
+existing item. Continuing now.
 
 ## Suggested implementation order (added after a pre-implementation review)
 
