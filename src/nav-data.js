@@ -28,12 +28,24 @@
 // card titles where confirmed, but wireframe blocks underneath — no
 // field-level labels or copy.
 
-export const RAIL_ITEMS = [
+const BASE_RAIL_ITEMS = [
   { key: 'insights', label: 'Insights', icon: 'insights' },
   { key: 'distribution', label: 'Distribution', icon: 'distribution' },
   { key: 'transactions', label: 'Transactions', icon: 'transactions' },
   { key: 'configuration', label: 'Configuration', icon: 'configuration' },
 ];
+
+// The rail was constant across every account type until LH's "Front desk"
+// item (CHANGE-QUEUE.md item 5) — the first case of the rail itself
+// varying by account type, not just what's inside L2/L3. LH gets Front
+// desk prepended, first/topmost, ahead of the same four items everyone
+// else gets.
+export function getRailItems(accountType) {
+  if (accountType === 'LH') {
+    return [{ key: 'front-desk', label: 'Front desk', icon: 'frontDesk' }, ...BASE_RAIL_ITEMS];
+  }
+  return BASE_RAIL_ITEMS;
+}
 
 // A single property's own settings — same structure regardless of whether
 // the account is single- or multi-property (the "one IA, not two" decision).
@@ -304,14 +316,17 @@ function buildSmContentTree(showProperties) {
 }
 
 // Two independent settings axes control what renders:
-//   - accountType: 'SM' | 'LH' | 'MP' — SM is the only one with real content
-//     so far; LH renders empty until its nav differences are defined
-//     (deliberately not guessed at — no placeholder content). MP reuses
-//     SM's structure (per decision) but always shows Properties.
+//   - accountType: 'SM' | 'LH' | 'MP' — MP reuses SM's structure (per
+//     decision) but always shows Properties. LH ALSO reuses SM's structure
+//     unchanged (CHANGE-QUEUE.md item 5 — LH gets full parity with SM);
+//     LH's only account-type-specific difference is the extra "Front desk"
+//     rail item (see getRailItems), not different Insights/Distribution/
+//     Transactions/Configuration content. If real LH-specific content
+//     differences are confirmed later, add them here explicitly — don't
+//     let this comment go stale.
 //   - propertyCount: 'single' | 'multiple' — independent of account type;
 //     also drives Properties, alongside accountType === 'MP'.
 export function getContent(accountType, propertyCount) {
-  if (accountType === 'LH') return null;
   const showProperties = accountType === 'MP' || propertyCount === 'multiple';
   return buildSmContentTree(showProperties);
 }

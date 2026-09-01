@@ -1,5 +1,5 @@
 import {
-  RAIL_ITEMS,
+  getRailItems,
   getContent,
   PROPERTY_NODE,
   DEFAULT_SYSTEMS,
@@ -197,7 +197,8 @@ function resolveChain(rootNode) {
 // ---------------------------------------------------------------------------
 
 function renderRail() {
-  railEl.innerHTML = RAIL_ITEMS.map(
+  const items = getRailItems(state.accountType);
+  railEl.innerHTML = items.map(
     (item) => `
       <button class="rail-item${item.key === state.section ? ' is-active' : ''}" data-section="${item.key}" title="${item.label}" aria-label="${item.label}">
         <span class="rail-item__icon">${RAIL_ICONS[item.icon] ?? ''}</span>
@@ -548,8 +549,10 @@ function renderSketch(content) {
 
 function render() {
   renderRail();
-  // LH has no content defined yet — render an honest empty state rather
-  // than guessing at its nav (no placeholders).
+  // Falls through to an honest empty panel/canvas for any section with no
+  // data for the current state — covers LH's "Front desk" rail item (no
+  // L2/L3 content defined yet, deliberately, no placeholders) the same way
+  // it always covered every other undefined case.
   const content = getContent(state.accountType, state.propertyCount);
   const data = content?.[state.section];
   if (!data) {
@@ -564,6 +567,12 @@ function render() {
 document.querySelectorAll('[data-account-type]').forEach((el) => {
   el.addEventListener('click', () => {
     state.accountType = el.dataset.accountType;
+    // Front desk (LH-only) can leave state.section pointing at a rail item
+    // that doesn't exist for the newly-selected account type — fall back
+    // to insights rather than stranding the user on a blank screen.
+    if (!getRailItems(state.accountType).some((i) => i.key === state.section)) {
+      state.section = 'insights';
+    }
     resetPath();
     document.querySelectorAll('[data-account-type]').forEach((b) => {
       b.classList.toggle('is-active', b === el);

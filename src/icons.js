@@ -1,4 +1,9 @@
 export const RAIL_ICONS = {
+  // LH-only rail item (Front desk) — unattended-counter service bell.
+  // EXPLORATORY: first pass, swap for a better icon if this doesn't read
+  // clearly at rail size. See CHANGE-QUEUE.md item 5.
+  frontDesk:
+    '<svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M3 15h18"/><path d="M12 5v2"/><circle cx="12" cy="4" r="1"/><path d="M10 19h4"/></svg>',
   insights:
     '<svg viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l4-6 4 3 5-8"/></svg>',
   distribution:
