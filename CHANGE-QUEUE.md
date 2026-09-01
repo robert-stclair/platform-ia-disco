@@ -19,6 +19,40 @@ the foundational property/cluster/brand scope switcher (its own section below) �
 shape is explicitly unsolved there, not a queue item to implement yet. Add new requests to a
 fresh numbered list below this status block as they come in.
 
+## Queued (not yet implemented) — Distribution batch
+
+1. **Rate plans becomes a clickable `records` list** ("go deep" — drill into a specific rate
+   plan) — same generalized pattern as Properties/Users/Dashboards, not a new mechanism.
+   Generic realistic sample names (not real confirmed data), e.g. "Standard Rate,"
+   "Non-Refundable," etc. — confirm exact names at implementation time if it matters, otherwise
+   pick reasonable ones. Detail node: TBD what a single rate plan's own page looks like — start
+   simple (a stacked-cards or list shape) unless told otherwise.
+2. **Yield rules becomes a clickable `records` list too** — same pattern as Rate plans/item 1,
+   not a plain non-clickable list. Generic sample names, own shared detail node.
+3. **Health check simplified to ONE dashboard-cards page, replacing its 7-tab structure
+   entirely.** Each of the 7 current tabs (Failed PMS deliveries, Delayed updates, Disabled
+   channels, Channels awaiting connection setup, Mapping errors, Disabled channel rates,
+   Distribution and system status) becomes a CARD in a single dashboard-cards grid instead of
+   a separate tab — real card titles (these ARE the confirmed real names, unlike Insights'
+   Dashboard), likely `shape: 'stat'` (a count/status indicator) rather than `'chart'` for each,
+   since these are monitoring/status areas, not charts. No more tab strip for Health check.
+4. **Inventory becomes a grid page** — reuse the calendar grid's underlying mechanism, but
+   GENERALIZE it first so it isn't hardcoded to a 7-column month-calendar shape: needs to work
+   for both Front desk's calendar (7 weekday columns) and Inventory's own grid (likely a
+   room-type × date matrix, a different shape) — parameterize column count/labels and row
+   count rather than assuming every grid is a month view. Exact Inventory grid shape/columns:
+   TBD at implementation time, following the "generic enough for different contexts" direction.
+5. **Remove Distribution's "Properties" item entirely, for now.** User: "how did we end up with
+   properties in distribution? i think thats something i need to work through actually" —
+   followed by "i think remove for now." This is the item added in the original refactor
+   (`buildSmContentTree`'s `distribution.items`, gated on `showProperties`, using the generic
+   `records` pattern → `PROPERTY_NODE`). Remove it from Distribution's item list; DON'T touch
+   Configuration's own Properties item (unrelated, stays as-is) or `PROPERTY_NODE` itself
+   (still used elsewhere). Log the open question in `IA-BY-USER-TYPE.md`'s Distribution section
+   — why Distribution needs (or doesn't need) its own Properties concept, separate from
+   Configuration's, is unresolved and explicitly the user's own open thread to work through,
+   not something to guess an answer to.
+
 Two regressions were caught and fixed while implementing (see git log for full detail on
 each): `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
 content across the whole app had silently stopped rendering since the prior session's chain
@@ -98,13 +132,25 @@ picker is for navigating TO one specific property's own settings; this switcher 
 SCOPING a whole section's view (its data, dashboards, lists) across some subset of the
 account's properties, without necessarily navigating anywhere.
 
-**Per-section state, as described so far:**
-- **Insights** — the clear/easy case. Defaults to "all properties" for a multi-property
-  group. Hidden entirely for a single-property account (mirrors the existing property-scope-
-  collapses-when-single decision already established elsewhere in the app). Selector allows
-  choosing between individual properties, and for MP accounts specifically, also
-  clusters/brands as scoping units (not just individual properties).
-- **Health check** — "would do the same" as Insights (same switcher behavior/defaults).
+**Why this whole feature exists (user's own articulation, captured verbatim in spirit):**
+today the platform only has the context of a single property at a time. That loses real
+efficiencies — whole-of-portfolio reporting, and distribution concepts too. The scope switcher
+is the exploration of fixing that — NOT a settled mechanism to apply uniformly everywhere it
+technically could go.
+
+**Per-section state, as described so far — REVISED, no longer "Insights is the easy case":**
+- **Insights is NOT uniformly solved either.** Originally treated as the clear/easy case
+  (defaults to "all properties" for multi-property, hidden for single-property, individual
+  properties + MP clusters/brands as scoping options) — but the user flagged that even within
+  Insights, the switcher's relevance may not be uniform: "dashboard and charts might not make
+  sense to have a property switcher... does it show only when its relevant?" i.e. Insights'
+  own Dashboard/Charts (a user's PERSONAL custom views) may be a case where portfolio-wide
+  scoping doesn't apply the same way it does for, say, a system Dashboard or Recommendations.
+  This is a real UX question to work through, not resolved by the current sketch's blanket
+  "show whenever propertyCount === 'multiple'" rule — don't treat Insights as settled.
+- **Health check** — "would do the same" as Insights (same switcher behavior/defaults) — but
+  see the note above: if Insights itself isn't uniform, Health check's "same as Insights"
+  framing may need revisiting too, not assumed solved just because Insights was assumed solved.
 - **Configuration** — likely NOT relevant / doesn't need this switcher, since most
   Configuration work happens one property at a time anyway (aligns with Configuration's
   existing Properties-tab-then-drill-into-one-property model).

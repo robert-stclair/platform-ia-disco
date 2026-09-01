@@ -41,13 +41,22 @@ Open questions specific to this group:
 
 - Configuration → "Properties" tab strip appears (Properties / — no Brands, no Clusters, since
   those are MP-gated separately from property count).
-- Distribution gets a Properties sublist too (currently the one remaining legacy/unmigrated
-  shape — see `NOTES-CLEANUP.md` §3).
 - Insights UGC gains a third slot: Portfolio health.
-- Rate plans: same top-level surface as single-property, but a Properties tab appears
-  alongside it (per the "one IA" decision — not a different Rate plans page).
 
 Open questions specific to this group:
+- **Why did Distribution have its own "Properties" item at all, separate from Configuration's?**
+  Distribution used to get its own Properties item (migrated from an early legacy shape to the
+  generic `records` pattern during the structural refactor) — but the user flagged, on
+  reflection, that they're not sure this belongs: "how did we end up with properties in
+  distribution? i think thats something i need to work through actually." **Removed for now**
+  (CHANGE-QUEUE.md Distribution batch, item 5) — Configuration's own Properties item is
+  unrelated and unaffected. This is explicitly the user's own open thread to work through, not
+  a decision to guess an answer to — don't reintroduce a Distribution Properties item without
+  a real resolution of what problem it's meant to solve (is it about scoping Rate plans/Yield
+  rules to a specific property? Bulk operations across properties? Something else entirely?).
+  Likely connects to the still-unsolved property/cluster/brand scope switcher below, and to the
+  bulk rate distribution question just below this one — Distribution's whole property-scoping
+  story is still genuinely unresolved, not just this one item.
 - **Bulk rate distribution mechanics** — real tension flagged in `CONTEXT.md`: MP's production
   model enforces one shared config across bulk-selected entities (Group Rate Plan → Property
   Rate Plan → Property Room Rate), where single-property Platform allows per-entity config.
