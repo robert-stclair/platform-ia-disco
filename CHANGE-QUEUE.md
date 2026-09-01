@@ -269,13 +269,12 @@ the rest by seeing it, NOT a finished implementation:**
   first implementation choices (e.g. where the switcher control lives, exact interaction) as
   locked in.
 
-**Placement reconsidered (queued, not yet implemented):** the switcher currently renders as a
-`<select>` at the very top of the L2 panel. User's instinct: doesn't love it eating into the
-L2 panel's own space, leaning toward **top-right of the canvas** instead — keeps the main
-panel real estate free for actual nav items, and reads more like a persistent page-level
-control (alongside/near the breadcrumb) than a panel list item. Not decided as final, just the
-current leaning — implement this reposition when picked back up, but don't treat it as locked
-in either, same as the rest of this sketch.
+**Placement reconsidered — DONE (commit `fad34af`).** Moved from the top of the L2 panel to
+the canvas's top-right (via `.canvas-scope-switcher`, `renderCanvas` instead of `renderPanel`).
+Frees up the panel's own real estate for actual nav items, reads as a persistent page-level
+control rather than a panel list item. Still not decided as FINAL — same as the rest of this
+sketch, expect it to change further once Distribution's shape is worked out — but it's the
+current implementation, not just a leaning anymore.
 
 ## Done
 
