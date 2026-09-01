@@ -40,9 +40,16 @@
 //
 //   Item                                    | Type              | Notes
 //   ----------------------------------------|--------------------|------
-//   Configuration/Distribution > Properties  | records (nav)      | type:'records' -> PROPERTY_NODE; picker
-//                                                                    rows are 'list' via renderRecordPicker
-//   PROPERTY_NODE's 5 settings tabs          | stacked cards      | sketch:'sections'
+//   Configuration > Properties                | records (nav)      | type:'records' -> PROPERTY_NODE; picker
+//                                                                    rows are 'list' via renderRecordPicker.
+//                                                                    Distribution's own Properties item was
+//                                                                    REMOVED — see IA-BY-USER-TYPE.md's open
+//                                                                    question, don't reintroduce without that
+//                                                                    being resolved first.
+//   PROPERTY_NODE's 4 settings tabs           | stacked cards      | sketch:'sections' (General
+//                                                                    information/Property
+//                                                                    details/Services/Policies)
+//   PROPERTY_NODE > Room types                | list               | sketch:'list'
 //   PROPERTY_NODE > Media library            | card grid (media)  | sketch:'media'
 //   PROPERTY_NODE > Integrated systems       | stacked cards      | sketch:'sections' via 'systems' type
 //   PROPERTY_NODE > Users (always shown)      | list               | sketch:'list' (which users have access
@@ -63,11 +70,15 @@
 //                                                                    (actionIcon: '+'), renamed from "Manage
 //                                                                    products" — see PATTERNS.md
 //   Configuration > Brands, Clusters (MP)     | none yet           | content: null, stub
-//   Distribution > Inventory, Rate plans,     | none yet           | content: null, stub
-//     Yield rules
-//   Distribution > Health check's 7 tabs     | list               | sketch:'list' — RECONSIDER as 'table' once
-//                                                                    real column data is known (these are error/
-//                                                                    status listings; a table may fit better)
+//   Distribution > Inventory                  | none yet           | content: null, stub — grid page TBD
+//                                                                    (Distribution batch item 4)
+//   Distribution > Rate plans                 | records (nav)      | type:'records' -> RATE_PLAN_NODE (a
+//                                                                    simple stacked-cards stub for now)
+//   Distribution > Yield rules                | records (nav)      | type:'records' -> YIELD_RULE_NODE (same
+//                                                                    simple treatment)
+//   Distribution > Health check's 7 tabs     | list               | sketch:'list' — TO BE REPLACED with ONE
+//                                                                    dashboard-cards page (Distribution batch
+//                                                                    item 3), not reconsidered as 'table'
 //   Insights > Dashboard                      | dashboard cards    | sketch:'dashboard-cards', ALL cards
 //                                                                    titleless (skeleton title bar) — page
 //                                                                    shape only, confirmed no titles needed
@@ -78,8 +89,10 @@
 //                                                                    renderRecordPicker
 //   CUSTOM_DASHBOARD_NODE (any custom          | dashboard cards    | sketch:'dashboard-cards', same titleless
 //     dashboard/chart, incl. promoted items)                        skeleton as Insights' own Dashboard
-//   Transactions > Reservations, Guest        | none yet           | content: null, stub
-//     communications, Payments
+//   Transactions > Reservations                | list               | sketch:'list' (plain, not clickable
+//                                                                    records — unlike Rate plans/Yield rules)
+//   Transactions > Guest communications,       | none yet           | content: null, stub
+//     Payments
 //   Front desk (LH only) > Calendar           | calendar           | sketch:'calendar'; section has
 //                                                                    noPanel: true (max width, no L2)
 
@@ -139,6 +152,15 @@ export const PROPERTY_NODE = {
             { title: 'Extra information', shape: 'field' },
           ],
         },
+      },
+      // Per-property — no generic/shared room-type concept exists today
+      // (user: "i dont think there is a concept of a generic room type").
+      // Confirmed a plain list (not a stub) — CHANGE-QUEUE.md Distribution
+      // batch item 6.
+      {
+        key: 'room-types',
+        label: 'Room types',
+        content: { type: 'sketch', sketch: 'list' },
       },
       {
         key: 'services',
@@ -267,6 +289,28 @@ export const CUSTOM_DASHBOARD_NODE = {
 // dashboard, so Charts has no starring concept at all.
 const SAMPLE_DASHBOARDS = ['Weekly performance', 'Channel comparison', 'Occupancy overview', 'Portfolio health', 'Revenue trends'];
 const SAMPLE_CHARTS = ['ADR by channel', 'Length of stay', 'Cancellation rate'];
+
+// EXPLORATORY — sample rate plan / yield rule names for the generic
+// `records` pattern (Distribution batch, items 1/2 — "go deep" per user).
+// Generic realistic names, not real confirmed data.
+const SAMPLE_RATE_PLANS = ['Standard Rate', 'Non-Refundable', 'Advance Purchase', 'Long Stay'];
+const SAMPLE_YIELD_RULES = ['Weekend surcharge', 'Last-minute discount', 'Length-of-stay discount'];
+
+// Shared detail node every rate plan opens — kept deliberately simple for
+// now ("start simple... unless told otherwise"), a basic stacked-cards
+// sketch. Revisit if a real rate-plan detail shape is confirmed later.
+const RATE_PLAN_NODE = {
+  key: 'rate-plan',
+  label: 'Rate plan',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Rate plan', shape: 'field' }] },
+};
+
+// Shared detail node every yield rule opens — same "start simple" treatment.
+const YIELD_RULE_NODE = {
+  key: 'yield-rule',
+  label: 'Yield rule',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Yield rule', shape: 'field' }] },
+};
 
 // Default: one connected system — 'systems' content collapses straight to
 // its sections, no system list.
@@ -548,20 +592,35 @@ function buildSmContentTree(showProperties) {
     distribution: {
       items: [
         { key: 'inventory', label: 'Inventory', active: true, content: null },
-        { key: 'rate-plans', label: 'Rate plans', content: null },
-        { key: 'yield-rules', label: 'Yield rules', content: null },
-        // Only appears when showProperties — same generic `records` pattern
-        // Configuration's Properties tab uses, now a real clickable/routable
-        // panel item instead of the old flat, unwired `data.sublist` array.
-        ...(showProperties
-          ? [{ key: 'properties', label: 'Properties', content: { type: 'records', names: SAMPLE_PROPERTIES, detailNode: PROPERTY_NODE } }]
-          : []),
+        // Clickable `records` list (Distribution batch item 1 — "go
+        // deep"), same generic pattern as Properties/Users/Dashboards.
+        {
+          key: 'rate-plans',
+          label: 'Rate plans',
+          content: { type: 'records', names: SAMPLE_RATE_PLANS, detailNode: RATE_PLAN_NODE },
+        },
+        // Same pattern (item 2), own shared detail node.
+        {
+          key: 'yield-rules',
+          label: 'Yield rules',
+          content: { type: 'records', names: SAMPLE_YIELD_RULES, detailNode: YIELD_RULE_NODE },
+        },
+        // Distribution's "Properties" item REMOVED (CHANGE-QUEUE.md
+        // Distribution batch item 5) — user flagged, on reflection, they
+        // weren't sure why Distribution needed its own Properties concept
+        // separate from Configuration's, and asked to remove it while they
+        // work through the underlying design question themselves. See
+        // IA-BY-USER-TYPE.md's SM-multiple-properties section for the open
+        // question. Do NOT reintroduce this without that being resolved —
+        // Configuration's own Properties item is unrelated and unaffected.
         HEALTH_CHECK_ITEM,
       ],
     },
     transactions: {
       items: [
-        { key: 'reservations', label: 'Reservations', active: true, content: null },
+        // sketch:'list' (CHANGE-QUEUE.md item 7) — a plain list, NOT the
+        // clickable `records` pattern (unlike Rate plans/Yield rules).
+        { key: 'reservations', label: 'Reservations', active: true, content: { type: 'sketch', sketch: 'list' } },
         { key: 'guest-communications', label: 'Guest communications', content: null },
         { key: 'payments', label: 'Payments', content: null },
       ],
