@@ -258,12 +258,15 @@ export const CUSTOM_DASHBOARD_NODE = {
 
 // EXPLORATORY — sample custom-dashboard names for the generic `records`
 // pattern, same treatment as SAMPLE_PROPERTIES/SAMPLE_USERS. "Weekly
-// performance" and "Portfolio health" are included here (not just as
-// standalone promoted top-level items) so the illustrative star on these
-// specific rows visually lines up with their promoted duplicates —
-// same names in both places, not just the same concept.
-const SAMPLE_DASHBOARDS = ['Weekly performance', 'Occupancy overview', 'Portfolio health', 'Revenue trends'];
-const SAMPLE_CHARTS = ['Channel comparison', 'ADR by channel', 'Length of stay'];
+// performance", "Portfolio health", and "Channel comparison" are included
+// here (not just as standalone promoted top-level items) so the
+// illustrative star on these specific rows visually lines up with their
+// promoted duplicates — same names in both places, not just the same
+// concept. All three are DASHBOARDS, not charts — you can't pin/promote a
+// single chart on its own (user's explicit correction), only a whole
+// dashboard, so Charts has no starring concept at all.
+const SAMPLE_DASHBOARDS = ['Weekly performance', 'Channel comparison', 'Occupancy overview', 'Portfolio health', 'Revenue trends'];
+const SAMPLE_CHARTS = ['ADR by channel', 'Length of stay', 'Cancellation rate'];
 
 // Default: one connected system — 'systems' content collapses straight to
 // its sections, no system list.
@@ -494,9 +497,9 @@ function buildSmContentTree(showProperties) {
         // Dashboards-list drill-down (these are standalone top-level
         // items, not literally the same node reached two ways).
         { key: 'starred-dashboard-1', label: 'Weekly performance', content: CUSTOM_DASHBOARD_NODE.content, starred: true },
-        { key: 'starred-chart-1', label: 'Channel comparison', content: CUSTOM_DASHBOARD_NODE.content, starred: true },
+        { key: 'starred-dashboard-2', label: 'Channel comparison', content: CUSTOM_DASHBOARD_NODE.content, starred: true },
         ...(showProperties
-          ? [{ key: 'starred-dashboard-2', label: 'Portfolio health', content: CUSTOM_DASHBOARD_NODE.content, starred: true }]
+          ? [{ key: 'starred-dashboard-3', label: 'Portfolio health', content: CUSTOM_DASHBOARD_NODE.content, starred: true }]
           : []),
         {
           key: 'my-insights',
@@ -517,14 +520,17 @@ function buildSmContentTree(showProperties) {
                   names: SAMPLE_DASHBOARDS,
                   detailNode: CUSTOM_DASHBOARD_NODE,
                   starredNames: showProperties
-                    ? ['Weekly performance', 'Portfolio health']
-                    : ['Weekly performance'],
+                    ? ['Weekly performance', 'Channel comparison', 'Portfolio health']
+                    : ['Weekly performance', 'Channel comparison'],
                 },
               },
+              // No starredNames — you can't pin/promote a single chart on
+              // its own (user's explicit correction), only a whole
+              // dashboard, so Charts has no starring concept at all.
               {
                 key: 'charts',
                 label: 'Charts',
-                content: { type: 'records', names: SAMPLE_CHARTS, detailNode: CUSTOM_DASHBOARD_NODE, starredNames: ['Channel comparison'] },
+                content: { type: 'records', names: SAMPLE_CHARTS, detailNode: CUSTOM_DASHBOARD_NODE },
               },
             ],
           },
