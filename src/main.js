@@ -406,7 +406,13 @@ function renderCanvas(data) {
 
   const chain = resolveChain(rootItem);
   const { trail, bodyHtml } = renderChainBody(chain, 0);
-  canvasEl.innerHTML = breadcrumbHtml(trail) + bodyHtml;
+  // Standard content-area margin (PATTERNS.md) applied ONCE here, always —
+  // not per-branch inside renderChainBody. A prior version only wrapped
+  // content in `.sketch` inside the `tabs` branch, so any leaf item with no
+  // tabs anywhere in its ancestry (Users, Channels, Manage products) got no
+  // padding at all, rendering flush against the canvas edges — caught
+  // while building item 7's standard-margin audit.
+  canvasEl.innerHTML = breadcrumbHtml(trail) + `<div class="sketch">${bodyHtml}</div>`;
   wirePathLinks();
   wireBreadcrumb();
 }
@@ -442,7 +448,13 @@ function renderChainBody(chain, i) {
         .join('') +
       `</div>`;
     const inner = renderChainBody(chain, i + 1);
-    return { trail: crumb.concat(inner.trail), bodyHtml: tabStrip + `<div class="sketch">${inner.bodyHtml}</div>` };
+    // No `.sketch` wrapper here — renderCanvas now applies it exactly once,
+    // around the whole rendered body. Wrapping it again per nested tabs
+    // level (as a prior version did) double-padded any tabs-within-tabs
+    // case (e.g. Direct Booking -> Setup's own tab strip) to 48px instead
+    // of the intended 24px — caught while auditing the standard
+    // content-area margin for CHANGE-QUEUE.md item 7.
+    return { trail: crumb.concat(inner.trail), bodyHtml: tabStrip + inner.bodyHtml };
   }
 
   if (content.type === 'list') {

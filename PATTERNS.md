@@ -80,3 +80,27 @@ future flat list of records.
 - **Card titles are real; everything under them is skeleton.** This is the one
   place actual text appears — confirmed from a production screenshot or an
   explicit decision, never guessed.
+- **Standard content-area margin: `.sketch` (24px padding) wraps the ENTIRE canvas
+  body exactly once, applied by `renderCanvas` — never per-branch inside the
+  tree walk.** A prior version applied `.sketch` inside `buildCanvasBody`'s tabs
+  branch only, so (a) a leaf item with no tabs anywhere in its ancestry (Users,
+  Channels, Manage products) got no padding at all, rendering flush against the
+  canvas edge, and (b) a tabs-within-tabs case (e.g. Properties → a specific
+  property's own tabs) got double-padded (48px) since each nesting level added
+  its own wrapper. When adding a new content type or nesting case, never add
+  your own `.sketch`/margin wrapper — it's handled once, upstream, always.
+
+## Panel-list patterns (the left sub-nav, not the canvas)
+
+Two different things can sit in the panel item list — don't conflate them:
+
+| Pattern | Behavior | Example |
+|---|---|---|
+| **Folder** (`content.type: 'list'`) | Collapsed by default, chevron, clicking expands/collapses (does NOT navigate), children hidden until expanded | Direct Booking, My insights |
+| **Grouping heading** (`{ heading: true, label }`) | Always-expanded, no chevron, never clickable — purely visually clusters already-visible sibling items under a label | Products |
+
+Use a folder when the label is itself a nav concept whose children are hidden
+until opened. Use a heading when you're just visually clustering already-visible
+items with no expand/collapse. Heading items are filtered out before
+`resolveSelected`/`resolveChain` ever see them — they can never become "the
+routed item," even via a `nodes[0]` fallback.
