@@ -211,6 +211,15 @@ const SAMPLE_PROPERTIES = [
   'Riverside Boutique Hotel',
 ];
 
+// EXPLORATORY — sample data for the property/cluster/brand scope switcher
+// sketch (Insights, Health check once built). Not a confirmed decision —
+// see CHANGE-QUEUE.md's "Foundational, unsolved" section: this whole
+// switcher concept is still being worked through, Distribution's shape is
+// unsolved, and this sketch is expected to change once that's resolved.
+export const SCOPE_PROPERTIES = SAMPLE_PROPERTIES;
+export const SCOPE_BRANDS = ['Coastal Collection', 'Heritage Stays'];
+export const SCOPE_CLUSTERS = ['East Coast', 'West Coast', 'Inland'];
+
 // The Properties section (Configuration's first item) is shown whenever
 // accountType === 'MP' OR propertyCount === 'multiple' — either condition on
 // its own is sufficient (an MP account with just one property still gets it;
@@ -258,6 +267,10 @@ function buildSmContentTree(showProperties) {
       ugc: showProperties
         ? ['Weekly performance', 'Channel comparison', 'Portfolio health']
         : ['Weekly performance', 'Channel comparison'],
+      // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
+      // section. Only Insights and (once built) Health check carry this;
+      // Configuration/Distribution/Transactions deliberately don't yet.
+      scopeSwitcher: showProperties,
     },
     distribution: {
       items: [

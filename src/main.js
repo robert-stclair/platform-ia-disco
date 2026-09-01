@@ -1,4 +1,13 @@
-import { RAIL_ITEMS, getContent, PROPERTY_NODE, DEFAULT_SYSTEMS, MULTIPLE_SYSTEMS } from './nav-data.js';
+import {
+  RAIL_ITEMS,
+  getContent,
+  PROPERTY_NODE,
+  DEFAULT_SYSTEMS,
+  MULTIPLE_SYSTEMS,
+  SCOPE_PROPERTIES,
+  SCOPE_BRANDS,
+  SCOPE_CLUSTERS,
+} from './nav-data.js';
 import { RAIL_ICONS } from './icons.js';
 
 // ---------------------------------------------------------------------------
@@ -24,11 +33,20 @@ const state = {
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: false, // hidden-settings toggle: does every property have >1 connected system?
+  // EXPLORATORY — property/cluster/brand scope switcher sketch (Insights,
+  // Health check once built). See CHANGE-QUEUE.md "Foundational, unsolved"
+  // section: this whole mechanism is still being worked through, expected
+  // to change once Distribution's (unsolved) shape informs it. Deliberately
+  // SEPARATE from `path` — this scopes a section's whole view, it isn't a
+  // navigation destination the way Configuration/Distribution's Properties
+  // picker is.
+  scope: { type: 'all', key: null }, // { type: 'all' | 'property' | 'cluster' | 'brand', key: string | null }
 };
 
 function resetPath() {
   state.path = [];
   state.expandedKey = null;
+  state.scope = { type: 'all', key: null };
 }
 
 const railEl = document.getElementById('rail');
@@ -197,6 +215,46 @@ function renderRail() {
   });
 }
 
+// EXPLORATORY — property/cluster/brand scope switcher sketch. See
+// CHANGE-QUEUE.md "Foundational, unsolved" section: only wired up for
+// Insights so far (the confirmed "easy" case); Distribution/Transactions
+// deliberately untouched since their shape isn't solved yet. Renders a
+// single <select> — simplest possible sketch, not a final interaction
+// design. Options: All properties, then every individual property, then
+// (MP only) Brands and Clusters as scoping groups.
+function renderScopeSwitcher() {
+  const groups = [];
+  groups.push(`<option value="all:" ${state.scope.type === 'all' ? 'selected' : ''}>All properties</option>`);
+  groups.push(
+    `<optgroup label="Properties">${SCOPE_PROPERTIES.map(
+      (name) => `<option value="property:${name}" ${state.scope.type === 'property' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
+    ).join('')}</optgroup>`
+  );
+  if (state.accountType === 'MP') {
+    groups.push(
+      `<optgroup label="Brands">${SCOPE_BRANDS.map(
+        (name) => `<option value="brand:${name}" ${state.scope.type === 'brand' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
+      ).join('')}</optgroup>`
+    );
+    groups.push(
+      `<optgroup label="Clusters">${SCOPE_CLUSTERS.map(
+        (name) => `<option value="cluster:${name}" ${state.scope.type === 'cluster' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
+      ).join('')}</optgroup>`
+    );
+  }
+  return `<select class="scope-switcher" aria-label="Property scope">${groups.join('')}</select>`;
+}
+
+function wireScopeSwitcher() {
+  const select = panelEl.querySelector('.scope-switcher');
+  if (!select) return;
+  select.addEventListener('change', () => {
+    const [type, key] = select.value.split(':');
+    state.scope = { type, key: key || null };
+    render();
+  });
+}
+
 // Every panel item is a real Node now — no legacy plain-object or
 // section-level-sublist special-casing. The panel only ever needs the FIRST
 // step of the chain (what's routed at the top level) plus `expandedKey`
@@ -209,11 +267,19 @@ function renderPanel(data) {
   // routing. No default: nothing is expanded until explicitly clicked.
   const expandedItem = items.find((i) => i.key === state.expandedKey) ?? null;
 
+  // EXPLORATORY scope switcher — only when this section opts in
+  // (`data.scopeSwitcher`) AND there's more than one property to scope
+  // across. Hidden entirely for single-property accounts, per the sketch.
+  let html = '';
+  if (data.scopeSwitcher && state.propertyCount === 'multiple') {
+    html += renderScopeSwitcher();
+  }
+
   // Sublist HTML renders immediately after its own parent item, inline
   // within the same list — not appended as one block after the whole list.
   // A parent whose sublist renders after unrelated later siblings only
   // "looked right by accident" when it happened to be the last item.
-  let html = `<ul class="nav-list">`;
+  html += `<ul class="nav-list">`;
 
   items.forEach((item) => {
     const hasList = item.content?.type === 'list';
@@ -286,6 +352,8 @@ function renderPanel(data) {
       render();
     });
   });
+
+  wireScopeSwitcher();
 }
 
 // ---------------------------------------------------------------------------

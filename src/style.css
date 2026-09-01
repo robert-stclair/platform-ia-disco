@@ -334,6 +334,28 @@ a { color: inherit; }
   overflow-y: auto;
 }
 
+/* EXPLORATORY — property/cluster/brand scope switcher sketch. See
+   CHANGE-QUEUE.md "Foundational, unsolved" section: expect this to change
+   once Distribution's (unsolved) shape informs the final mechanism. */
+.scope-switcher {
+  display: block;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.scope-switcher:hover {
+  border-color: var(--border-strong);
+}
+
 .nav-list {
   list-style: none;
   margin: 0;
