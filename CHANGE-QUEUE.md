@@ -85,8 +85,10 @@ testing: a records picker with no wrapping tabs layer (Users) never got its own 
 the record-name crumb alone was suppressed by the generic single-crumb-is-noise rule. Item 4
 (single-tab strips collapse, no strip shown) implemented as a general rule on the `tabs`
 content type itself (commit after this note), reusing the same `options: []` convention the
-`systems` branch already used for "one connected system, no picker." Full detail in each
-commit message. Items 1 and 2 are still queued.
+`systems` branch already used for "one connected system, no picker." Item 5 (PROPERTY_NODE's
+mirrored "Users" tab, always shown) and item 6 (rename "Manage products" -> "Add products" +
+new action-row panel-list pattern) are also DONE — commits `8687f65` and `60d8a7b`. Full detail
+in each commit message. Items 1 and 2, plus the scope-switcher placement move, are still queued.
 
 1. **Front desk becomes a calendar page with NO L2 panel at all.** Currently a stub rail item
    with empty panel/canvas. New behavior:
