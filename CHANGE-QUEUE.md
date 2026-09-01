@@ -78,6 +78,13 @@ outstanding work); the rest are still-open follow-ups worth a look.
 
 ## Queued (not yet implemented) — new batch
 
+**Progress: item 3 (generalized `records` pattern + Users) is DONE**, along with the breadcrumb
+bug fix from the "Known bugs" list above (both implemented together per the dependency note,
+commit `cf4a20b`) — a real second bug was also found and fixed while testing: a records picker
+with no wrapping tabs layer (Users) never got its own label crumb, so the record-name crumb
+alone was suppressed by the generic single-crumb-is-noise rule. Full detail in the commit
+message. Items 1, 2, and the new item 4 (below) are still queued.
+
 1. **Front desk becomes a calendar page with NO L2 panel at all.** Currently a stub rail item
    with empty panel/canvas. New behavior:
    - Clicking Front desk hides the secondary panel column ENTIRELY (not just empty — the
@@ -133,6 +140,16 @@ outstanding work); the rest are still-open follow-ups worth a look.
    - Depends on/relates to the queued breadcrumb fix above (stale "Property settings" segment)
      — both touch the same crumb-generation logic in `renderChainBody`'s handling of a
      records-style drill-down; worth implementing together to avoid touching that logic twice.
+4. **New standing rule: a `tabs`-type node with only ONE tab shouldn't show a tab strip at
+   all — collapse straight to that tab's content.** Caught via Users' new "User details" tab
+   in single-property mode (no "Properties" tab there, so it's the only one) — showing a
+   1-item tab strip is pointless UI, the same problem `type: 'systems'` already solves for a
+   single connected system (collapses straight to sections, no picker). Generalize this as a
+   rule for the GENERIC `tabs` content type itself, not a Users-specific fix — apply it
+   wherever a `tabs` node resolves to exactly one visible tab (after `mpOnly` filtering, etc.),
+   not just this one case. Likely affects: `buildUserNode`'s single-property case (just
+   confirmed), and worth checking whether any other existing `tabs` node could ever resolve to
+   exactly one visible tab under some account-type/property-count combination.
 
 ## Open questions
 
