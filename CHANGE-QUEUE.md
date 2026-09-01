@@ -12,6 +12,30 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
+## Progress so far (updated live while implementing — user stepped away, said to keep going)
+
+Implemented and pushed, in this order: the Insights scope-switcher sketch (foundational
+section below), item 5 (LH + Front desk), items 1/3/4/6/9 together (Property rename, Channels,
+Products heading, Health check real content, Metasearch), item 8 (My insights + starring),
+and item 7's standard-margin sub-piece. Two real regressions were caught and fixed along the
+way — see git log on `refactor/structure-cleanup` for full detail on both:
+- `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
+  content across the whole app silently stopped rendering after the prior session's chain
+  refactor — not just something touched today.
+- The standard content-margin wrapper was being applied per-nesting-level instead of once,
+  double-padding any tabs-within-tabs case to 48px instead of 24px.
+
+Two decisions were made without live user input, since they were reversible/low-risk and the
+user had explicitly said to just keep going rather than wait: the exact 2 items chosen to
+illustrate My insights' starring (Weekly performance/Channel comparison, plus Portfolio health
+for multi-property — arbitrary, no significance to which ones), and Health check's tabs given
+`sketch: 'list'` as a first-pass page-type (flagged inline to reconsider once `table` exists).
+Neither is a real fork — cheap to change on review.
+
+**Still remaining from item 7** (not yet done): the `table` and dashboard-card-grid patterns,
+full-width list treatment (+ the narrow breadcrumb-clarity exception for real item names),
+and the full retrofit pass assigning a page-type to every existing item. Continuing now.
+
 ## Suggested implementation order (added after a pre-implementation review)
 
 Reviewed the queue against the current code to catch dependencies before starting:
