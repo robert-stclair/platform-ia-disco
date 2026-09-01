@@ -10,6 +10,10 @@ then implement it in `renderSketch`/`renderSectionShape` in `src/main.js` and th
 matching rules in `src/style.css`. Keep this file and the code in sync — this is the
 single reference for "how do I wireframe X," not a description that can drift.
 
+**See `nav-data.js`'s top comment** for the full retrofit table — every existing
+item's assigned page-skeleton type, kept explicit rather than implicit
+(CHANGE-QUEUE.md item 7). Update that table whenever an item's content/type changes.
+
 ## Top-level canvas sketches (`content.sketch`)
 
 These render as the whole content of a `sketch`-type node (a tab, a leaf item).

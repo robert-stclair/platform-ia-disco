@@ -19,7 +19,7 @@
 //     | { type: 'tabs', tabs: Node[] }             // horizontal tab strip; each tab is a Node
 //     | { type: 'list', items: Node[] }            // vertical sub-nav list (packed away until its parent is clicked)
 //     | { type: 'properties', names: string[] }    // clickable property names; selecting one shows PROPERTY_NODE's content
-//     | { type: 'sketch', sketch: 'field'|'chips'|'cols'|'list'|'media', sections?: [{title, shape}] }
+//     | { type: 'sketch', sketch, ... }            // see PATTERNS.md for every `sketch` value + its own options
 //     | { type: 'systems' }                        // "Integrated systems"-style: system count drives whether a
 //                                                   //   systems list appears before the selected system's content
 //
@@ -27,6 +27,46 @@
 // production screenshots or decided in conversation. Sketches show real
 // card titles where confirmed, but wireframe blocks underneath — no
 // field-level labels or copy.
+//
+// ---------------------------------------------------------------------------
+// Page-skeleton type retrofit (CHANGE-QUEUE.md item 7) — every existing
+// item's assigned type, so the mapping is explicit rather than implicit.
+// Update this table whenever an item's content/type changes.
+//
+//   Item                                    | Type              | Notes
+//   ----------------------------------------|--------------------|------
+//   PROPERTY_NODE's 6 tabs                  | stacked cards      | sketch:'sections'
+//   PROPERTY_NODE > Media library            | card grid (media)  | sketch:'media'
+//   PROPERTY_NODE > Integrated systems       | stacked cards      | sketch:'sections' via 'systems' type
+//   Direct Booking > Selling tools's 2 tabs  | stacked cards      | sketch:'sections'
+//   Direct Booking > Setup's 7 tabs          | stacked cards      | sketch:'sections'
+//   Direct Booking > Branding                | none yet           | content: null, stub
+//   Configuration > Users                    | list               | sketch:'list'
+//   Configuration > Channels                 | none yet           | content: null, stub — page-type TBD
+//   Configuration > Channels Plus            | none yet           | content: null, stub
+//   Configuration > Metasearch               | none yet           | content: null, stub
+//   Configuration > Manage products          | none yet           | content: null, stub
+//   Configuration > Brands, Clusters (MP)     | none yet           | content: null, stub
+//   Distribution > Inventory, Rate plans,     | none yet           | content: null, stub
+//     Yield rules
+//   Distribution > Health check's 7 tabs     | list               | sketch:'list' — RECONSIDER as 'table' once
+//                                                                    real column data is known (these are error/
+//                                                                    status listings; a table may fit better)
+//   Insights > Dashboard, Recommendations     | none yet           | content: null, stub. Dashboard is the
+//                                                                    obvious 'dashboard-cards' candidate once
+//                                                                    real card titles are confirmed — only
+//                                                                    "Property Status" is confirmed so far
+//                                                                    (CONTEXT.md's usage-data reference points)
+//   Insights > My insights > Dashboards,      | list               | sketch:'list', starredRows (illustrative)
+//     Charts
+//   Transactions > Reservations, Guest        | none yet           | content: null, stub
+//     communications, Payments
+//
+// 'table' and 'dashboard-cards' patterns exist (PATTERNS.md) but nothing
+// currently uses them — every real content item so far has fit 'sections'
+// (stacked cards), 'media' (card grid), or 'list'. Assign one of the two
+// unused types only once a real page confirms it fits better than what's
+// already there — don't force a type onto content just to use it.
 
 const BASE_RAIL_ITEMS = [
   { key: 'insights', label: 'Insights', icon: 'insights' },
