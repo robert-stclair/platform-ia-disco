@@ -24,15 +24,19 @@ Reviewed the queue against the current code to catch dependencies before startin
    arguments and will need `state.accountType` threaded through, same pattern as
    `getContent(state.accountType, state.propertyCount)` already uses. Call it out explicitly
    so it isn't a surprise mid-implementation.
-2. **#1, #3, #4, #6 next**, any order among themselves — all independent, all touch
-   `buildSmContentTree`/`buildConfigurationPropertiesItem` in `nav-data.js` (Configuration +
-   Distribution items), don't touch `RAIL_ITEMS`.
+2. **#1, #3, #4, #6, #8 next**, any order among themselves — all independent of each other and
+   of #5, all touch `buildSmContentTree`/`buildConfigurationPropertiesItem` (or, for #8,
+   Insights' own section) in `nav-data.js`, don't touch `RAIL_ITEMS`.
 3. **#7 last**, specifically the "full retrofit pass" part — it assigns a page-type to EVERY
-   panel item, so it should run after #1/#3/#4/#6 exist (Metasearch, Health check, Manage
-   products, the renamed Property item) rather than before, or it'll need re-doing once those
-   land. The new pattern-building part of #7 (table, dashboard card grid, full-width list,
-   standard margin) has no ordering dependency and could technically start anytime, but
-   logically pairs with the retrofit since the retrofit is what exercises the new patterns.
+   panel item, so it should run after #1/#3/#4/#6/#8 exist (Metasearch, Health check, Manage
+   products, the renamed Property item, My insights/Dashboards/Charts) rather than before, or
+   it'll need re-doing once those land. The new pattern-building part of #7 (table, dashboard
+   card grid, full-width list, standard margin, folder-vs-heading rule, starred-row indicator)
+   has no ordering dependency and could technically start anytime, but logically pairs with
+   the retrofit since the retrofit is what exercises the new patterns — and #8 specifically
+   NEEDS the starred-row pattern from #7 to exist before it can render its star indicators, so
+   build that particular sub-piece of #7 before or alongside #8, even though the rest of #7
+   (the retrofit proper) still comes last.
 
 ## Queued (not yet implemented)
 
@@ -109,6 +113,37 @@ Reviewed the queue against the current code to catch dependencies before startin
    - Process note: user wants to be PROMPTED per page/item for which of the 4 types fits,
      rather than have it decided unilaterally — when implementing, ask before assigning a
      type to any item where it isn't already obvious/existing.
+   - **New standing rule, decided while queuing #8 below — add to PATTERNS.md as part of this
+     item's pass:** FOLDER (chevron, collapsed by default, like Direct Booking) vs. GROUPING
+     HEADING (like Products, always-expanded, no chevron) — use a folder when the label is
+     itself a nav concept whose children are hidden until opened; use a heading when you're
+     just visually clustering already-visible sibling items with no expand/collapse. This
+     governs both #4 (Products = heading) and #8 (My insights = folder) below.
+8. **Insights: add "My insights" (folder) containing Dashboards + Charts, both list pages,
+   with a non-functional "starred" visual indicator.** Replaces the existing informal `ugc`
+   array (`insights.ugc`: Weekly performance/Channel comparison/Portfolio health — currently a
+   flat, unlabeled block rendered below Dashboard/Recommendations) with a proper structured
+   item:
+   - "My insights" is a FOLDER-type L2 item (per the new rule above) — collapsed by default,
+     chevron, expand reveals two children: "Dashboards" and "Charts". Both are `sketch: 'list'`
+     pages (users create their own dashboards/charts here).
+   - **Starring, visual only — not functional yet:** a couple of items in the Dashboards/
+     Charts lists show a filled-star indicator (to communicate the concept), AND the same
+     starred items appear promoted/duplicated up into the MAIN Insights item list (alongside
+     Dashboard/Recommendations at the top), also with a star shown. This is purely illustrative
+     — no actual starring interaction, no real click-to-star toggle; just enough to show the
+     idea visually. Confirm with user before/while implementing exactly which 1-2 items in
+     each list get the illustrative star, since "a couple" wasn't more specific.
+   - **New pattern needed:** a star indicator on a list row — doesn't exist in PATTERNS.md yet
+     (`.wf-list__row` has no starred variant). Add as part of #7's pattern-building pass.
+   - **Structural note:** promoting a starred item from a nested folder up into the TOP-LEVEL
+     item list is new — today the top-level item list (`data.items`) and a folder's children
+     are two separate, non-overlapping renders. This needs either (a) a small amount of
+     synthetic/duplicated data (the promoted items literally appear in both places in
+     `nav-data.js`, simplest for a static wireframe), or (b) an actual "promoted" flag read at
+     render time from the same underlying list. Given this is illustrative/non-functional per
+     the confirmed answer above, favor (a) — simplest, no new render logic needed — unless
+     asked otherwise.
 
 ## Open questions
 
