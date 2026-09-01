@@ -52,6 +52,21 @@ Open questions specific to this group:
   model enforces one shared config across bulk-selected entities (Group Rate Plan → Property
   Rate Plan → Property Room Rate), where single-property Platform allows per-entity config.
   Does a non-MP multi-property account get bulk editing at all, and if so which model?
+- **Channels/OTA subscriptions — scoping resolved, placement still open.** A "Channels" item
+  (list of subscribed OTAs/channels + their management, e.g. Booking.com/Expedia) is wanted.
+  Scoping question — resolved via knowledge-base research: confirmed production MP routes
+  include a "Channel adoption view" (`/all-properties/distribution/adoption`) working across
+  multi-property accounts today, so channel connections DO span multi-property, at the
+  account/portfolio level (not purely per-property). This is the SAME shape of open question
+  as bulk rate distribution above (both touch the redesign's stated goal of better bulk-action
+  support across properties) — MP's confirmed "one shared config across bulk-selected
+  entities" tension for rate plans may apply identically to bulk channel management; not yet
+  designed. Placement (Distribution vs. Configuration) is queued as CHANGE-QUEUE.md item #9,
+  still open. **Not the same thing as Health check** (a separate Distribution item, queued as
+  item #6 with real confirmed content sourced from the same MP routes research) — a couple of
+  Health check's tabs happen to mention channels (Disabled channels, Channels awaiting
+  connection setup) but that's a domain-content overlap, not an IA relationship; don't let
+  Health check's placement or design inform Channels' or vice versa.
 - Does Transactions differ here at all? Flagged as unexamined in `CONTEXT.md` — worth an
   explicit "no differences found" pass rather than leaving it as "presumed same."
 

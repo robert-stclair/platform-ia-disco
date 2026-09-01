@@ -76,10 +76,20 @@ Reviewed the queue against the current code to catch dependencies before startin
      `accountType`/`propertyCount`), not a bolted-on `lhOnly` flag on the existing constant
      array. Also updates `CONTEXT.md`'s "the rail... is constant across the entire spectrum"
      decision and `IA-BY-USER-TYPE.md`'s LH section (currently "fully undefined by design").
-6. **Add "Health check" to Distribution's panel.** New L2 item, LAST in the order: Inventory,
-   Rate plans, Yield rules, (Properties if shown), Health check. Stub for now —
-   `content: null`, same treatment as Channels Plus (renders, selectable, empty canvas, no
-   placeholder content until real content is confirmed).
+6. **Add "Health check" to Distribution's panel — now with real confirmed content.** New L2
+   item, LAST in the order: Inventory, Rate plans, Yield rules, (Properties if shown), Health
+   check. **Updated from stub to real content**, sourced from confirmed production MP routes
+   (`/all-properties/health-check/*`) found via knowledge-base research: Health check is a
+   TABS page (not a single sketch) with these tabs — Failed PMS deliveries, Delayed updates,
+   Disabled channels, Channels awaiting connection setup, Mapping errors, Disabled channel
+   rates, Distribution and system status. Page-skeleton type for these tabs TBD per item #7's
+   per-item prompting process — ask when implementing.
+   **Note: Health check and Channels (#9) are separate, unrelated items** — a couple of Health
+   check's tab labels happen to mention "channel" (they're diagnostics/error monitoring
+   generally, covering PMS sync and distribution status too, not just channels specifically),
+   but that's incidental wording overlap, not a real product relationship. Don't place them
+   near each other or treat one as informing the other's design — user explicitly flagged this
+   after an earlier draft of this queue conflated them.
 7. **Lightweight page-skeleton "design system" — 4 canonical page types + full retrofit.**
    Goal: a small, consistent set of page-shape patterns to choose from per item, prompted
    per-item rather than invented ad hoc. Four types (against what's already in PATTERNS.md):
@@ -144,6 +154,18 @@ Reviewed the queue against the current code to catch dependencies before startin
      render time from the same underlying list. Given this is illustrative/non-functional per
      the confirmed answer above, favor (a) — simplest, no new render logic needed — unless
      asked otherwise.
+9. **Add "Channels" — the actual OTA subscription/management list (Booking.com, Expedia,
+   etc.).** A completely separate item from Health check (#6) — see the note on #6 above; not
+   related, don't place them near each other or design one against the other. Originally
+   raised as an open scoping question (does this exist per-property or account-wide for
+   multi-property?) — now partially resolved via knowledge-base research: confirmed production
+   MP routes include a "Channel adoption view" (`/all-properties/distribution/adoption`)
+   working across multi-property accounts today, so channel management DOES span
+   multi-property, at the account/portfolio level — not purely per-property. Scope for this
+   item: a list of currently-subscribed channels/OTAs + their management (add/remove/configure
+   a channel connection).
+   - **Placement still open** — Distribution vs. Configuration both remain plausible; not yet
+     decided. See open question below.
 
 ## Open questions
 
@@ -163,6 +185,23 @@ Reviewed the queue against the current code to catch dependencies before startin
   does LH's "same as SM" content include the account-type/property-count Properties-gating
   logic unchanged (i.e. an LH account with multiple properties still gets a Properties tab
   the same way SM does), or does LH have its own property-count story?
+- **Channels (#9) placement — Distribution vs. Configuration, decide on its own merits.**
+  Both remain plausible: Distribution (a distribution-channel concept, alongside
+  Inventory/Rate plans/Yield rules) vs. Configuration (a setup/connection concern, alongside
+  Direct Booking/Channels Plus/the new Products heading — "configure this account's
+  connections" rather than "distribute inventory"). Note: Channels and Health check share a
+  domain relationship in the real product (both concern OTA/channel connections generally),
+  but NOT an IA relationship — Health check's location should not be used as a reason for or
+  against where Channels sits; decide Channels' placement independently. Not yet decided —
+  ask before implementing #9.
+- **Channels (#9) bulk-management story** — the redesign's stated goal is better bulk-action
+  support across properties for the multi-property cohort. Given channel connections are
+  confirmed to already work across multi-property accounts (MP's existing Channel adoption
+  view), what does BULK channel management actually look like here (e.g. subscribe/configure
+  one channel across many properties at once)? Not designed yet — flag for a follow-up
+  conversation, likely informed by the same MP-bulk-primitives caveat already noted in
+  `IA-BY-USER-TYPE.md` (MP enforces one shared config across bulk-selected entities, where
+  single-property Platform allows per-entity config) — Channels may hit the identical tension.
 
 ## Done (moved here once implemented, then cleared)
 
