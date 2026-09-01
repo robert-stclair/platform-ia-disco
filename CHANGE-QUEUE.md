@@ -12,7 +12,7 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: EVERY numbered item so far (1–17) is implemented and pushed** (see `## Done` below
+**Status: EVERY numbered item so far (1–21) is implemented and pushed** (see `## Done` below
 for a summary of each, and git log on `refactor/structure-cleanup` for full detail). Not yet
 merged to `main` — still on the refactor branch, awaiting review. The only unfinished thread is
 the foundational property/cluster/brand scope switcher (its own section below) — Distribution's
@@ -52,10 +52,10 @@ outstanding work); the rest are still-open follow-ups worth a look.
 - **[OPEN]** Health check's 7 tabs use `sketch: 'list'` as a first-pass page-type choice —
   flagged to reconsider as `sketch: 'table'` once real column data for these error/status
   listings is known (they may fit a table better than a flat list).
-- **[OPEN]** The dashboard-card-grid pattern (`sketch: 'dashboard-cards'`) is built and
-  documented but not wired onto Insights' own Dashboard item, which still has `content: null`
-  — needs real card titles first; only "Property Status" is confirmed anywhere in the docs
-  (`CONTEXT.md`'s usage-data reference points).
+- **[FIXED]** The dashboard-card-grid pattern is now wired onto Insights' Dashboard and every
+  custom dashboard/chart (`CUSTOM_DASHBOARD_NODE`) — confirmed with user it needs NO titles at
+  all (a mix of real + skeleton titles "gets weird"); every card is titleless, sized larger
+  per "make them larger." Fixed in commit `e1d08e8`.
 - **[FIXED]** Breadcrumb showed a stale/wrong 3rd segment once drilled into a specific
   property's own tabs (`PROPERTY_NODE.label` still literally "Property settings"). Fixed by
   treating a detail node's own tabs (reached via an explicit `records` drill-down) as a new
@@ -226,3 +226,18 @@ current implementation, not just a leaning anymore.
     `display: none`, not just emptying it, which would still reserve its fixed width) — the
     first content item to opt out of the L2 panel entirely. User's stated reason: "this is
     what customers always want for the calendar is max space," a confirmed product need.
+18. **Scope switcher gets a custom dropdown chevron.** `appearance: none` was stripping the
+    native `<select>` arrow entirely — added a custom SVG chevron via `background-image` so it
+    still visibly reads as a dropdown.
+19. **Dashboard-cards pattern wired up, titleless throughout.** Insights' Dashboard and every
+    custom dashboard/chart (new `CUSTOM_DASHBOARD_NODE`) use the dashboard-cards skeleton — NO
+    titles at all, ever (reversed an earlier one-real-title choice; mixing real + skeleton
+    titles "gets weird"), skeleton title bar sized larger ("make them larger").
+20. **"Dashboards"/"Charts" (under My insights) are now clickable `records` pickers**, same
+    generic pattern as Properties/Users, each name opening `CUSTOM_DASHBOARD_NODE`. The
+    illustrative star now shows on the actual picker row too (new `starredNames` support in
+    `renderRecordPicker`), not just the duplicated top-level item — sample names include
+    "Weekly performance"/"Portfolio health"/"Channel comparison" so the star visibly lines up
+    with the promoted items using the exact same names.
+21. **"Recommendations" changed from `content: null` to `sketch: 'list'`** — a list-type page
+    like Users/Health check's tabs, per user's direction.
