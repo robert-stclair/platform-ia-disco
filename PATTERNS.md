@@ -207,7 +207,7 @@ Three different things can sit in the panel item list — don't conflate them:
 |---|---|---|
 | **Folder** (`content.type: 'list'`) | Collapsed by default, chevron, clicking expands/collapses (does NOT navigate), children hidden until expanded | Direct Booking, My insights |
 | **Grouping heading** (`{ heading: true, label }`) | Always-expanded, no chevron, never clickable — purely visually clusters already-visible sibling items under a label | Products |
-| **Action row** (`{ actionIcon: '+', ... }`) | Plain clickable item, same as any normal panel item, but with a leading icon marking it as an ACTION (does something) rather than a navigable settings page | Add products |
+| **Action row** (`{ actionIcon, ... }`) | Plain clickable item, same as any normal panel item, but with a leading icon marking it as an ACTION (does something) rather than a navigable settings page | Add products (`+`); My account's Support code (`?`) and Logout (power icon) |
 
 Use a folder when the label is itself a nav concept whose children are hidden
 until opened. Use a heading when you're just visually clustering already-visible

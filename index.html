@@ -18,9 +18,9 @@
           <span class="rail__brand-mark" aria-hidden="true"></span>
         </div>
         <div class="rail__items" id="rail"></div>
-        <div class="rail__user">
+        <button class="rail__user" id="railUser" aria-label="My account">
           <span class="rail__user-avatar" aria-hidden="true">RS</span>
-        </div>
+        </button>
       </nav>
       <aside class="secondary-panel" id="secondaryPanel" aria-label="Section navigation"></aside>
       <main class="canvas" id="canvas"></main>
@@ -63,6 +63,14 @@
       <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Integrated systems count">
         <button class="is-active" data-system-count="single">Single system</button>
         <button data-system-count="multiple">Multiple systems</button>
+      </div>
+    </div>
+
+    <div class="settings-sheet__group">
+      <div class="settings-sheet__label">Live link</div>
+      <div class="settings-sheet__hint">
+        <a href="https://platform-ia-disco-rsc-6b3452000036.herokuapp.com/" target="_blank" rel="noopener">platform-ia-disco-rsc-6b3452000036.herokuapp.com</a>
+        &mdash; auth: <code>platform-ia</code> / <code>futurestate</code>
       </div>
     </div>
   </div>

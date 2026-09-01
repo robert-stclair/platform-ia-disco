@@ -13,12 +13,29 @@ Running list of requested changes to batch and implement together, instead of on
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
 **Status: every queued item across all batches so far is implemented and pushed** — the
-original numbered batch (1–21, see `## Done` below) AND the Distribution batch (1–7, just
-below this status line). Not yet merged to `main` — still on the refactor branch, awaiting
-review. The only unfinished thread is the foundational property/cluster/brand scope switcher
-(its own section below) — Distribution's shape is explicitly unsolved there, not a queue item
-to implement yet. Add new requests to a fresh numbered list below this status block as they
-come in.
+original numbered batch (1–21, see `## Done` below), the Distribution batch (1–7, just below
+this status line), and the My account batch (below that). Merged to `main` and deployed
+(Basic Auth now sits in front of the live Heroku site — see CONTEXT.md's Deployment section
+for credentials). The only unfinished thread is the foundational property/cluster/brand scope
+switcher (its own section below) — Distribution's shape is explicitly unsolved there, not a
+queue item to implement yet. Add new requests to a fresh numbered list below this status block
+as they come in.
+
+## My account batch
+
+1. **"My account" IA treatment** — production's My account was one long scrolling page (name/
+   email/phone/language, then MFA/Passkeys/Password cards below, inconsistent tinted-vs-plain
+   card treatment). Split into the same panel-list model every other section uses: reached via
+   the rail's user avatar (bottom of rail, now a real clickable button, not a static badge) —
+   not a `getRailItems` entry, so switching account type falls back to Insights same as any
+   other unrecognized section. L2 shows a flat list: **Profile** (name/contact/preferred
+   language, `sketch:'sections'`) and **Security** (MFA/passkeys/password, `sketch:'sections'`)
+   as real destinations, plus **Support code** and **Logout** as action rows (actionIcon, same
+   pattern as "Add products", `content: null` stubs) sitting in the same list rather than
+   folded into a tab strip. Deliberately flat (not a `tabs` node) specifically so the action
+   rows could sit alongside the two real destinations in one L2 list. Left open to grow — a
+   further destination (Notifications, Sessions, etc.) is a one-line addition to
+   `MY_ACCOUNT_ITEMS` in `nav-data.js`, not a restructure.
 
 ## Distribution batch — ALL 7 ITEMS DONE (commits `18a9dfd`, `5521c98`, `4396efe`)
 
@@ -153,7 +170,56 @@ technically could go.
   tension already flagged elsewhere in `IA-BY-USER-TYPE.md`/`CONTEXT.md`) — how a
   section-wide scope switcher interacts with that existing per-entity picker, and with bulk
   operations across a scoped subset of properties, is unresolved. This is likely where the
-  real design difficulty of the whole feature concentrates.
+  real design difficulty of the whole feature concentrates. The switcher is now shown visually
+  throughout Distribution (Inventory/Rate plans/Yield rules/Health check, `scopeSwitcher: true`
+  on the section) — a SKETCH ONLY, does not resolve any of the below.
+  - **Inventory specifically is its own quandary within this**, raised directly by the user:
+    "inventory is going to have to be single property... its a quandary - we cant really hide
+    it but it almost needs to force to a property." Unlike Rate plans/Yield rules/Health check,
+    "All properties" arguably isn't a meaningful state for a single inventory grid — the
+    switcher can't just disappear (per the same "does it show only when it's relevant?"
+    question raised for Insights), but may need to behave differently on Inventory than
+    elsewhere in the same section: forced/defaulted to one specific property, with "All
+    properties" removed as an option rather than just unselected. That would mean the
+    switcher's own option set varies by item within one section, not just by section — a
+    genuinely new wrinkle, not yet designed. Currently Inventory just shows the same "All
+    properties"-default switcher as everything else; deliberately not fixed yet, logged here
+    per the user's explicit "just log it for now."
+  - **Considered and set aside (for now): making the switcher sticky/global, with nav itself
+    reacting to scope** (some rail/L2 items disabled or hidden when scope isn't a single
+    property — e.g. Inventory only clickable at single-property scope). Raised by the user as
+    a possible resolution to the Inventory quandary above, then explicitly NOT committed to,
+    for two stated reasons: (1) it has real unresolved design questions of its own — disabled
+    vs. hidden vs. item-adapts-shape, and whether the boundary is per-item or per-section, since
+    Rate plans/Yield rules don't obviously share Inventory's problem; (2) a behavioral
+    objection specific to this feature's actual audience — the user pointed out that if nav
+    availability depends on scope, the low-effort user behavior is to just leave the switcher
+    parked on one property permanently and never discover the portfolio-wide views at all,
+    which would suppress the very feature this whole exploration exists to add. Combined with
+    the small target population (13.6% of accounts sit in the 2–5 property band, MP presumably
+    smaller still — see CONTEXT.md's reference data points), the user judged the added
+    complexity/risk of nav-availability logic isn't clearly worth it against a purely additive
+    model (switcher as a display filter only, nav shape never changes) where multi-property
+    users gain capability without costing single-property-habituated users anything. Keep this
+    written down as a real candidate that was considered, not silently dropped — but don't
+    build toward it without the user revisiting it.
+  - **Emerging distinction (not yet built): reporting/status pages vs. management-flow detail
+    pages** — a cleaner candidate rule than section-level on/off. Raised by the user via Rate
+    plans: production already has a per-rate-plan "Properties" tab letting one rate plan be
+    pushed to multiple properties individually (the same shape as `buildUserNode`'s Properties
+    tab, not yet built for `RATE_PLAN_NODE`/`YIELD_RULE_NODE` in this prototype). Once you're
+    inside that management flow, a portfolio scope switcher doesn't mean anything — the
+    Properties tab already answers "which properties is *this* pushed to" more precisely than
+    a view-scoping control could. But the switcher still makes real sense on the Rate
+    plans/Yield rules LIST (browsing/reporting across plans) and on Health check (pure
+    status/reporting, no per-property assignment flow underneath it at all — user confirmed
+    "something like health check it makes sense"). So the rule isn't "Distribution vs. not" —
+    it's "does a management flow with its own per-property assignment mechanism sit underneath
+    this page." Inventory doesn't fit neatly into either side (see above) and stays its own
+    open quandary. Nothing built yet — RATE_PLAN_NODE/YIELD_RULE_NODE still lack a Properties
+    tab, and the switcher still shows uniformly across all of Distribution's items — logged
+    per the user's "just log it" — but this is the leading candidate rule to implement next
+    time this is picked up.
 - **Transactions** — not yet discussed at all; no stated position either way.
 
 **Known open threads this connects to (don't design in isolation from these):**

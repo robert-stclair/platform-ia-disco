@@ -49,6 +49,7 @@ function resetPath() {
 }
 
 const railEl = document.getElementById('rail');
+const railUserEl = document.getElementById('railUser');
 const panelEl = document.getElementById('secondaryPanel');
 const canvasEl = document.getElementById('canvas');
 
@@ -236,15 +237,29 @@ function renderRail() {
       render();
     });
   });
+
+  railUserEl.classList.toggle('is-active', state.section === 'my-account');
 }
 
+// My account isn't a rail item (getRailItems is unaffected) — it's reached
+// via this separate avatar button instead, but follows the exact same
+// section-switch mechanism as a rail item click.
+railUserEl.addEventListener('click', () => {
+  if (state.section === 'my-account') return;
+  state.section = 'my-account';
+  resetPath();
+  render();
+});
+
 // EXPLORATORY — property/cluster/brand scope switcher sketch. See
-// CHANGE-QUEUE.md "Foundational, unsolved" section: only wired up for
-// Insights so far (the confirmed "easy" case); Distribution/Transactions
-// deliberately untouched since their shape isn't solved yet. Renders a
-// single <select> — simplest possible sketch, not a final interaction
-// design. Options: All properties, then every individual property, then
-// (MP only) Brands and Clusters as scoping groups.
+// CHANGE-QUEUE.md "Foundational, unsolved" section — a section-level
+// `scopeSwitcher` flag controls where this shows (currently Insights and
+// Distribution wholesale, NOT per-item yet — see CONTEXT.md's per-section
+// audit for the target per-item shape, e.g. Rate plans/Yield rules
+// shouldn't have this, Inventory needs a different mechanism entirely).
+// Renders a single <select> — simplest possible sketch, not a final
+// interaction design. Options: All properties, then every individual
+// property, then (MP only) Brands and Clusters as scoping groups.
 function renderScopeSwitcher() {
   const groups = [];
   groups.push(`<option value="all:" ${state.scope.type === 'all' ? 'selected' : ''}>All properties</option>`);

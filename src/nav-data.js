@@ -98,6 +98,14 @@
 //     Payments
 //   Front desk (LH only) > Calendar           | calendar           | sketch:'calendar'; section has
 //                                                                    noPanel: true (max width, no L2)
+//   My account > Profile, Security            | stacked cards      | sketch:'sections' each — flat panel items
+//                                                                    (not a tabs node), reached via the rail's
+//                                                                    user avatar rather than a rail item; splits
+//                                                                    up what was one long scrolling page
+//   My account > Support code, Logout         | none yet           | content: null, stub. Action-row pattern
+//                                                                    (actionIcon), same L2 list as Profile/
+//                                                                    Security so they can sit together as plain
+//                                                                    action rows rather than tabs
 
 const BASE_RAIL_ITEMS = [
   { key: 'insights', label: 'Insights', icon: 'insights' },
@@ -223,6 +231,61 @@ export const PROPERTY_NODE = {
     ],
   },
 };
+
+// My account — reached via the rail's user avatar, not a rail item itself
+// (getRailItems is unaffected). Unlike PROPERTY_NODE/buildUserNode, this
+// isn't one tabs node — Profile and Security are separate top-level panel
+// items (flat list, like Configuration's), so Support code and Logout can
+// sit alongside them in the same L2 list as plain action rows rather than
+// being folded into a tab strip. Deliberately left open to grow — a further
+// destination (e.g. Notifications, Sessions) is a one-line addition here,
+// not a restructure.
+const MY_ACCOUNT_ITEMS = [
+  {
+    key: 'profile',
+    label: 'Profile',
+    active: true,
+    content: {
+      type: 'sketch',
+      sketch: 'sections',
+      sections: [
+        { title: 'Name', shape: 'field' },
+        { title: 'Contact', shape: 'cols' },
+        { title: 'Preferred language', shape: 'field' },
+      ],
+    },
+  },
+  {
+    key: 'security',
+    label: 'Security',
+    content: {
+      type: 'sketch',
+      sketch: 'sections',
+      sections: [
+        { title: 'Multi-factor authentication', shape: 'field' },
+        { title: 'Passkeys', shape: 'field' },
+        { title: 'Password', shape: 'field' },
+      ],
+    },
+  },
+  // Action rows (PATTERNS.md's third panel-list pattern, alongside folder/
+  // heading) — plain-clickable but visually distinct from the destinations
+  // above via actionIcon, same treatment as Configuration's "Add products".
+  // Neither has real content — clicking through isn't the point of a
+  // wireframe stub for a sign-out/support-code action.
+  {
+    key: 'support-code',
+    label: 'Support code',
+    actionIcon: '?',
+    content: null,
+  },
+  {
+    key: 'logout',
+    label: 'Logout',
+    actionIcon: '⏻',
+    content: null,
+  },
+];
 
 // EXPLORATORY — sample user names for the generic `records` pattern
 // (CHANGE-QUEUE.md item 3). Generic realistic names, not real confirmed
@@ -614,6 +677,12 @@ function buildSmContentTree(showProperties) {
         // Configuration's own Properties item is unrelated and unaffected.
         HEALTH_CHECK_ITEM,
       ],
+      // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
+      // section. Visual sketch only: showing the switcher present throughout
+      // Distribution does NOT resolve how it interacts with Distribution's
+      // bulk rate distribution tension — that's still flagged as the hard,
+      // unsolved case, this just makes the shape visible to react to.
+      scopeSwitcher: showProperties,
     },
     transactions: {
       items: [
@@ -673,6 +742,11 @@ function buildSmContentTree(showProperties) {
 export function getContent(accountType, propertyCount) {
   const showProperties = accountType === 'MP' || propertyCount === 'multiple';
   const tree = buildSmContentTree(showProperties);
+  // My account — not a rail section (getRailItems is unaffected), reached
+  // via the rail's user avatar instead. Same regardless of account type/
+  // property count, so it's added here rather than inside
+  // buildSmContentTree.
+  tree['my-account'] = { items: MY_ACCOUNT_ITEMS };
   if (accountType === 'LH') {
     // Front desk (CHANGE-QUEUE.md item 1) — LH's own rail item (see
     // getRailItems). `noPanel: true` tells render() to hide the L2 panel

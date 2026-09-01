@@ -100,7 +100,279 @@ background pill; a truly routed/selected item gets the pill. Breadcrumbs only ap
 there's a real multi-level trail (a single root crumb with nothing above/below it is
 suppressed as noise).
 
+## Candidate model (not yet decided): libraries vs. assignment
+
+Raised by the user while working through why a portfolio scope switcher didn't make sense on
+Distribution's Rate plans/Yield rules once you're inside a specific plan's own detail (see
+CHANGE-QUEUE.md's "Foundational, unsolved" section for that thread) — **not yet a decision**,
+but promoted here because it reframes several previously-separate open questions as one idea,
+not because it's settled.
+
+**The idea:** some Distribution concepts — Rate plans, Yield rules, and likely Extras/Promos —
+aren't really "per-property things" or "portfolio-wide things." They're reusable *definitions*
+(a library) that get *assigned* to one or more properties as a separate, later act. A rate plan
+like "Weekend surcharge" means the same thing everywhere until it's actually attached to a
+property; defining it and assigning it are two different acts that today's IA conflates.
+
+**Why it's appealing:**
+- It resolves the "does the switcher belong here" question at the list level entirely — you're
+  not scoping a view of properties when browsing the library, so the list needs no scope
+  switcher at any property count. Scoping only matters at the assignment step (a Properties tab
+  on the specific rate plan/yield rule, mirroring `buildUserNode`'s Properties tab — not yet
+  built for `RATE_PLAN_NODE`/`YIELD_RULE_NODE`).
+- It collapses invisibly for single-property accounts (~85% of accounts) — the library just
+  looks like "here's my list of rate plans," same as today, no new concept to learn. For MP
+  accounts it becomes genuinely useful: define once, assign to several properties or a cluster,
+  rather than redefining per property.
+- Consistent with "one IA, not two" (see above) — the same list page works unchanged across the
+  whole single→MP spectrum; only whether the assignment step has more than one property to
+  choose from changes.
+- Connects to (without fully resolving) the bulk rate distribution tension noted below, and to
+  Channels' own bulk-management open question (CHANGE-QUEUE.md item 9's follow-up).
+
+**Where it doesn't obviously fit — flagged as a live doubt, not resolved:** Room types was
+floated as a possible fourth example (echoing the speculative "manage centrally across
+properties" aside from the Distribution batch — see `PROPERTY_NODE > Room types` in
+`nav-data.js`'s type-retrofit table), but the user pushed back: a room type isn't a
+context-free reusable definition the way a rate plan is — "Deluxe King" at Property A and
+"Deluxe King" at Property B are two physically distinct rooms that happen to share a name/
+category, not one thing being reused. Centralizing it as a true library item risks implying a
+shared identity that doesn't really exist; it may be closer to "a shared category label
+optionally applied when creating a room type per property" than a real library/assignment
+split. Don't fold Room types into this pattern as a confirmed example — it needs its own
+thinking.
+
+**Not yet built anywhere in this prototype** — `RATE_PLAN_NODE`/`YIELD_RULE_NODE` are still
+plain stubs with no Properties/assignment tab, and Distribution's scope switcher still shows
+uniformly across all its items (see CHANGE-QUEUE.md). This section exists to hold the shape of
+the idea, not to describe current behavior.
+
+## Candidate model (not yet decided): scope switcher rule + sticky per-instance scope
+
+Grew out of the user asking "is there a way to get the top-level IA to a state where for the
+major sections it's either switcher or no switcher, for a clean mental model" — worth reading
+alongside the libraries-vs-assignment section above, since both came out of the same
+conversation about Rate plans. **Not yet built — nothing in this prototype's code reflects
+this yet.** `state.scope` is still one shared, non-persistent value reset by `resetPath()` on
+every section switch (`src/main.js`), and `scopeSwitcher` is still a per-SECTION flag
+(Insights/Distribution wholesale), not per-item.
+
+**The rule that emerged (page-type, not section-level):** a rail section is not uniformly
+switcher/no-switcher — the answer instead follows the *kind of page*, and this cuts across
+rail sections:
+- **Reporting/status pages get it**: Insights' Dashboard (system + starred/promoted), My
+  insights' Dashboards, Recommendations, and Distribution's Health check. Confirmed one at a
+  time by the user, including an explicit reversal on Charts mid-conversation (see below) — do
+  not treat any one confirmation as generalizing to the others without asking.
+- **Library/definition pages don't get it**: Distribution's Rate plans/Yield rules LISTS (see
+  the libraries-vs-assignment section above) — browsing a library isn't a property-scoped
+  activity, full stop, at any property count. This specific case (Rate plans/Yield rules lists)
+  is still pending the user's direct confirmation — flagged as the leading candidate, not yet
+  asked outright.
+- **My insights' Charts — confirmed to KEEP the switcher, after a real reversal worth noting
+  for how this reasoning can go wrong:** first pass reasoned Charts are "portfolio-wide by
+  nature" (a comparison chart makes more sense across properties than pinned to one) and
+  concluded no switcher was needed at all. The user corrected this: chart authoring needs a
+  data source, which raised the question of whether scope should be fixed at chart-creation
+  time instead of adjustable while viewing — but the user then clarified scope is NOT part of
+  a chart's configuration, since "the scope can be changed anyway when it's on a dashboard."
+  That reasoning means Charts behaves exactly like Dashboards after all — switcher stays. The
+  lesson: "portfolio-wide by nature" was the wrong test — the right test is whether scope is
+  meant to be changeable at VIEW time, independent of what makes sense to build/author with.
+- **Inventory remains its own unresolved quandary** (see the Distribution section further up)
+  — doesn't fit cleanly as reporting or library; not resolved by this rule.
+- Distribution, Configuration, and Transactions have not yet been walked through item-by-item
+  against this rule — Insights is the only section fully interviewed so far (see below).
+
+**Per-section audit — COMPLETE**, done as a one-question-at-a-time interview across all four
+rail sections (item by item, not assumed from the page-type rule alone — Insights itself needed
+real back-and-forth on Charts before landing correctly, so treat each answer below as a
+specific confirmed decision, not a pattern to extrapolate further without asking):
+
+- **Insights.** Dashboard (system + starred/promoted): switcher. Recommendations: switcher (a
+  recommendation can be property-specific, e.g. "this property should adjust its rate"). My
+  insights → Dashboards: switcher. My insights → Charts: switcher (see the reversal above — do
+  not remove this again without re-confirming).
+- **Distribution.** Rate plans list, Yield rules list: NO switcher — confirmed as libraries,
+  browsing definitions isn't a property-scoped activity (see libraries-vs-assignment section
+  above). Health check: switcher (reporting/status, no assignment flow underneath it). Inventory
+  gets a THIRD shape, not simply switcher/no-switcher — see its own write-up just below.
+- **Configuration.** Switcher-free for Properties, Users, Channels — already "pick a
+  property/entity, manage it directly," a portfolio viewing switcher adds nothing on top of
+  inherently single-entity management. **CORRECTION, don't treat as settled: the Products group
+  (Direct Booking, Channels Plus, Metasearch) is explicitly EXCLUDED from this "switcher-free"
+  call — see the dedicated open thread below.** The blanket answer was given before that group
+  was considered specifically, and turned out to be premature for it.
+- **Transactions.** Switcher-free entirely (Reservations, Guest communications, Payments) — a
+  transaction inherently belongs to one property's booking; no portfolio-wide view was judged
+  to make sense here, same logic as Configuration.
+
+**Inventory's resolution — a third shape, distinct from both "switcher" and "no switcher":**
+neither a page-level switcher (can't show "all properties" in one grid) nor purely switcher-free
+(an MP user still needs a way to see a specific property's inventory) fit. The shape that
+emerged: **borrow Configuration's existing Properties picker-then-drill-in pattern as the entry
+mechanism** — an MP user lands on Inventory and gets a property picker first (no default, no
+"all" option — must choose one), a single-property account skips the picker entirely and lands
+straight on its one property's grid (identical collapse logic to Configuration's Properties
+today — the user's own framing: "it's the same as what we are doing for property settings in
+principal"). The ONE addition beyond Configuration's existing pattern: once inside a specific
+property's inventory, a switcher stays available to hop to a different property directly,
+without backing out through the picker screen again — Configuration's picker today has no such
+after-the-fact switch affordance. Not yet built in this prototype — Inventory currently still
+shows the same uniform "All properties"-default switcher as the rest of Distribution (see
+CHANGE-QUEUE.md); this write-up is the target shape, not current behavior.
+
+**Candidate model (not yet decided): scope is remembered per switcher INSTANCE, not global.**
+The user is "leaning" this way but flagged the implication explicitly: if scope is sticky, it
+can't just be sticky for one dashboard as a special case — "every instance of switcher needs
+to be independent and sticky," meaning this is an architecture question, not a per-page
+setting. Concretely: today's single shared `state.scope` (reset globally on every section
+change) would need to become scope-per-dashboard/report — e.g. "Weekly performance" remembers
+being viewed at "All properties" while "Portfolio health" remembers being scoped to a cluster,
+independently, persisting across visits (not just within one session — this hasn't been asked
+outright, but "remembered" implies more than in-memory-only). **Confirmed: a switcher instance
+with no saved scope yet defaults to "All properties"** — no inheriting from whatever scope was
+last used elsewhere, a deliberately simple, predictable baseline. Real open implementation
+questions, not yet decided: where this persisted state actually lives (this is a static
+front-end prototype — real persistence would need something like `localStorage` keyed per
+dashboard, which is a meaningfully bigger lift than the current single in-memory value); and
+whether "sticky" means forever or just per session. Don't build this until it's picked back up
+— it changes the switcher from a page-level display control into effectively a saved property
+of each dashboard/report, which resonates with (but is a separate decision from) the
+libraries-vs-assignment idea above.
+
 ## Open threads (not yet resolved)
+
+- **Products group's property scope (Direct Booking / Channels Plus / Metasearch) — BLOCKED on
+  business logic, not a nav-design question yet.** The premise itself isn't confirmed: it's not
+  known whether these products' config (Direct Booking's Selling tools/Setup — Booking rules,
+  Guest details, Email settings, Translations, About page, Contact page, Policies page —
+  Channels Plus, Metasearch) is per-property, account-wide, or a mix across the group. The
+  user's own framing: "it's not clear if they make sense across a portfolio or not — business
+  logic to uncover first." Don't design a nav mechanism for this before that's answered — a
+  premature answer already had to be corrected once (Configuration was initially called
+  entirely switcher-free above, before this group was considered specifically).
+  - **If they turn out to be per-property**, a structural tension was identified: drilling into
+    any entity in this app already "spends" the L2 sidebar — it collapses to one root item and
+    all real structure moves into canvas tabs (see `PROPERTY_NODE`'s 8 tabs). If a product's own
+    config ALSO needs a property-selection layer on top of its existing tab structure (Setup
+    alone is already 7 tabs), that either double-nests navigation inside the canvas (real
+    overload risk, user's explicit concern: "we also don't want overloaded tabs which could
+    easily happen") or leaves the sidebar sitting idle exactly when a second nav layer is
+    needed. Not resolved — logged as the shape of the problem, not a chosen fix.
+  - **A candidate mechanism was floated, but is now itself corrected/incomplete — do not build
+    from it as stated:** the first idea was "property selection lives in the sidebar as a list,
+    same as Configuration's Properties." The user rejected this specifically because of scale —
+    "I don't like unbounded lists in a navigation section — for large MP groups that could be
+    hundreds of properties." This is actually a live problem in what's ALREADY built too, not
+    just this new case: `SAMPLE_PROPERTIES` and any future picker (Inventory's proposed one
+    included) render a flat list, which is fine for a handful of sample names but wrong at real
+    enterprise scale (CONTEXT.md's own reference data cites 50–100+ property accounts). Whatever
+    property-selection mechanism gets designed anywhere in this app likely needs to be a
+    searchable/typeahead picker (type to filter, select — closer in shape to a `<select>`
+    dropdown than a rendered list), probably leveraging Brands/Clusters as a narrowing layer
+    before individual-property search, rather than a scrollable name list — this applies
+    retroactively to Configuration's existing Properties picker too, not just new cases.
+  - **A further candidate — persistent switcher for all of Configuration — was raised and
+    explicitly NOT adopted as a premise:** "if all of Config was single property we'd want some
+    kind of persistent switcher, but I don't think it necessarily is." I.e. IF Configuration
+    turned out to be uniformly per-property, a persistent switcher (visible throughout
+    Configuration, letting you hop properties without re-drilling a picker each time) would be
+    the coherent answer — but the user does not believe that premise holds, so this is not
+    something to build toward without the underlying per-item business logic being confirmed
+    first. A mixed answer (some Configuration items per-property, some account-wide) would need
+    a different, not-yet-designed treatment — one uniform switcher would misrepresent whichever
+    items aren't actually property-scoped.
+  - **Other reference shapes discussed, not chosen, kept for whenever this is revisited:** (1)
+    a persistent account/entity switcher pinned to the top of an otherwise-unchanged sidebar
+    (Stripe Connect's connected-account switcher shape) — keeps the sidebar alive rather than
+    collapsing to one item; (2) nested sidebar tree instead of a flat tab strip for anything with
+    real depth like Setup's 7 items (Google Workspace admin's pattern) — tabs reserved for 2-4
+    true peers, sidebar handles hierarchy. Neither has been evaluated against confirmed business
+    logic yet, so neither is a decision.
+  - **Hiding the L2 sidebar until a property is picked was raised and rejected.** The idea:
+    for MP, hide the sidebar entirely (full-width canvas, just the picker) until a property's
+    selected, then bring the sidebar back with that product's real structure. Rejected on the
+    grounds that it breaks the one consistent promise the sidebar makes everywhere else in this
+    app — always present, even showing very little (e.g. a single collapsed root item) — right
+    at the moment (mid-navigation) a user most needs that landmark. It would also be a
+    DIFFERENT use of the existing `noPanel: true` mechanism than its only current usage (Front
+    desk's calendar, permanently full-width for that whole section) — this would need the panel
+    to flicker in and out based on in-section picker state, not stay fixed per section. Leaning
+    instead toward: the sidebar always shows SOMETHING (the picker/grouping itself lives in the
+    L2, rather than the L2 disappearing to let the canvas show it) — consistent with how
+    Configuration's Properties list already behaves (L2 shows the property list until drilled
+    in, then collapses to one root item, structure moves to canvas tabs). Not fully resolved,
+    but the "hide the whole bar" version is set aside.
+  - **Emerging candidate: split Configuration's OWN L2 into "Portfolio" and "Property" groupings,
+    not a new rail item.** Raised by the user directly: "maybe L1 needs to split into
+    portfolio-wide config and property-level config — but it'd be nice to keep it all pretty
+    close for MP vs. the single scenario." Weighed against two shapes (asked directly, chosen
+    explicitly): (a) keep it inside Configuration's existing L2 via a grouping heading (same
+    pattern already used for "Products" — see `{ heading: true, label: 'Products' }` in
+    `nav-data.js`), one heading for portfolio-wide items and one for property-level items,
+    OR (b) a genuine second L1/rail item, shown only for MP/multi-property accounts (same
+    conditional mechanism Front desk already uses for LH). **Chosen: (a), inside Configuration's
+    L2.** Reasoning: truest to the existing "one IA, not two" decision — the rail stays
+    IDENTICAL for every account type/property count, always. A single-property account would
+    simply never see the "Portfolio" heading/group at all (nothing to group under it), the same
+    invisible-collapse trick already used for Brands/Clusters and the whole Properties layer —
+    not a new kind of asymmetry, an extension of one already established. NOT YET BUILT: this
+    requires the per-item business-logic question above (which specific items are portfolio vs.
+    property scoped) to be answered first — this entry captures the STRUCTURAL shape the split
+    should take once that's known, not an implementation to do now.
+  - **Leading candidate, arrived at through several rejected alternatives: tabs move one level
+    deeper, a contextual dashboard becomes the new landing step after any entity drill-in —
+    for BOTH single-property and MP, not an MP-only surface.** This is the resolution to the
+    whole "L2 collapses to nothing, tabs absorb all the depth, MP needs a level nothing else
+    has" thread above. Arrived at by first floating a canvas-level secondary sidebar (rejected —
+    "I don't want another visible nav surface, it signals complexity, we want to make the
+    complexity calm"), then a per-tab sub-nav (chosen only as the lesser of two options, then
+    immediately flagged as still an MP-only surface — "a different surface introduced only for
+    the MP use case which kind of feels like a fail," echoing the same "one IA, not two"
+    principle already established elsewhere in this doc), before landing here.
+    - **The actual mechanism:** drilling into any entity (a property, Direct Booking, etc.) no
+      longer lands directly on a tab strip. It lands on a contextual DASHBOARD — reusing the
+      `dashboard-cards`/`sections` sketch pattern this prototype already has (currently used for
+      Insights/Health check), one card per sub-area (e.g. Direct Booking: Selling tools /
+      Setup / Branding as three cards, not three tabs). Clicking a card goes one level deeper,
+      via breadcrumb, to that specific sub-area's actual content — which may STILL be a tab
+      strip at that point, if that specific sub-area genuinely has tab-like peers underneath it
+      (e.g. once inside "Setup," Booking rules/Email settings/Translations/etc. could remain
+      tabs, now isolated from Selling tools/Branding rather than competing with them at the same
+      level). Tabs aren't eliminated — they're demoted from "the first thing you see after
+      drilling in" to "the structure inside one specific card, only where a sub-area actually
+      needs them."
+    - **Why this satisfies "one IA, not two" where the sidebar and per-tab ideas didn't:** the
+      contextual dashboard is IDENTICAL for single-property and MP — a single-property Direct
+      Booking user sees the exact same Selling tools/Setup/Branding cards an MP user sees after
+      picking a property. Nothing is invented specifically for MP; only how you ARRIVE differs
+      (MP picks a property first via the existing Properties-list convention, single-property
+      skips straight to it via the existing collapse convention) — same asymmetry pattern
+      already used everywhere else in this app, not a new one.
+    - **What this implies for the L2 sidebar** (the other half of the same idea): once entity
+      content moves to a contextual dashboard instead of tabs, L2 is freed to hold only things
+      that are genuinely NOT part of that entity's own dashboard — "anything truly global sits
+      in the L2 panel" (user's own framing). For Configuration this likely means L2 continues
+      to hold the entity picker (Properties list) plus true account-wide items, while everything
+      specific to whichever entity is drilled into lives in that entity's own contextual
+      dashboard, reached via breadcrumb — not tabs, and not a second sidebar.
+    - **NOT YET BUILT anywhere.** `PROPERTY_NODE` and `BOOKING_ENGINE_LIST` still land directly
+      on a tab strip with no landing dashboard (see "Property settings has direct tabs — no
+      extra nesting layer" above, which this candidate would effectively supersede if adopted).
+      This is the leading direction for whenever entity-detail pages are revisited, not a
+      decision to implement without discussing scope first — it touches every existing
+      tabs-based detail node (PROPERTY_NODE, Direct Booking, buildUserNode, RATE_PLAN_NODE),
+      not just the Products group that started this thread.
+    - **Framing to pick this back up with:** the user's own closing framing of this thread —
+      "it might be a[n option for a] nav-based dashboard concept as an optional THIRD nav level
+      before tabs." I.e. not a mandatory replacement for every entity-detail node uniformly, but
+      a nav-level PATTERN to reach for: L1 (rail) → L2 (panel) → this contextual dashboard
+      (optional third level) → tabs (only where a sub-area still needs them). Some existing
+      tabs-based nodes may turn out to have few enough peers that they don't need this third
+      level at all (e.g. Branding alone, or a 2-tab node) — decide per-node whether the third
+      level earns its place, don't apply it mechanically everywhere just because the pattern
+      now exists.
 
 - **Bulk rate distribution mechanics** once a Properties tab exists under Distribution → Rate
   plans. MP's current production model (Group Rate Plan → Property Rate Plan → Property Room
