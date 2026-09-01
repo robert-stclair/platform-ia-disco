@@ -33,6 +33,63 @@ applying the real-names breadcrumb exception to both the properties AND systems 
 not wiring the new dashboard-card-grid pattern onto Insights' Dashboard (needs real card
 titles first — only "Property Status" is confirmed anywhere in the docs).
 
+## Known bugs / follow-ups (found and fixed or flagged during the last session)
+
+Pulled out as their own list per user request, so nothing gets lost in narrative paragraphs.
+The two regressions were both found AND fixed already (included here for visibility, not as
+outstanding work); the rest are still-open follow-ups worth a look.
+
+- **[FIXED]** `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content —
+  silently broke ALL such content across the whole app (Property settings' tabs, Direct
+  Booking's Setup/Selling tools, Users, Media library) since the prior session's chain
+  refactor. Root cause and fix in commit `55f69bc`.
+- **[FIXED]** Standard content-margin wrapper (`.sketch`, 24px) was applied per-nesting-level
+  instead of once, double-padding any tabs-within-tabs case (e.g. Properties → a specific
+  property's own tabs) to 48px instead of 24px. Fixed in commit `05e9a70`.
+- **[FIXED]** Tab strip had no gap between its bottom divider and the content cards below it
+  once nested inside `.sketch`'s own padding — content sat flush against the tab row. Fixed in
+  commit `6ab9eda`.
+- **[OPEN]** Health check's 7 tabs use `sketch: 'list'` as a first-pass page-type choice —
+  flagged to reconsider as `sketch: 'table'` once real column data for these error/status
+  listings is known (they may fit a table better than a flat list).
+- **[OPEN]** The dashboard-card-grid pattern (`sketch: 'dashboard-cards'`) is built and
+  documented but not wired onto Insights' own Dashboard item, which still has `content: null`
+  — needs real card titles first; only "Property Status" is confirmed anywhere in the docs
+  (`CONTEXT.md`'s usage-data reference points).
+- **[OPEN]** The real-names breadcrumb exception (showing real item names instead of skeleton
+  bars) was applied to BOTH the properties and systems pickers, on the reasoning that both
+  feed a crumb via the identical mechanism — this wasn't explicitly asked for one specific
+  picker vs. both, flagged for a quick sanity check that applying it evenly was the right call.
+
+## Queued (not yet implemented) — new batch
+
+1. **Front desk becomes a calendar page with NO L2 panel at all.** Currently a stub rail item
+   with empty panel/canvas. New behavior:
+   - Clicking Front desk hides the secondary panel column ENTIRELY (not just empty — the
+     column itself disappears from the layout) so the calendar skeleton spans full width,
+     rail-to-edge. User's stated reason: "this is what customers always want for the calendar
+     is max space" — a real, confirmed product need, not a guess.
+   - New 5th canonical page-skeleton type: a **calendar grid** (month/week grid of day cells,
+     skeleton content per cell) — add to PATTERNS.md alongside list/table/stacked-cards/
+     dashboard-cards, build as a new `sketch` value (e.g. `sketch: 'calendar'`).
+   - **Structural note:** this is the first content item with NO secondary panel — every
+     other section today always renders `renderPanel(data)` unconditionally in `render()`.
+     Need a way for a section (or a specific item within one) to opt out of the panel
+     entirely, not just render it with zero items. Check `render()`'s call to
+     `renderPanel(data)`/`renderCanvas(data)` and the CSS grid/flex layout that currently
+     reserves the panel's column width unconditionally.
+   - Content: skeleton grid only for now, no real calendar data/events — no placeholders per
+     project rules, this is purely the structural shape.
+2. **Reshuffle Insights' item order.** The starred/pinned items (Weekly performance, Channel
+   comparison, Portfolio health for multi-property) move from trailing after "My insights" to
+   sit directly appended below "Dashboard" — forming one combined default-dashboards list.
+   "Recommendations" moves to the END of the list (a separate concept from dashboards, per
+   user's reasoning). Resulting order: Dashboard, [starred items], My insights, Recommendations
+   — was: Dashboard, Recommendations, My insights, [starred items].
+   - Implementation: reorder the `items` array in `buildSmContentTree`'s `insights` section in
+     `nav-data.js` — no new mechanism needed, this is a pure ordering change within the
+     existing data shape.
+
 ## Open questions
 
 - **LH's account-type-specific rail differences beyond Front desk** — is Front desk the ONLY
@@ -111,6 +168,14 @@ the rest by seeing it, NOT a finished implementation:**
   make sense once Distribution's harder requirements are known. Don't treat this sketch's
   first implementation choices (e.g. where the switcher control lives, exact interaction) as
   locked in.
+
+**Placement reconsidered (queued, not yet implemented):** the switcher currently renders as a
+`<select>` at the very top of the L2 panel. User's instinct: doesn't love it eating into the
+L2 panel's own space, leaning toward **top-right of the canvas** instead — keeps the main
+panel real estate free for actual nav items, and reads more like a persistent page-level
+control (alongside/near the breadcrumb) than a panel list item. Not decided as final, just the
+current leaning — implement this reposition when picked back up, but don't treat it as locked
+in either, same as the rest of this sketch.
 
 ## Done
 
