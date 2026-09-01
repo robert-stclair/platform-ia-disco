@@ -60,6 +60,21 @@ outstanding work); the rest are still-open follow-ups worth a look.
   bars) was applied to BOTH the properties and systems pickers, on the reasoning that both
   feed a crumb via the identical mechanism — this wasn't explicitly asked for one specific
   picker vs. both, flagged for a quick sanity check that applying it evenly was the right call.
+- **[OPEN, user-reported]** Breadcrumb shows a stale/wrong 3rd segment once drilled into a
+  specific property's own tabs, e.g. "Properties / Harbourview Hotel / **Property settings** /
+  Integrated systems" should just be "Properties / Harbourview Hotel / Integrated systems."
+  Root cause: `PROPERTY_NODE.label` is still literally `"Property settings"` (the earlier
+  rename — Configuration's panel item "Property settings" → "Property," item 1 — deliberately
+  did NOT touch `PROPERTY_NODE` itself, since it's shared/reused elsewhere) — and once inside a
+  property, `PROPERTY_NODE`'s own tab strip is at depth > 0 so it crumbs using that stale
+  label, per the standing "tabs at depth > 0 crumb using their own label" rule. **Fix
+  (confirmed with user): drop this crumb segment entirely** — once inside a specific property,
+  its own root-level tab strip (General information/.../Integrated systems) shouldn't add its
+  own crumb segment at all, same treatment as any other depth-0-equivalent tabs root. Needs a
+  small change to `renderChainBody`'s crumb logic for this specific case (PROPERTY_NODE reached
+  via an explicit `properties` drill-down) — the crumb rule that currently keys off recursion
+  `i > 0` needs an exception here, since PROPERTY_NODE's tabs are conceptually "the root" for
+  that property even though they're not literally at chain index 0.
 
 ## Queued (not yet implemented) — new batch
 
