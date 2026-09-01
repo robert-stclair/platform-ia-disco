@@ -12,12 +12,12 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: items 1, 3, 4, 5, 6, 7, 8, 9 are all implemented and pushed** (see `## Done` below
-for a summary of each, and git log on `refactor/structure-cleanup` for full detail). Item 2
-was already done before this queue existed. Not yet merged to `main` — still on the refactor
-branch, awaiting review. The only unfinished thread is the foundational property/cluster/brand
-scope switcher (its own section below) — Distribution's shape is explicitly unsolved there,
-not a queue item to implement yet.
+**Status: EVERY numbered item so far (1–17) is implemented and pushed** (see `## Done` below
+for a summary of each, and git log on `refactor/structure-cleanup` for full detail). Not yet
+merged to `main` — still on the refactor branch, awaiting review. The only unfinished thread is
+the foundational property/cluster/brand scope switcher (its own section below) — Distribution's
+shape is explicitly unsolved there, not a queue item to implement yet. Add new requests to a
+fresh numbered list below this status block as they come in.
 
 Two regressions were caught and fixed while implementing (see git log for full detail on
 each): `resolveChain` wasn't pushing a step for plain leaf (`sketch`-type) content, so ALL such
@@ -56,139 +56,14 @@ outstanding work); the rest are still-open follow-ups worth a look.
   documented but not wired onto Insights' own Dashboard item, which still has `content: null`
   — needs real card titles first; only "Property Status" is confirmed anywhere in the docs
   (`CONTEXT.md`'s usage-data reference points).
-- **[OPEN]** The real-names breadcrumb exception (showing real item names instead of skeleton
-  bars) was applied to BOTH the properties and systems pickers, on the reasoning that both
-  feed a crumb via the identical mechanism — this wasn't explicitly asked for one specific
-  picker vs. both, flagged for a quick sanity check that applying it evenly was the right call.
-- **[OPEN, user-reported]** Breadcrumb shows a stale/wrong 3rd segment once drilled into a
-  specific property's own tabs, e.g. "Properties / Harbourview Hotel / **Property settings** /
-  Integrated systems" should just be "Properties / Harbourview Hotel / Integrated systems."
-  Root cause: `PROPERTY_NODE.label` is still literally `"Property settings"` (the earlier
-  rename — Configuration's panel item "Property settings" → "Property," item 1 — deliberately
-  did NOT touch `PROPERTY_NODE` itself, since it's shared/reused elsewhere) — and once inside a
-  property, `PROPERTY_NODE`'s own tab strip is at depth > 0 so it crumbs using that stale
-  label, per the standing "tabs at depth > 0 crumb using their own label" rule. **Fix
-  (confirmed with user): drop this crumb segment entirely** — once inside a specific property,
-  its own root-level tab strip (General information/.../Integrated systems) shouldn't add its
-  own crumb segment at all, same treatment as any other depth-0-equivalent tabs root. Needs a
-  small change to `renderChainBody`'s crumb logic for this specific case (PROPERTY_NODE reached
-  via an explicit `properties` drill-down) — the crumb rule that currently keys off recursion
-  `i > 0` needs an exception here, since PROPERTY_NODE's tabs are conceptually "the root" for
-  that property even though they're not literally at chain index 0.
-
-## Queued (not yet implemented) — new batch
-
-**Progress: items 3 and 4 are DONE.** Item 3 (generalized `records` pattern + Users), along
-with the breadcrumb bug fix from the "Known bugs" list above (both implemented together per
-the dependency note, commit `cf4a20b`) — a real second bug was also found and fixed while
-testing: a records picker with no wrapping tabs layer (Users) never got its own label crumb, so
-the record-name crumb alone was suppressed by the generic single-crumb-is-noise rule. Item 4
-(single-tab strips collapse, no strip shown) implemented as a general rule on the `tabs`
-content type itself (commit after this note), reusing the same `options: []` convention the
-`systems` branch already used for "one connected system, no picker." Item 5 (PROPERTY_NODE's
-mirrored "Users" tab, always shown) and item 6 (rename "Manage products" -> "Add products" +
-new action-row panel-list pattern) are also DONE — commits `8687f65` and `60d8a7b`. Full detail
-in each commit message. Items 1 and 2, plus the scope-switcher placement move, are still queued.
-
-1. **Front desk becomes a calendar page with NO L2 panel at all.** Currently a stub rail item
-   with empty panel/canvas. New behavior:
-   - Clicking Front desk hides the secondary panel column ENTIRELY (not just empty — the
-     column itself disappears from the layout) so the calendar skeleton spans full width,
-     rail-to-edge. User's stated reason: "this is what customers always want for the calendar
-     is max space" — a real, confirmed product need, not a guess.
-   - New 5th canonical page-skeleton type: a **calendar grid** (month/week grid of day cells,
-     skeleton content per cell) — add to PATTERNS.md alongside list/table/stacked-cards/
-     dashboard-cards, build as a new `sketch` value (e.g. `sketch: 'calendar'`).
-   - **Structural note:** this is the first content item with NO secondary panel — every
-     other section today always renders `renderPanel(data)` unconditionally in `render()`.
-     Need a way for a section (or a specific item within one) to opt out of the panel
-     entirely, not just render it with zero items. Check `render()`'s call to
-     `renderPanel(data)`/`renderCanvas(data)` and the CSS grid/flex layout that currently
-     reserves the panel's column width unconditionally.
-   - Content: skeleton grid only for now, no real calendar data/events — no placeholders per
-     project rules, this is purely the structural shape.
-2. **Reshuffle Insights' item order.** The starred/pinned items (Weekly performance, Channel
-   comparison, Portfolio health for multi-property) move from trailing after "My insights" to
-   sit directly appended below "Dashboard" — forming one combined default-dashboards list.
-   "Recommendations" moves to the END of the list (a separate concept from dashboards, per
-   user's reasoning). Resulting order: Dashboard, [starred items], My insights, Recommendations
-   — was: Dashboard, Recommendations, My insights, [starred items].
-   - Implementation: reorder the `items` array in `buildSmContentTree`'s `insights` section in
-     `nav-data.js` — no new mechanism needed, this is a pure ordering change within the
-     existing data shape.
-3. **Make Users clickable — a record-detail page with tabs, same pattern as Properties.**
-   Today Users is a plain `sketch: 'list'` (flat skeleton rows, no per-row identity, no
-   click-through at all) — this generalizes it to match how the Properties picker already
-   works.
-   - **New GENERIC content type, not a Users-specific one** — user's explicit direction: "we
-     want this to all be very pattern based." Today's `type: 'properties'` is hardwired to
-     recurse into the single shared `PROPERTY_NODE`; generalize it into a reusable "clickable
-     records list → shared detail node" mechanism (e.g. rename/reshape as
-     `type: 'records', names: [...], detailNode: <shared Node>` or similar — exact shape TBD
-     at implementation time) so Properties AND Users are both just instances of the same
-     pattern, not two similar-but-separate mechanisms. Document this as a named pattern in
-     PATTERNS.md alongside the page-skeleton types (this one's a NAVIGATION pattern, not a
-     canvas sketch — note the distinction there).
-   - Users' own shared detail node: a `tabs`-type Node with tabs — **"User details"** (always
-     present) and **"Properties"** (only for multi-property accounts) showing which properties
-     that user has access to (a per-user access-scoping list/picker, analogous to
-     Configuration's Properties picker but scoped to one user's permissions, not the whole
-     account).
-   - **Breadcrumb**: same shape as the existing Properties pattern — "Users / [user name]",
-     landing on the user's detail tabs, e.g. "Users / Jane Smith" with [User details]
-     [Properties] as the tab strip. Should fall out naturally once Users is a real
-     `properties`-pattern instance, since that mechanism already produces this exact
-     breadcrumb shape for the Properties case.
-   - **Sample data**: use generic realistic full names (not real confirmed user data, not
-     placeholder-style labels) — same treatment as the 5 sample property names already in the
-     prototype (Harbourview Hotel, etc.) — confirmed with user, not guessed.
-   - Depends on/relates to the queued breadcrumb fix above (stale "Property settings" segment)
-     — both touch the same crumb-generation logic in `renderChainBody`'s handling of a
-     records-style drill-down; worth implementing together to avoid touching that logic twice.
-4. **New standing rule: a `tabs`-type node with only ONE tab shouldn't show a tab strip at
-   all — collapse straight to that tab's content.** Caught via Users' new "User details" tab
-   in single-property mode (no "Properties" tab there, so it's the only one) — showing a
-   1-item tab strip is pointless UI, the same problem `type: 'systems'` already solves for a
-   single connected system (collapses straight to sections, no picker). Generalize this as a
-   rule for the GENERIC `tabs` content type itself, not a Users-specific fix — apply it
-   wherever a `tabs` node resolves to exactly one visible tab (after `mpOnly` filtering, etc.),
-   not just this one case. Likely affects: `buildUserNode`'s single-property case (just
-   confirmed), and worth checking whether any other existing `tabs` node could ever resolve to
-   exactly one visible tab under some account-type/property-count combination.
-5. **PROPERTY_NODE gets a new "Users" tab — the mirror of USER_NODE's new "Properties" tab.**
-   Shows which users have access to this property (the reverse relationship of item 3's
-   USER_NODE "Properties" tab, which shows which properties a user has access to).
-   - **Position:** last, after Integrated systems — PROPERTY_NODE's tab order becomes General
-     information, Property details, Services, Policies, Media library, Integrated systems,
-     Users.
-   - **Gating: ALWAYS shown, not property-count-gated.** Unlike USER_NODE's "Properties" tab
-     (multi-property-only, since a single-property account has nothing to scope), every
-     property — single- or multi-property account alike — has users with access to it, so this
-     tab is unconditional. Confirmed with user, not assumed by symmetry with the reverse tab.
-   - **Consequence worth noting:** because this tab is always present, PROPERTY_NODE will
-     always have ≥7 visible tabs regardless of account state — the new single-tab-collapse
-     rule (item 4) never applies to PROPERTY_NODE itself, only to USER_NODE's single-property
-     case. Don't read this item as contradicting item 4; they apply to different nodes.
-   - Content: same page-type as USER_NODE's "Properties" tab (a list/picker) — a list of users
-     with access to this property, sketch-only for now, no real access data.
-
-6. **Rename "Manage products" → "Add products," give it a distinct visual treatment.**
-   Confirmed with user: "Add products" more precisely signals its action (adding a new
-   product to the account) than the settings-page items above it (Direct Booking, Channels
-   Plus, Metasearch).
-   - **Visual treatment: small "+" icon before the label** — same greyscale rules as
-     everything else (no color), just an icon marking this as an ACTION row rather than a
-     navigable settings destination, so it doesn't read as just another item in the list.
-   - **New panel-list pattern, third kind alongside folder/heading** (PATTERNS.md's
-     folder-vs-heading rule currently only names two categories): this is neither a folder
-     (no children to expand) nor a grouping heading (it IS clickable, unlike a heading) — it's
-     a plain clickable item like Direct Booking/Channels Plus, just with a leading icon marking
-     it as an action rather than a page. Document this as its own small addition to
-     PATTERNS.md's panel-list patterns section (e.g. "action row" or similar naming) rather
-     than leaving it as a one-off — same "keep this pattern-based" direction as items 3/4.
-   - Implementation: rename the `label` in `nav-data.js`'s Configuration items array; add a
-     leading-icon rendering option to `renderPanel`'s item loop in `main.js` (a new per-item
-     flag, e.g. `actionIcon: '+'` or similar — exact shape TBD at implementation time).
+- **[FIXED]** Breadcrumb showed a stale/wrong 3rd segment once drilled into a specific
+  property's own tabs (`PROPERTY_NODE.label` still literally "Property settings"). Fixed by
+  treating a detail node's own tabs (reached via an explicit `records` drill-down) as a new
+  root for crumb purposes. Fixed in commit `cf4a20b`, alongside generalizing the pattern
+  itself (see `## Done` item 10).
+- **[FIXED]** A `records` picker with no wrapping tabs layer (Users) never got its own label
+  crumb, so the lone record-name crumb was suppressed by the "single crumb is noise" rule.
+  Fixed in commit `cf4a20b`.
 
 ## Open questions
 
@@ -313,3 +188,41 @@ current implementation, not just a leaning anymore.
    functionality, not an add-on, per explicit user reasoning) — stub content for now. Scoping
    question resolved via research: channel connections confirmed to already span
    multi-property accounts today (real production "Channel adoption view" route).
+
+### Second batch (all done, commits `cf4a20b` through `4e6df3c`)
+
+10. **Generalized `type: 'properties'` into a reusable `type: 'records'` nav pattern**
+    (`{ names, detailNode }`) per user's explicit "keep this pattern-based" direction — a
+    generic "clickable records list → shared detail node" mechanism. Properties (→
+    `PROPERTY_NODE`) and Users (→ `buildUserNode`) are both instances of the same mechanism
+    now, not separate ones. Documented as a navigation pattern in PATTERNS.md, distinct from
+    canvas sketch patterns.
+11. **Users is now clickable** — 4 sample names (Jane Smith, Michael Chen, Priya Patel, Tom
+    Reilly; generic realistic names, confirmed with user), each opening a shared detail node
+    with tabs "User details" (always) and "Properties" (multi-property accounts only, showing
+    which properties that user has access to). Breadcrumb: "Users / [name]".
+12. **New standing rule: a `tabs` node with exactly one visible tab collapses straight to its
+    content, no strip shown** — same treatment `type: 'systems'` already had for one connected
+    system. Caught via Users' single-property case; generalized on the `tabs` content type
+    itself via `options: []`, not a one-off fix.
+13. **PROPERTY_NODE gets a mirrored "Users" tab** (last, after Integrated systems) — always
+    shown (not property-count-gated, unlike USER_NODE's "Properties" tab) since every property
+    has users with access to it regardless of account state.
+14. **"Manage products" renamed to "Add products"** with a leading "+" icon — a new
+    **action-row** panel-list pattern, a third alongside folder/heading (PATTERNS.md): a plain
+    clickable item, just visually marked as an action rather than a settings-page destination.
+15. **Insights item order reshuffled**: Dashboard, [starred/pinned items], My insights,
+    Recommendations — was Dashboard, Recommendations, My insights, [starred items].
+    Recommendations moved to the end as a separate concept from dashboards, per user's
+    reasoning.
+16. **Scope switcher repositioned**: L2 panel top → canvas top-right, via a new
+    `.canvas-scope-switcher` wrapper rendered from `renderCanvas` instead of `renderPanel` —
+    frees the panel's own space, reads as a persistent page-level control. Still not decided
+    as final (see the "Foundational, unsolved" section above), but it's the current
+    implementation now, not just a leaning.
+17. **Front desk becomes a full-width calendar page with no L2 panel.** New 5th canonical
+    page-skeleton type (`sketch: 'calendar'` — weekday header + 7×5 grid of skeleton day
+    cells) and a new section-level `noPanel: true` flag (`render()` hides the panel column via
+    `display: none`, not just emptying it, which would still reserve its fixed width) — the
+    first content item to opt out of the L2 panel entirely. User's stated reason: "this is
+    what customers always want for the calendar is max space," a confirmed product need.
