@@ -42,9 +42,12 @@
 //   ----------------------------------------|--------------------|------
 //   Configuration/Distribution > Properties  | records (nav)      | type:'records' -> PROPERTY_NODE; picker
 //                                                                    rows are 'list' via renderRecordPicker
-//   PROPERTY_NODE's 6 tabs                  | stacked cards      | sketch:'sections'
+//   PROPERTY_NODE's 5 settings tabs          | stacked cards      | sketch:'sections'
 //   PROPERTY_NODE > Media library            | card grid (media)  | sketch:'media'
 //   PROPERTY_NODE > Integrated systems       | stacked cards      | sketch:'sections' via 'systems' type
+//   PROPERTY_NODE > Users (always shown)      | list               | sketch:'list' (which users have access
+//                                                                    to this property — mirror of USER_NODE's
+//                                                                    Properties tab, but unconditional)
 //   Direct Booking > Selling tools's 2 tabs  | stacked cards      | sketch:'sections'
 //   Direct Booking > Setup's 7 tabs          | stacked cards      | sketch:'sections'
 //   Direct Booking > Branding                | none yet           | content: null, stub
@@ -180,6 +183,16 @@ export const PROPERTY_NODE = {
             { title: 'Credit card mappings', shape: 'list' },
           ],
         },
+      },
+      // Mirror of USER_NODE's "Properties" tab (CHANGE-QUEUE.md item 5) —
+      // which users have access to THIS property. Unlike USER_NODE's
+      // "Properties" tab, this one is ALWAYS shown, not property-count-
+      // gated: every property, single- or multi-property account alike,
+      // has users with access to it.
+      {
+        key: 'property-users',
+        label: 'Users',
+        content: { type: 'sketch', sketch: 'list' },
       },
     ],
   },
