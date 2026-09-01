@@ -24,11 +24,28 @@ These render as the whole content of a `sketch`-type node (a tab, a leaf item).
 | `'media'` | A grid of `.sketch-card` blocks (4:3 aspect ratio) | Photo/media grids (Media library) |
 | `'list'` | A `.wf-list` of skeleton rows, full-width | A flat list of records with no further per-row detail (Users, Health check's tabs) |
 | `'table'` | A `.sketch-table` — real header row (`content.columns`), skeleton cells | A record list needing more than one visible field per row |
+| `'calendar'` | A `.sketch-calendar` — weekday header + a 7x5 grid of skeleton day cells | Calendar/scheduling views needing maximum canvas space (Front desk) |
 
-These four are the project's canonical page-skeleton types (list / table / stacked cards /
-card grid — see "Dashboard card grid" below for the fourth). Not a closed set — add a new one
-here first when a genuinely new page shape comes up, following the same "skeleton content,
-real titles/headers only" rule as everything else.
+These five are the project's canonical page-skeleton types (list / table / stacked cards /
+card grid / calendar — see "Dashboard card grid" below for the 4th). Not a closed set — add a
+new one here first when a genuinely new page shape comes up, following the same "skeleton
+content, real titles/headers only" rule as everything else.
+
+**Calendar pairs with `noPanel: true`** (a section-level flag, not a `sketch` option) — see
+"No-panel sections" below. Not every calendar-shaped page necessarily needs `noPanel`; Front
+desk does because customers always want maximum space for it — a real, confirmed product
+need, not an assumption that calendars always warrant it.
+
+## No-panel sections (`data.noPanel: true`)
+
+Not a canvas sketch — a SECTION-level flag (set on the object `getContent` returns per rail
+section, e.g. `tree['front-desk']`, not on an individual item's `content`). When true,
+`render()` hides the secondary panel column entirely (`display: none`, not just empty —
+emptying it alone still reserves its fixed 240px width in the flex layout) so the canvas gets
+the full combined width. Use only when a page has a genuine, confirmed need for maximum
+canvas space and no real use for a secondary panel (Front desk's calendar is the only
+instance so far) — this is a rare exception, not a general escape hatch from building a real
+L2 panel.
 
 ## Section-shape sub-patterns (`shape`, inside a `'sections'` card)
 

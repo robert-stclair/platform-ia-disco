@@ -679,6 +679,19 @@ function renderSketch(content) {
       .join('');
     return `<table class="sketch-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
   }
+  if (content.sketch === 'calendar') {
+    // 5th canonical page-skeleton type (CHANGE-QUEUE.md item 1) — a month
+    // grid of day cells, skeleton content per cell. Built for Front desk,
+    // which pairs it with `noPanel: true` (see render()) for max width,
+    // since customers always want maximum space for a calendar view.
+    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const header = `<div class="sketch-calendar__weekdays">${weekdays.map((d) => `<div>${d}</div>`).join('')}</div>`;
+    const cells = Array(35)
+      .fill(null)
+      .map(() => `<div class="sketch-calendar__cell"><div class="sketch-calendar__cell-date"></div></div>`)
+      .join('');
+    return `<div class="sketch-calendar">${header}<div class="sketch-calendar__grid">${cells}</div></div>`;
+  }
   return '';
 }
 
@@ -687,9 +700,8 @@ function renderSketch(content) {
 function render() {
   renderRail();
   // Falls through to an honest empty panel/canvas for any section with no
-  // data for the current state — covers LH's "Front desk" rail item (no
-  // L2/L3 content defined yet, deliberately, no placeholders) the same way
-  // it always covered every other undefined case.
+  // data for the current state (e.g. an undefined rail item for a given
+  // account type) — no placeholders, just nothing rendered.
   const content = getContent(state.accountType, state.propertyCount);
   const data = content?.[state.section];
   if (!data) {
@@ -697,7 +709,16 @@ function render() {
     canvasEl.innerHTML = '';
     return;
   }
-  renderPanel(data);
+  // `noPanel` (CHANGE-QUEUE.md item 1, Front desk's calendar) hides the L2
+  // panel COLUMN entirely — not just rendering it empty, which would still
+  // reserve its fixed width in the flex layout. The canvas needs the full
+  // combined width. See the `.secondary-panel.is-hidden` CSS rule.
+  panelEl.classList.toggle('is-hidden', Boolean(data.noPanel));
+  if (!data.noPanel) {
+    renderPanel(data);
+  } else {
+    panelEl.innerHTML = '';
+  }
   renderCanvas(data);
 }
 

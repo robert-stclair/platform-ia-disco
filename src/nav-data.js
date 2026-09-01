@@ -77,12 +77,15 @@
 //     Charts
 //   Transactions > Reservations, Guest        | none yet           | content: null, stub
 //     communications, Payments
+//   Front desk (LH only) > Calendar           | calendar           | sketch:'calendar'; section has
+//                                                                    noPanel: true (max width, no L2)
 //
 // 'table' and 'dashboard-cards' patterns exist (PATTERNS.md) but nothing
-// currently uses them — every real content item so far has fit 'sections'
-// (stacked cards), 'media' (card grid), or 'list'. Assign one of the two
-// unused types only once a real page confirms it fits better than what's
-// already there — don't force a type onto content just to use it.
+// currently uses 'dashboard-cards' — every real content item so far has fit
+// 'sections' (stacked cards), 'media' (card grid), 'list', 'table', or
+// 'calendar'. Assign 'dashboard-cards' only once a real page confirms it
+// fits better than what's already there — don't force a type onto content
+// just to use it.
 
 const BASE_RAIL_ITEMS = [
   { key: 'insights', label: 'Insights', icon: 'insights' },
@@ -546,5 +549,19 @@ function buildSmContentTree(showProperties) {
 //     also drives Properties, alongside accountType === 'MP'.
 export function getContent(accountType, propertyCount) {
   const showProperties = accountType === 'MP' || propertyCount === 'multiple';
-  return buildSmContentTree(showProperties);
+  const tree = buildSmContentTree(showProperties);
+  if (accountType === 'LH') {
+    // Front desk (CHANGE-QUEUE.md item 1) — LH's own rail item (see
+    // getRailItems). `noPanel: true` tells render() to hide the L2 panel
+    // column entirely, not just render it empty — the calendar needs the
+    // FULL canvas+panel width, "what customers always want for the
+    // calendar is max space" (user's stated reason, a confirmed product
+    // need). No secondary panel item at all, just one routed root whose
+    // content is the calendar sketch.
+    tree['front-desk'] = {
+      noPanel: true,
+      items: [{ key: 'calendar', label: 'Calendar', active: true, content: { type: 'sketch', sketch: 'calendar' } }],
+    };
+  }
+  return tree;
 }
