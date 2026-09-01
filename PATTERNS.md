@@ -24,16 +24,38 @@ These render as the whole content of a `sketch`-type node (a tab, a leaf item).
 | `'media'` | A grid of `.sketch-card` blocks (4:3 aspect ratio) | Photo/media grids (Media library) |
 | `'list'` | A `.wf-list` of skeleton rows, full-width | A flat list of records with no further per-row detail (Users, Health check's tabs) |
 | `'table'` | A `.sketch-table` — real header row (`content.columns`), skeleton cells | A record list needing more than one visible field per row |
-| `'calendar'` | A `.sketch-calendar` — weekday header + a 7x5 grid of skeleton day cells | Calendar/scheduling views needing maximum canvas space (Front desk) |
+| `'calendar'` | A month-calendar PRESET of `'grid'` (see below) — 7 weekday columns, 5 rows, no row labels | Calendar/scheduling views needing maximum canvas space (Front desk) |
+| `'grid'` | A `.sketch-grid` — real column headers, OPTIONAL real row labels down the left, skeleton fill per cell | Any grid/matrix-shaped page — a room-type × date inventory matrix, or anything calendar-like that isn't specifically a month view |
 
-These five are the project's canonical page-skeleton types (list / table / stacked cards /
-card grid / calendar — see "Dashboard card grid" below for the 4th). Not a closed set — add a
+These are the project's canonical page-skeleton types (list / table / stacked cards / card
+grid / calendar+grid — see "Dashboard card grid" below for the 4th). Not a closed set — add a
 new one here first when a genuinely new page shape comes up, following the same "skeleton
 content, real titles/headers only" rule as everything else.
 
+**`'grid'` is the generic mechanism; `'calendar'` is one named preset of it** — generalized
+this way (Distribution batch item 4) so the SAME renderer covers both a month calendar
+(columns only) and a matrix with real row labels (e.g. Inventory's room types down the left),
+rather than hardcoding a 7-column month shape everywhere a grid is needed.
+
+```js
+{ type: 'sketch', sketch: 'grid', columns: string[], rows?: string[], rowCount?: number }
+```
+
+- `columns` (required) — real column header labels.
+- `rows` (optional) — real row label text, one row per entry. When given, the row count comes
+  from `rows.length`, `rowCount` is ignored, and a labelled column renders down the left
+  (`.sketch-grid__row-label`).
+- `rowCount` (optional, default 5) — used only when `rows` is omitted, for a plain grid with no
+  row labels (calendar's case).
+- **Keep the header's and body's `grid-template-columns` in sync** — they're both set inline
+  from the same computed string in `renderGridSketch` (`main.js`); a prior version only set it
+  on the body, so the header's labels stacked vertically instead of aligning with the columns
+  below — don't reintroduce that by setting one without the other if this pattern is ever
+  touched again.
+
 **Calendar pairs with `noPanel: true`** (a section-level flag, not a `sketch` option) — see
-"No-panel sections" below. Not every calendar-shaped page necessarily needs `noPanel`; Front
-desk does because customers always want maximum space for it — a real, confirmed product
+"No-panel sections" below. Not every calendar/grid-shaped page necessarily needs `noPanel`;
+Front desk does because customers always want maximum space for it — a real, confirmed product
 need, not an assumption that calendars always warrant it.
 
 ## No-panel sections (`data.noPanel: true`)

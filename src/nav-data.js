@@ -70,8 +70,11 @@
 //                                                                    (actionIcon: '+'), renamed from "Manage
 //                                                                    products" — see PATTERNS.md
 //   Configuration > Brands, Clusters (MP)     | none yet           | content: null, stub
-//   Distribution > Inventory                  | none yet           | content: null, stub — grid page TBD
-//                                                                    (Distribution batch item 4)
+//   Distribution > Inventory                  | none yet           | content: null, stub. The generic 'grid'
+//                                                                    sketch (Distribution batch item 4) is
+//                                                                    BUILT and ready — Inventory's own real
+//                                                                    columns/rows just aren't decided yet,
+//                                                                    don't guess them in
 //   Distribution > Rate plans                 | records (nav)      | type:'records' -> RATE_PLAN_NODE (a
 //                                                                    simple stacked-cards stub for now)
 //   Distribution > Yield rules                | records (nav)      | type:'records' -> YIELD_RULE_NODE (same

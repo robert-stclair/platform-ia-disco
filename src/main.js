@@ -698,19 +698,50 @@ function renderSketch(content) {
     return `<table class="sketch-table"><thead>${header}</thead><tbody>${rows}</tbody></table>`;
   }
   if (content.sketch === 'calendar') {
-    // 5th canonical page-skeleton type (CHANGE-QUEUE.md item 1) — a month
-    // grid of day cells, skeleton content per cell. Built for Front desk,
-    // which pairs it with `noPanel: true` (see render()) for max width,
-    // since customers always want maximum space for a calendar view.
-    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const header = `<div class="sketch-calendar__weekdays">${weekdays.map((d) => `<div>${d}</div>`).join('')}</div>`;
-    const cells = Array(35)
-      .fill(null)
-      .map(() => `<div class="sketch-calendar__cell"><div class="sketch-calendar__cell-date"></div></div>`)
-      .join('');
-    return `<div class="sketch-calendar">${header}<div class="sketch-calendar__grid">${cells}</div></div>`;
+    // Front desk's specific preset of the generic 'grid' pattern below — 7
+    // weekday columns, 5 rows, no row labels (a month-calendar shape).
+    // Kept as its own sketch value (rather than requiring every call site
+    // to spell out the weekday columns) since "calendar" is a meaningful
+    // name on its own; it just delegates to the same renderer.
+    return renderGridSketch({ columns: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], rowCount: 5 });
+  }
+  if (content.sketch === 'grid') {
+    // GENERIC grid pattern (Distribution batch item 4) — generalized from
+    // the calendar pattern so the same mechanism works for both a month
+    // calendar (columns only, no row labels) and a room-type x date matrix
+    // like Inventory (real row labels down the left, e.g. room type names).
+    // `content.columns` (required): column header labels, real text.
+    // `content.rows` (optional): real row label text, one row per entry —
+    // when given, `content.rowCount` is ignored (row count = rows.length).
+    // `content.rowCount` (optional, default 5): used only when `rows` is
+    // omitted, for a plain grid with no row labels (calendar's case).
+    return renderGridSketch(content);
   }
   return '';
+}
+
+function renderGridSketch({ columns, rows, rowCount = 5 }) {
+  // Same grid-template-columns applied to BOTH the header and the body —
+  // they must match exactly or the header's labels drift out of alignment
+  // with the body's actual columns (caught visually: header stacked
+  // vertically instead of aligning with the day columns below it, since
+  // only .sketch-grid__body had this set inline, not .sketch-grid__header).
+  const gridStyle = `grid-template-columns: ${rows ? 'minmax(120px, auto) ' : ''}repeat(${columns.length}, 1fr);`;
+  const header = `<div class="sketch-grid__header" style="${gridStyle}">${
+    rows ? '<div class="sketch-grid__row-label-spacer"></div>' : ''
+  }${columns.map((c) => `<div>${c}</div>`).join('')}</div>`;
+  const totalRows = rows ? rows.length : rowCount;
+  const body = Array(totalRows)
+    .fill(null)
+    .map((_, r) => {
+      const rowLabel = rows ? `<div class="sketch-grid__row-label">${rows[r]}</div>` : '';
+      const cells = columns
+        .map(() => `<div class="sketch-grid__cell"><div class="sketch-grid__cell-fill"></div></div>`)
+        .join('');
+      return rowLabel + cells;
+    })
+    .join('');
+  return `<div class="sketch-grid">${header}<div class="sketch-grid__body" style="${gridStyle}">${body}</div></div>`;
 }
 
 // ---------------------------------------------------------------------------
