@@ -483,7 +483,7 @@ a { color: inherit; }
 .tab-strip {
   display: flex;
   gap: 4px;
-  padding: 14px 24px 0;
+  margin-bottom: 24px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
