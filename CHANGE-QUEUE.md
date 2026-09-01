@@ -104,6 +104,35 @@ outstanding work); the rest are still-open follow-ups worth a look.
    - Implementation: reorder the `items` array in `buildSmContentTree`'s `insights` section in
      `nav-data.js` — no new mechanism needed, this is a pure ordering change within the
      existing data shape.
+3. **Make Users clickable — a record-detail page with tabs, same pattern as Properties.**
+   Today Users is a plain `sketch: 'list'` (flat skeleton rows, no per-row identity, no
+   click-through at all) — this generalizes it to match how the Properties picker already
+   works.
+   - **New GENERIC content type, not a Users-specific one** — user's explicit direction: "we
+     want this to all be very pattern based." Today's `type: 'properties'` is hardwired to
+     recurse into the single shared `PROPERTY_NODE`; generalize it into a reusable "clickable
+     records list → shared detail node" mechanism (e.g. rename/reshape as
+     `type: 'records', names: [...], detailNode: <shared Node>` or similar — exact shape TBD
+     at implementation time) so Properties AND Users are both just instances of the same
+     pattern, not two similar-but-separate mechanisms. Document this as a named pattern in
+     PATTERNS.md alongside the page-skeleton types (this one's a NAVIGATION pattern, not a
+     canvas sketch — note the distinction there).
+   - Users' own shared detail node: a `tabs`-type Node with tabs — **"User details"** (always
+     present) and **"Properties"** (only for multi-property accounts) showing which properties
+     that user has access to (a per-user access-scoping list/picker, analogous to
+     Configuration's Properties picker but scoped to one user's permissions, not the whole
+     account).
+   - **Breadcrumb**: same shape as the existing Properties pattern — "Users / [user name]",
+     landing on the user's detail tabs, e.g. "Users / Jane Smith" with [User details]
+     [Properties] as the tab strip. Should fall out naturally once Users is a real
+     `properties`-pattern instance, since that mechanism already produces this exact
+     breadcrumb shape for the Properties case.
+   - **Sample data**: use generic realistic full names (not real confirmed user data, not
+     placeholder-style labels) — same treatment as the 5 sample property names already in the
+     prototype (Harbourview Hotel, etc.) — confirmed with user, not guessed.
+   - Depends on/relates to the queued breadcrumb fix above (stale "Property settings" segment)
+     — both touch the same crumb-generation logic in `renderChainBody`'s handling of a
+     records-style drill-down; worth implementing together to avoid touching that logic twice.
 
 ## Open questions
 
