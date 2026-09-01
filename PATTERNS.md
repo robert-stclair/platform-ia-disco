@@ -143,15 +143,21 @@ opens a shared detail page." Reuse `records` and give it a new `detailNode`.
 
 ## Panel-list patterns (the left sub-nav, not the canvas)
 
-Two different things can sit in the panel item list — don't conflate them:
+Three different things can sit in the panel item list — don't conflate them:
 
 | Pattern | Behavior | Example |
 |---|---|---|
 | **Folder** (`content.type: 'list'`) | Collapsed by default, chevron, clicking expands/collapses (does NOT navigate), children hidden until expanded | Direct Booking, My insights |
 | **Grouping heading** (`{ heading: true, label }`) | Always-expanded, no chevron, never clickable — purely visually clusters already-visible sibling items under a label | Products |
+| **Action row** (`{ actionIcon: '+', ... }`) | Plain clickable item, same as any normal panel item, but with a leading icon marking it as an ACTION (does something) rather than a navigable settings page | Add products |
 
 Use a folder when the label is itself a nav concept whose children are hidden
 until opened. Use a heading when you're just visually clustering already-visible
-items with no expand/collapse. Heading items are filtered out before
+items with no expand/collapse. Use an action row's `actionIcon` when an item is
+functionally an action (add/create/manage-as-a-verb) rather than a destination,
+so it doesn't read as just another settings page in the list — the icon is the
+only difference from a normal item; it's still a real Node with a real `key`
+and routes/selects normally. Heading items are filtered out before
 `resolveSelected`/`resolveChain` ever see them — they can never become "the
-routed item," even via a `nodes[0]` fallback.
+routed item," even via a `nodes[0]` fallback. Action rows are NOT filtered out
+this way — they're real, routable items, just visually marked.

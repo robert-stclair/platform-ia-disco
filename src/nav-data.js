@@ -59,7 +59,9 @@
 //   Configuration > Channels                 | none yet           | content: null, stub — page-type TBD
 //   Configuration > Channels Plus            | none yet           | content: null, stub
 //   Configuration > Metasearch               | none yet           | content: null, stub
-//   Configuration > Manage products          | none yet           | content: null, stub
+//   Configuration > Add products              | none yet           | content: null, stub. Action-row pattern
+//                                                                    (actionIcon: '+'), renamed from "Manage
+//                                                                    products" — see PATTERNS.md
 //   Configuration > Brands, Clusters (MP)     | none yet           | content: null, stub
 //   Distribution > Inventory, Rate plans,     | none yet           | content: null, stub
 //     Yield rules
@@ -511,7 +513,14 @@ function buildSmContentTree(showProperties) {
         { key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST },
         { key: 'channels-plus', label: 'Channels Plus', content: null },
         { key: 'metasearch', label: 'Metasearch', content: null },
-        { key: 'manage-products', label: 'Manage products', content: null },
+        // Renamed from "Manage products" (CHANGE-QUEUE.md item 6) — "Add
+        // products" more precisely signals its action (add a NEW product
+        // to the account) vs. the settings-page items above it. `actionIcon`
+        // marks it as an ACTION ROW, a third panel-list pattern alongside
+        // folder/heading (PATTERNS.md) — plain clickable like Direct
+        // Booking/Channels Plus, just with a leading icon distinguishing
+        // "does something" from "navigates to a settings page."
+        { key: 'manage-products', label: 'Add products', content: null, actionIcon: '+' },
       ],
     },
   };

@@ -331,9 +331,20 @@ function renderPanel(data) {
     // couple of Insights' promoted items show a star to illustrate "this
     // was promoted from My insights because the user starred it."
     const star = item.starred ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
+    // `actionIcon` — a leading icon marking this item as an ACTION row
+    // (e.g. "+ Add products") rather than a settings-page destination like
+    // its siblings — a third panel-list pattern alongside folder/heading
+    // (PATTERNS.md). Still plain-clickable, just visually distinguished.
+    const actionIcon = item.actionIcon
+      ? `<span class="nav-list-item__action-icon" aria-hidden="true">${item.actionIcon}</span>`
+      : '';
+    // actionIcon + label grouped in their own span so the flex row's
+    // justify-content: space-between still only splits "label side" from
+    // "star/chevron side" into two groups, not three separate items.
+    const labelGroup = actionIcon ? `<span class="nav-list-item__label-group">${actionIcon}${item.label}</span>` : item.label;
     html += `
       <li class="nav-list-item${isRouted ? ' is-active' : ''}${isOpen ? ' is-open' : ''}">
-        <a href="#" data-item-key="${item.key}">${item.label}${star}${chevron}</a>
+        <a href="#" data-item-key="${item.key}">${labelGroup}${star}${chevron}</a>
       </li>
     `;
 

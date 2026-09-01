@@ -437,6 +437,25 @@ a { color: inherit; }
   );
 }
 
+/* Action-row leading icon (e.g. "+ Add products") — marks a panel-list
+   item as an ACTION rather than a settings-page destination, a third
+   pattern alongside folder/heading (PATTERNS.md). Greyscale, matches the
+   surrounding label weight. */
+.nav-list-item__action-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* Groups an actionIcon + label together as one flex child, so the row's
+   justify-content: space-between still splits into exactly two sides
+   (label side / star+chevron side), not three separate items. */
+.nav-list-item__label-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .nav-sublist {
   list-style: none;
   margin: 2px 0 4px 11px;
