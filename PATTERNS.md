@@ -177,6 +177,21 @@ names should each open the SAME shared detail page.
   other `records` caller (Properties/Users from Configuration's own list,
   Dashboards, Charts, Yield rules, Rate plans) omits this and keeps the
   normal accumulating trail.
+- `homeItemKey: string` (required alongside `crossNav: true`) — names which
+  rail L2 item the picker's `detailNode` DESTINATION conceptually belongs
+  to. Needed because the rail/L2 panel's highlight only ever reads
+  `state.path[0]`, but a crossNav pick happens deeper in the tree and never
+  touches that index — without this, the rail stayed stuck on whichever
+  item the user originally entered through even after cross-navigating
+  somewhere conceptually different (caught live: Property → Users tile →
+  a user left "Properties" highlighted instead of "Users"). `main.js`'s
+  `findCrossNavHomeItemKey` walks the resolved chain for the deepest
+  explicit crossNav step and returns its `homeItemKey`; `renderPanel` uses
+  it to override the plain `state.path[0]` lookup when present. Can vary by
+  account type when the destination's own rail key does — e.g.
+  `buildUserNode`'s "Properties" tab uses
+  `showProperties ? 'properties-config' : 'property-settings'`, matching
+  `buildConfigurationPropertiesItem`'s own branching.
 
 **Existing instances:** Properties (`names: SAMPLE_PROPERTIES`, `detailNode:
 buildPropertyNode(...)`), Users (`names: SAMPLE_USERS`, `detailNode:
@@ -211,6 +226,39 @@ don't add a real title without explicit confirmation this has changed.
 The skeleton title bar (`.sketch-dashboard-card__title-skel`) is sized larger
 than a typical skeleton label, per "make them larger" — it's standing in for
 a real heading, not a minor field label.
+
+## Panel-item badge (`item.badge: true`)
+
+EXPLORATORY, non-functional and STATIC — illustrative "something needs
+attention" dot (`.nav-list-item__badge`), no count, rendered next to a panel-
+list item's label (same slot as the `starred` indicator, before the chevron).
+Grew out of CONTEXT.md's notification candidate-model: rather than inventing a
+separate badge/alert system per area, the GLOBAL "something needs attention"
+surfaces already in this app — Health check and Dynamic pricing (broken-
+flavored) and Recommendations (optimize-flavored) — get this badge directly
+on their own L2 panel item. Deliberately scoped to the L2 item only, NOT the
+rail icon — avoids the larger, unresolved question of rail-level badge
+aggregation.
+
+**Color is a DELIBERATE exception to this project's greyscale-only rule** —
+user: "make the dot red - it doesn't really parse as black." Uses a new
+`--alert` CSS token (light + dark values defined once alongside the other
+theme tokens), scoped to just this element — not a general accent color for
+the rest of the app.
+
+**Static, not dismissible — a real interaction was explored and dropped.** A
+dismiss-on-visit behavior (clear once the item is routed, later refined to
+reset per section-visit rather than per session) was built, then the user
+reconsidered: "maybe it's too much to bother with the dismiss?" Reverted to a
+plain always-on dot — nothing in this prototype tracks real resolved/
+unresolved state, so a dismiss interaction wouldn't represent anything real
+underneath it. The intended real-product behavior (badge clears once its
+underlying issue is addressed) is documented as INTENT in CONTEXT.md, not
+simulated in code — don't rebuild the dismiss logic without picking this back
+up directly.
+
+**Existing instances:** Health check (`HEALTH_CHECK_ITEM`), Recommendations,
+Dynamic pricing.
 
 ## Navigation dashboard (`type: 'nav-dashboard'`)
 
@@ -256,16 +304,60 @@ structurally closer to `tabs` than to `dashboard-cards`.
   instance:** Rate plans (`buildRatePlanNode` in `nav-data.js`) — see below.
 
 Both modes share the same tile rendering (`renderNavDashboard`): a leading
-skeleton block (`.nav-dashboard__tile-metric-skel` — hints "a metric could
-show here," shape only, no real content decided), the tile's own real,
-confirmed title (the tile's label IS the heading — no separate grouping
-heading above clusters of tiles), an OPTIONAL status tip
-(`tile.tip` — a real string once decided, e.g. "2 channels not connected,"
-or a skeleton bar otherwise; `.nav-dashboard__tile-tip`/`-skel` — not live
-data, just the shape of a tile that can carry one), and a trailing `›`
-chevron marking it as a link (`.nav-dashboard__tile-chevron` — same visual
-role as a folder's `.nav-list-item__chevron`, but for a canvas tile, not a
-panel-list row).
+metric-skeleton block (`.nav-dashboard__tile-metric-skel` — hints "a real
+metric/icon could show here," shape only, still no real content decided),
+the tile's own real, confirmed title (the tile's label IS the heading — no
+separate grouping heading above clusters of tiles), and TWO SEPARATE
+optional status fields, not one:
+
+- **`tile.stat`** — an always-on, factual summary (e.g. "5 channels
+  connected, 2 awaiting setup") — real text once decided
+  (`.nav-dashboard__tile-stat`), a skeleton bar otherwise
+  (`.nav-dashboard__tile-stat-skel`). This is what the tile's own status
+  line has always been building toward — "all tiles would have key stats
+  like that."
+- **`tile.tip`** — an OPTIONAL attention callout (e.g. "Not connected to a
+  PMS"), only on SOME tiles, and deliberately NOT a replacement for `stat`
+  — "and then sometimes a callout for something that needs attention." Its
+  TEXT does not render on the dashboard tile — see below.
+
+A trailing `›` chevron marks the tile as a link
+(`.nav-dashboard__tile-chevron` — same visual role as a folder's
+`.nav-list-item__chevron`, but for a canvas tile, not a panel-list row).
+
+**`tile.tip`'s presentation — revised after the dashboard read as too
+alarming.** A first version rendered `tip` as a small badged chip right on
+the dashboard tile (colored text + dot on a tinted background). With 3+
+tiles carrying one at once on the SAME dashboard, that read as stacked
+alarm/negative noise, not the "optimize" framing this concept is supposed
+to have — the user's own catch, live: "it might be too much negative noise
+on the dashboard level." Revised to a two-tier disclosure instead:
+
+- **On the dashboard tile:** just a plain dot next to the title
+  (`.nav-dashboard__tile-dot`) — same visual language as the panel-item
+  badge (`.nav-list-item__badge`). Signals "something to look at here,"
+  no wording, no color-block chip. Calm at a glance even with several
+  tiles carrying one.
+- **On the tile's own destination page:** the actual tip text, as a
+  banner prepended above the page's content (`renderTileTipBanner` in
+  `main.js`, `.tile-tip-banner` in `style.css` — reuses the same
+  `--alert`/`--alert-tint` tokens the old chip used). One callout on its
+  own page reads as normal page-level messaging, not stacked noise — "show
+  them in more detail when user clicks through." Wired into
+  `renderChainBody`'s `nav-dashboard` branch: once a tile is selected,
+  its `tip` (if any) renders as this banner ahead of the tile's own
+  content.
+
+This is still the "navigation also becomes recommendation" idea — a nav
+surface that doubles as a nudge toward what's missing — just disclosed in
+two steps (a quiet signal at the list level, the real explanation one
+click in) rather than announcing everything at once.
+
+**Built instance of stat+tip:** every tile on `buildPropertyNode` (Config →
+Property) — see its "Built instance (mode a)" section below for the exact
+wording per tile. Rate plans' Overview tiles (mode b) haven't adopted this
+yet — no `stat`/`tip` set there, so they still render the plain skeleton
+bar; a legitimate next step, not yet requested.
 
 **Optional page composition — `content.title` and `content.extraSections`:**
 a nav-dashboard's tile grid can carry an optional heading above it
@@ -305,28 +397,79 @@ a plain list. Tile set explicitly NOT closed — "there will be others I
 haven't thought of yet." Every current tile leaves `tip` unset (renders as
 skeleton) — no real status wording/data decided yet.
 
-**Built instance (mode a):** `PROPERTY_NODE` (Config → Properties) — the
-actual tab-overload case this pattern was originally built to solve. Its
-old 8-tab strip is gone; tiles are Property details / Channels /
-Connectivities / Integrated systems / Users. NOT a straight 1:1 conversion
-of the old tabs — most of them moved a level deeper:
+**Built instance (mode a):** `PROPERTY_NODE`/`buildPropertyNode` (Config →
+Properties) — the actual tab-overload case this pattern was originally
+built to solve. Its old 8-tab strip is gone; current tile set is Property
+details / Room types / Media library / Channels / Integrated systems /
+Users, THE SAME for every account type (Users only for multi-property —
+`showProperties` gating, same as `buildUserNode`'s own "Properties" tab).
+A single-property-only flattened variant (Room types/Media library as flat
+rail items instead of tiles, via a since-removed `includePropertyLevelTiles`
+parameter) was tried and explicitly reverted — the card grid is kept for
+every account type because it's the one surface that can carry a `tile.tip`
+contextual nudge; a flat rail item has no equivalent slot. See CONTEXT.md's
+"Confirmed principle" writeup for the full back-and-forth. NOT a straight
+1:1 conversion of the old tabs — most of them moved a level deeper, then
+some were lifted back out:
 
 - **Property details** (tile) drills into a NEW sub-node
   (`PROPERTY_DETAILS_NODE`, a normal `tabs` strip): General information /
-  Room types / Services / Policies / Media library. Most of the old 8 tabs
-  live HERE now, not as top-level tiles — "those move to a level under
-  property details, or at least most of them."
-- **Channels, Connectivities** (tiles) — brand new, mirroring Rate plans'
-  own tile names; same best-guess `sketch:'list'` stub.
-- **Integrated systems, Users** (tiles) — deliberately kept at the TOP
-  level rather than folded under Property details — "users and integrated
-  systems move to the top level."
+  Services / Policies. Room types and Media library originally lived here
+  too, but were both later lifted back OUT to their own top-level tiles
+  ("lift room types to the property layer rather then property details";
+  "lets move media library up a level as well") — they read as
+  property-level things in their own right, not sub-pages of Property
+  details.
+- **Room types, Media library** (tiles) — property-scoped concepts,
+  promoted out of Property details' tab strip, same treatment for every
+  account type (see the reverted single-property flattening attempt
+  above). Room types is still a plain `sketch:'list'` (no generic/shared
+  room-type concept exists); Media library still `sketch:'media'`.
+- **Channels** (tile) — brand new, mirroring Rate plans' own tile name;
+  best-guess `sketch:'list'` stub. Lives on the dashboard ONLY — a
+  redundant flat Config L2 "Channels" item (a leftover `content: null`
+  stub above the "Products" heading) was removed once the general Config
+  L2 model was stated explicitly (see PATTERNS.md/CONTEXT.md's "Property
+  dashboard + Products, plus efficiency exceptions" model, and
+  `buildConfigurationPropertiesItem`'s own header comment in
+  `nav-data.js`) — Channels was considered for the same "efficiency
+  exception" treatment Users gets and explicitly rejected.
+- **Integrated systems** (tile) — kept at the TOP level rather than folded
+  under Property details — "users and integrated systems move to the top
+  level." The standalone Connectivities tile that used to sit alongside it
+  has been REMOVED — Connectivities and Integrated systems are the same
+  concept, named differently by account type (see CONTEXT.md's open
+  threads); Integrated systems is now the only tile for it here. (Rate
+  plan's own separate Connectivities tab/tile is untouched — that
+  consolidation is still open there.)
+- **Users** (tile) — multi-property accounts only. A single-property
+  account has no "which users have access to THIS property" question
+  distinct from "which users are on the account," so the tile would
+  duplicate Config → Users — "dont show users under property for a single
+  property account."
 - The OLD tab literally named "Property details" (Property/Contact/Extra
   information fields) collided with the NEW top-level tile of the same
   name — resolved by merging its fields into General information (now 6
   sections: Currency/Inventory/Language and region/Property/Contact/Extra
   information) rather than keeping two same-named things at different
   levels.
+- **Contextual recommendations, then generalized into stat+tip for every
+  tile:** Property details, Channels, and Integrated systems first got real
+  `tip` text ("2 required fields missing" / "No channels connected yet" /
+  "Not connected to a PMS") — gap/opportunity-framed, matching this
+  concept's "optimize" flavor (see CONTEXT.md's three-way notification
+  model). That later generalized (see "Navigation dashboard" above) into
+  the two-field stat+tip model applied to ALL 6 tiles. CURRENT wording:
+  Property details (stat "6 sections complete" + tip "2 required fields
+  missing"), Room types (stat "4 room types" + tip "1 missing media"),
+  Media library (stat "7 photos uploaded", no tip), Channels (stat "5
+  channels connected, 2 awaiting setup" — its original tip text moved into
+  the stat, since it's routine status, not an attention callout),
+  Integrated systems (stat "0 systems connected", NO tip — "Not connected
+  to a PMS" was tried and dropped: "lets lose the not connected to a pms
+  for now - its a bit basic," a wording call, not a rejection of the
+  concept; a better tip for this tile is a legitimate thing to pick back
+  up later), Users (stat "4 users", no tip).
 
 **Bug caught and fixed here — crumb duplication on a standalone tile whose
 destination node shares its label:** `isDetailNodeRoot` (the check that

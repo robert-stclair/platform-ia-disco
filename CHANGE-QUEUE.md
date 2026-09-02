@@ -25,6 +25,248 @@ scope switcher (its own section below) — Distribution's shape is explicitly un
 a queue item to implement yet. Add new requests to a fresh numbered list below this status
 block as they come in.
 
+## Bug fix: rail highlight didn't follow cross-navigation
+
+Caught live: "when we cross nav the user thing we need to update which L2 item is highlighted."
+Drilling Config → Property → [a property] → Users tile → [a user] left the rail still
+highlighting "Properties," even though the canvas had moved to that user's own "User details /
+Properties" page (`buildUserNode`'s content) — a different concept, reached via `crossNav`, not a
+literal deeper level of Property. Same bug in reverse (Users → [a user] → Properties tab →
+[a property] left "Users" highlighted instead of "Properties").
+
+**Root cause:** the rail/L2 panel's highlight (`renderPanel`'s `resolveSelected(items, 0)`) only
+ever reads `state.path[0]` — but a `crossNav` records pick happens much deeper in the tree (at
+whichever `pathIndex` that picker sits at), and never touches `state.path[0]`. So after crossing
+over, `state.path[0]` still names whichever rail item the user originally entered through, and
+the rail stayed stuck there.
+
+**Fix:**
+1. Each `crossNav: true` records config in `nav-data.js` now also carries a `homeItemKey` — which
+   rail L2 item its `detailNode`'s content conceptually belongs to. `buildPropertyNode`'s "Users"
+   tile → `homeItemKey: 'users'` (always a flat top-level item). `buildUserNode`'s "Properties"
+   tab → `homeItemKey: showProperties ? 'properties-config' : 'property-settings'` (varies by
+   account type, matching `buildConfigurationPropertiesItem`'s own branching exactly).
+2. New `findCrossNavHomeItemKey` helper in `main.js` — walks the resolved chain for the deepest
+   explicit crossNav step and returns its `homeItemKey`, if any.
+3. `renderPanel` now checks this override before falling back to the plain `state.path[0]`
+   lookup — if a crossNav step was taken, the rail highlights `homeItemKey`'s item instead of
+   whichever item the click physically started under.
+4. Verified in browser (MP account, both directions): Property → Users tile → a user now
+   highlights "Users"; Users → a user → Properties tab → a property now highlights "Properties."
+   Plain, non-crossnav navigation (Config → Property, Config → Users) still highlights correctly
+   — no regression. No console errors.
+
+## Integrated systems' tip dropped (wording, not concept)
+
+"Not connected to a PMS" was called "a bit basic" and removed — `nav-data.js`'s
+`integrated-systems` tile now carries only `stat: '0 systems connected'`, no `tip`. This is a
+wording call, not a rejection of the underlying "this tile could nudge toward something" idea —
+picking a sharper tip for this tile is a legitimate, open thing to come back to. Property
+details' and Room types' tips are unaffected.
+
+## Tile tip: dashboard-level dot, real text moved to a destination-page banner
+
+Follow-up correction on the stat+tip batch (below) — caught live, right after that batch shipped
+the badged-chip tip treatment: "it might be too much negative noise on the dashboard level. Maybe
+just an indicator that there are recommendations - a dot? and then show them in more details when
+user clicks through." With Property details/Room types/Integrated systems all carrying a red
+chip on the same dashboard at once, it read as alarm/failure, not the "optimize, contextual
+recommendation" framing this concept is supposed to have.
+
+1. **`renderNavDashboard` (`main.js`)** no longer renders `tip`'s text at all on the dashboard
+   tile — just a plain dot next to the title (`.nav-dashboard__tile-dot`, new), same visual
+   language as the existing panel-item badge dot (`.nav-list-item__badge`). `stat` is unaffected.
+2. **New `renderTileTipBanner` function** — renders the tip's actual text as a banner
+   (`.tile-tip-banner`, reusing the `--alert`/`--alert-tint` tokens the old chip used). Wired into
+   `renderChainBody`'s `nav-dashboard` branch: once a tile is selected, its `tip` (if set)
+   prepends this banner ahead of the tile's own destination-page content — one callout on its own
+   page, not stacked with the others.
+3. **CSS**: `.nav-dashboard__tile-tip` (the old chip) removed entirely; new
+   `.nav-dashboard__tile-dot` (dashboard) and `.tile-tip-banner`/`.tile-tip-banner__dot`
+   (destination page) added.
+4. Verified in browser: Config → Property's dashboard now shows small dots on Property
+   details/Room types/Integrated systems, no colored chips — reads calm even with 3 at once;
+   clicking into each of those 3 tiles shows the correct banner text at the top of its own page;
+   Channels/Media library/Users (no `tip`) show no dot and no banner. No console errors.
+
+## Nav-dashboard tiles: stat + tip, two separate fields (superseded in part — see above)
+
+The badged-chip presentation of `tile.tip` described in this section was replaced by the
+dashboard-dot + destination-page-banner treatment in the section above, right after this batch
+shipped. The `stat`/`tip` DATA model itself (two separate fields) is unchanged and still current
+— only how `tip` is DISPLAYED was revised.
+
+## Prototype settings: theme toggle
+
+Not part of the product surface being wireframed — a prototype-only convenience the user
+noticed while dark mode was on for other testing ("wow you have a dark mode! add that to the
+settings!"). This app's CSS already fully supported light/dark via `prefers-color-scheme` (every
+artifact/page built this session follows that convention) — there was just no way to force one
+from inside the hidden settings sheet, only the OS-level setting.
+
+1. **New "Theme" group in the settings sheet** (`index.html`) — System (default) / Light / Dark,
+   same `.scope-toggle--sheet` control style as the existing Account type/Number of
+   properties/Integrated systems groups.
+2. **Wired in `main.js`** — `applyTheme(choice)` stamps `data-theme="light"`/`"dark"` on
+   `<html>` for an explicit choice, or removes the attribute entirely for "System" (falls back to
+   `prefers-color-scheme`) — the exact mechanism `style.css`'s token blocks were already built to
+   key off. Persisted to `localStorage` (`platform-ia-disco:theme`) so the choice survives a
+   reload rather than resetting to System every time.
+3. Verified in browser: Dark renders correctly (checked the new nav-dashboard tile
+   stat/tip styling in dark mode too — good contrast, no color-only-defined-in-one-theme bug);
+   persists across a reload; System correctly removes the `data-theme` attribute. No console
+   errors.
+
+## Nav-dashboard tiles: stat + tip, two separate fields (original batch — display since revised)
+
+**The `tip` DISPLAY approach described in item 2 below (a badged chip on the dashboard tile) was
+revised shortly after this shipped — see "Tile tip: dashboard-level dot..." near the top of this
+file for the correction.** The `stat`/`tip` DATA model (two separate fields per tile) described
+here is still current and unchanged.
+
+The user's framing: "navigation also becomes recommendation" — tiles should surface useful
+information even when nothing needs attention, not just conditionally nudge. Grew out of a
+request to elevate Room types' "missing media" concept, which surfaced that a single `tip` field
+was being asked to do two different jobs — routine status and attention-needed — that should be
+visually and semantically distinct.
+
+1. **Confirmed model:** every tile can carry a `stat` (always-on, factual — e.g. Channels: "5
+   channels connected, 2 awaiting setup") — this is what the tile's metric-skeleton placeholder
+   had been waiting for since nav-dashboard was first built. Separately, some tiles ALSO carry a
+   `tip` (attention callout — e.g. "Not connected to a PMS") — NOT a replacement for `stat`, a
+   distinct add-on layered on top: "and then sometimes a callout for something that needs
+   attention."
+2. **`renderNavDashboard` (`main.js`) rewritten** for the two-field model — `stat` renders as
+   real text (or a skeleton bar, unchanged behavior) in the slot the metric-skeleton block used
+   to occupy alone; `tip`, when present, renders as a SEPARATE badged chip below it, not another
+   line of muted body text — small pill, `--alert`-colored text/dot on an `--alert-tint`
+   background, so it visually reads as "needs a look" rather than more status copy.
+3. **New `--alert-tint` CSS token** (light + dark, alongside the existing `--alert` token) — the
+   chip's background. Same deliberate, narrow exception to the greyscale-only rule the panel-item
+   badge dot already carved out; not a general accent color.
+4. **All 6 `buildPropertyNode` tiles got real `stat` text**, and 3 kept/gained a `tip`: Property
+   details (stat "6 sections complete" + tip "2 required fields missing"), Room types (stat "4
+   room types" + tip "1 missing media" — the request that started this), Media library (stat "7
+   photos uploaded", no tip), Channels (stat "5 channels connected, 2 awaiting setup" — its old
+   `tip` text moved INTO the stat, since it's routine status, not an attention callout), Integrated
+   systems (stat "0 systems connected" + tip "Not connected to a PMS"), Users (stat "4 users", no
+   tip).
+5. Verified in browser: all 6 tiles show correctly for single-property (5 tiles) and MP
+   per-property drill-in (6 tiles, Users included); dark mode renders the callout chip with good
+   contrast; Rate plan's Overview tiles (mode b, unrelated — no `stat`/`tip` set there yet) still
+   correctly fall back to skeleton bars, confirming the shared `renderNavDashboard` didn't
+   regress for tiles that haven't adopted this yet. No console errors.
+
+## Config → Property tile cleanup batch
+
+Four quick follow-ups, requested live right after the contextual-recommendations tips (below)
+were confirmed but before they were verified in browser — folded into the same pass.
+
+1. **Contextual recommendations (`tile.tip`) — first real instance built.** Scoped to Config →
+   Property's tiles (not Rate plan's Overview tiles — explicitly deferred, "Config → Property's
+   tiles first" over "both"). Real tip text on exactly 3 of the (then-5) tiles: Property details
+   ("2 required fields missing"), Channels ("No channels connected yet"), Integrated systems
+   ("Not connected to a PMS") — all gap/opportunity framing, not alarm framing, matching the
+   "optimize" flavor of this concept vs. Health check's "broken" flavor (see CONTEXT.md's
+   three-way notification model). Connectivities (since removed, see below) and Users kept the
+   plain skeleton tip bar — no real tip text.
+2. **Connectivities tile removed from Config → Property** — same concept as Integrated systems,
+   just named differently by account type (MP: Connectivities / Platform: Integrated systems —
+   see CONTEXT.md's open thread, now resolved by this removal rather than left queued). No
+   separate Connectivities tile is needed once Integrated systems already covers the concept.
+3. **Room types AND Media library lifted to the property (tile) layer** — both used to be tabs
+   inside `PROPERTY_DETAILS_NODE` (Property details' own drill-in page); both are now their own
+   top-level tiles on `buildPropertyNode`'s tile grid, sitting right after Property details.
+   Room types moved first ("lift room types to the property layer rather then property
+   details"), Media library followed the same treatment moments later ("lets move media library
+   up a level as well"). Property details' own tab strip is now just General information /
+   Services / Policies.
+4. **Users tile on Config → Property is now gated to multi-property accounts only** — "dont show
+   users under property for a single property account." Mirrors the gate `buildUserNode`'s own
+   "Properties" tab already used (`showProperties`) — for a single-property account there's no
+   "which users have access to THIS property" question distinct from "which users are on the
+   account," so the tile was a redundant duplicate of Config → Users. Verified: single-property
+   accounts show 4 tiles (Property details/Room types/Media library/Channels/Integrated systems
+   — Users absent); multi-property accounts show all 5 (Users present, gated correctly); the
+   Users ↔ buildUserNode cross-navigation still works with no breadcrumb history-log regression;
+   no console errors in either account state.
+
+## Room types/Media library flattening: tried, reverted; Config L2 model confirmed instead
+
+Follow-up after the Config → Property tile cleanup batch shipped Room types/Media library as
+tiles for EVERY account type. Asked directly whether this "things move between L2/tile depending
+on MP mode" pattern was a good idea, the user gave the actual placement rule (now logged in
+CONTEXT.md as "Confirmed principle: what promotes a Config tile to the property's top level").
+
+1. **First attempt (TRIED, then REVERTED): flatten Room types/Media library for single-property
+   only.** `buildPropertyNode` briefly gained a second parameter
+   (`includePropertyLevelTiles = true`) so single-property could omit them from the tile grid;
+   `buildConfigurationPropertiesItem` briefly returned an array (`[Property, Room types, Media
+   library]`) for single-property instead of one item. Reasoning at the time: single-property has
+   no properties-list level to drill through, so a tile felt like unnecessary nesting.
+2. **Caught live, then reverted:** the user noticed the actual consequence — "this start to mean
+   that single property doesnt get the cards at all - and the property L2 items become property
+   details." That surfaced the real tradeoff: the card grid isn't just solving tab-overload, it's
+   the SURFACE `tile.tip` contextual nudges are built on — a flat rail item has no equivalent
+   slot. Resolution: "its actually more about whats a better surface - the dashboard allows us to
+   do the contextual hints and nudges - i suspect its the richer solution." Fully reverted —
+   `buildPropertyNode` is back to one signature, no `includePropertyLevelTiles`;
+   `buildConfigurationPropertiesItem` is back to returning one item, not an array. Room types and
+   Media library are tiles for every account type again.
+3. **Confirmed general Config L2 model** (now the header comment above
+   `buildConfigurationPropertiesItem` in `nav-data.js`, and CONTEXT.md): Config's L2 is just two
+   things — the Property dashboard (every property-scoped concept lives here as a tile) and
+   Products (everything else). MP turns "Property" into "Properties" (a picker) and moves the
+   SAME dashboard one level deeper, per selected property. The only exceptions are concepts with
+   an efficiency case for ALSO being a flat Config L2 item, reachable without drilling into a
+   specific property — Users is the one built so far.
+4. **Channels' flat Config L2 item removed** — it was a leftover `content: null` stub sitting
+   above the "Products" heading, redundant with the dashboard's own Channels tile once the model
+   above was stated explicitly. Considered and explicitly rejected for the same "efficiency
+   exception" treatment Users gets — Channels lives on the dashboard only now.
+5. Verified in browser: single-property rail is Property / Users / [Products heading] — no flat
+   Room types/Media library/Channels items; the "Property" dashboard shows all 5 tiles again
+   (Property details/Room types/Media library/Channels/Integrated systems). Multi-property: rail
+   unchanged (Properties/Users/[Products]); drilling into a property still shows all 6 tiles. No
+   console errors in either state.
+
+## Notification candidate-model: first concrete pieces built
+
+Grew out of a design conversation (see CONTEXT.md's "notification-driven narrow surfaces vs.
+full browsable IA" candidate model) — the user connected a question about common notification
+patterns back to Health check's own already-simplified shape, then refined it into a three-way
+split: Recommendations (global, optimize), Health check (global, broken), contextual
+recommendations (local, optimize — the `nav-dashboard` tile's `tip` field, not yet built out as
+this specific concept). Confirmed and built the first two concrete pieces of this:
+
+1. **New panel-item badge pattern** (`item.badge: true`, PATTERNS.md) — an illustrative, non-
+   functional dot next to a panel-list item's label, same slot as the existing `starred`
+   indicator. A dot, not a count — no real number exists yet. Deliberately scoped to the L2
+   panel item only, not the rail icon (avoids the larger unresolved question of rail-level
+   badge aggregation — user's explicit choice). Applied to Health check, Recommendations, and
+   Dynamic pricing (added afterward: "think we can badge dynamic pricing as well").
+2. **Badge color: a DELIBERATE exception to the greyscale-only rule.** User: "make the dot red
+   - it doesn't really parse as black." New `--alert` CSS token (defined once, light + dark),
+   scoped to just this one element — not a general accent color for the app.
+3. **Dismiss-on-visit was explored, then dropped.** First built: badge clears once its item is
+   routed/viewed ("ideally it goes away just to enforce the concept"), then refined to reset
+   per SECTION VISIT rather than per session ("have them come back next time I visit the
+   section - I know that's weird but it's just to demo"). Before finishing that refinement, the
+   user reconsidered: "maybe it's too much to bother with the dismiss?" — agreed and reverted
+   to a fully STATIC badge (always shows, no interaction) since nothing in this prototype
+   tracks real resolved/unresolved state to make a dismiss meaningful. The real-product "clears
+   once addressed" intent stays documented in CONTEXT.md, not simulated in code.
+4. **Recommendations is now a richer dashboard-cards page**, not a plain `sketch:'list'` — user:
+   "make that recommendation page richer like a dashboard of its own." Reuses the existing
+   `dashboard-cards` pattern as-is (6 titleless stat/chart cards, same treatment as Insights'
+   Dashboard/Health check) — a "concept of groupings" inside Recommendations was floated but
+   explicitly deferred: "maybe that's a later stage thing - I am fine with reuse [for now]."
+   Don't add grouping structure without picking this back up.
+5. Verified in browser: red badge dot renders correctly and statically on Health check, Dynamic
+   pricing (Distribution) and Recommendations (Insights) L2 items; Recommendations routes to
+   its own dashboard-cards content (visually similar to Insights' Dashboard since both reuse
+   the same pattern — expected, not a bug); no console errors.
+
 ## Pay IA split + small additions batch
 
 1. **Dynamic pricing is now a calendar-style grid** — user: "dynamic pricing is a grid as well

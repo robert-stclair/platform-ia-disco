@@ -18,7 +18,7 @@
 //   Content =
 //     | { type: 'tabs', tabs: Node[] }             // horizontal tab strip; each tab is a Node
 //     | { type: 'list', items: Node[] }            // vertical sub-nav list (packed away until its parent is clicked)
-//     | { type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, crossNav?: boolean }
+//     | { type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, crossNav?: boolean, homeItemKey?: string }
 //                                                   // GENERIC "clickable records list -> shared detail node" pattern
 //                                                   // (PATTERNS.md) — selecting a name shows `detailNode`'s content.
 //                                                   // Properties (-> buildPropertyNode) and Users (-> buildUserNode) are
@@ -270,6 +270,15 @@ function buildUserNode(showProperties) {
                   // Jane Smith" — a click-history log, not a hierarchy
                   // position). See renderChainBody's `crossNav` handling.
                   crossNav: true,
+                  // Which rail L2 item this cross-nav's DESTINATION
+                  // (buildPropertyNode) conceptually belongs to — used to
+                  // fix the rail highlight once cross-navigated (caught
+                  // live: rail kept showing "Users" even after following
+                  // this picker into a property's own page). Matches
+                  // buildConfigurationPropertiesItem's own key exactly —
+                  // varies by showProperties, same as that function's
+                  // branching.
+                  homeItemKey: showProperties ? 'properties-config' : 'property-settings',
                 },
               },
             ]
@@ -309,15 +318,6 @@ const PROPERTY_DETAILS_NODE = {
           ],
         },
       },
-      // Per-property — no generic/shared room-type concept exists today
-      // (user: "i dont think there is a concept of a generic room type").
-      // Confirmed a plain list (not a stub) — CHANGE-QUEUE.md Distribution
-      // batch item 6.
-      {
-        key: 'room-types',
-        label: 'Room types',
-        content: { type: 'sketch', sketch: 'list' },
-      },
       {
         key: 'services',
         label: 'Services',
@@ -344,11 +344,6 @@ const PROPERTY_DETAILS_NODE = {
           ],
         },
       },
-      {
-        key: 'media-library',
-        label: 'Media library',
-        content: { type: 'sketch', sketch: 'media' },
-      },
     ],
   },
 };
@@ -363,18 +358,36 @@ const PROPERTY_DETAILS_NODE = {
 // property (from an MP properties list) shows.
 //
 // Tile set: "Property details" (drills into PROPERTY_DETAILS_NODE above —
-// General information/Room types/Services/Policies/Media library), Channels
-// and Connectivities (NEW — same best-guess sketch:'list' stub treatment as
-// Rate plans' own Channels/Connectivities tiles, not confirmed business
-// logic), Integrated systems and Users (both moved to the TOP level per the
-// user's explicit direction — "users and integrated systems move to the
-// top level" — rather than folding under Property details with the rest).
-// `showProperties` is needed here now (function, not a plain const) purely
-// so the Users tile below can correctly build buildUserNode(showProperties)
-// — the tile itself is ALWAYS shown regardless of property count (mirror of
-// buildUserNode's own "Properties" tab, which IS gated — every property,
-// single- or multi-property account alike, has users with access to it).
-// See buildUserNode above for the other half of this circular reference.
+// General information/Services/Policies), Room types and Media library
+// (property-scoped concepts, not sub-pages of Property details — see
+// CONTEXT.md's "Confirmed principle: what promotes a Config tile to the
+// property's top level"), Channels (best-guess sketch:'list' stub, not
+// confirmed business logic), Integrated systems (moved to the TOP level per
+// the user's explicit direction — "users and integrated systems move to the
+// top level" — rather than folding under Property details with the rest;
+// Connectivities was folded INTO this tile — same concept, different name
+// by account type, MP: Connectivities / Platform: Integrated systems — so
+// there's no separate Connectivities tile here), and Users (multi-property
+// accounts only — see the tile's own comment below for why).
+//
+// Room types and Media library are tiles here for EVERY account type,
+// including single-property, even though single-property's
+// `buildConfigurationPropertiesItem` reuses this content DIRECTLY as the
+// flat Config → Property L2 page (no separate properties-list level to
+// drill through first). A single-property-only flattened variant WAS
+// tried and explicitly reverted — the card grid is the richer surface
+// specifically because it's the vehicle for `tile.tip` contextual
+// nudges ("2 required fields missing," etc.); a flat rail item can't
+// carry that. Consistency of page SHAPE across account types (nav-
+// dashboard's whole reason for existing — "one IA, not two," same page
+// reached at two different depths) also argued against diverging here.
+// Don't re-flatten this for single-property without picking this
+// reasoning back up — see CONTEXT.md's confirmed-principle writeup for
+// the full back-and-forth.
+// `showProperties` is needed here (function, not a plain const) both to
+// gate the Users tile itself and so it can correctly build
+// buildUserNode(showProperties) when shown. See buildUserNode above for the
+// other half of this circular reference.
 function buildPropertyNode(showProperties) {
   return {
     key: 'property',
@@ -382,9 +395,27 @@ function buildPropertyNode(showProperties) {
     content: {
       type: 'nav-dashboard',
       tiles: [
-        { key: 'property-details', label: 'Property details', content: PROPERTY_DETAILS_NODE.content },
-        { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'list' } },
-        { key: 'connectivities', label: 'Connectivities', content: { type: 'sketch', sketch: 'list' } },
+        {
+          key: 'property-details',
+          label: 'Property details',
+          content: PROPERTY_DETAILS_NODE.content,
+          stat: '6 sections complete',
+          tip: '2 required fields missing',
+        },
+        {
+          key: 'room-types',
+          label: 'Room types',
+          content: { type: 'sketch', sketch: 'list' },
+          stat: '4 room types',
+          tip: '1 missing media',
+        },
+        { key: 'media-library', label: 'Media library', content: { type: 'sketch', sketch: 'media' }, stat: '7 photos uploaded' },
+        {
+          key: 'channels',
+          label: 'Channels',
+          content: { type: 'sketch', sketch: 'list' },
+          stat: '5 channels connected, 2 awaiting setup',
+        },
         {
           key: 'integrated-systems',
           label: 'Integrated systems',
@@ -398,30 +429,47 @@ function buildPropertyNode(showProperties) {
               { title: 'Credit card mappings', shape: 'list' },
             ],
           },
+          stat: '0 systems connected',
         },
         // Mirror of buildUserNode's "Properties" tab (CHANGE-QUEUE.md item
-        // 5) — which users have access to THIS property. Unlike
-        // buildUserNode's "Properties" tab, this tile is ALWAYS shown, not
-        // property-count-gated. Now a REAL `records` picker (SAMPLE_USERS,
-        // detailNode: a THUNK, () => buildUserNode(showProperties)), same
-        // self-consistency request as buildUserNode's own Properties tab
-        // above — clicking a user here opens their real buildUserNode page.
-        // MUST be a thunk, not a direct call — see buildUserNode's own
-        // comment above for why (the actual RangeError this caused).
-        {
-          key: 'property-users',
-          label: 'Users',
-          // `crossNav: true` — same reasoning as buildUserNode's Properties
-          // tab above (these two mutually cross-reference each other) —
-          // prevents the breadcrumb from accumulating a click-history log
-          // across repeated back-and-forth navigation.
-          content: {
-            type: 'records',
-            names: SAMPLE_USERS,
-            detailNode: () => buildUserNode(showProperties),
-            crossNav: true,
-          },
-        },
+        // 5) — which users have access to THIS property. Now gated on
+        // `showProperties` (multi-property only) — for a single-property
+        // account there's no "which users have access to THIS property"
+        // question distinct from "which users are on the account," so the
+        // tile would be a redundant duplicate of Config > Users. Same gate
+        // buildUserNode already applies to its own "Properties" tab, just
+        // mirrored onto this side of the circular reference. Real `records`
+        // picker (SAMPLE_USERS, detailNode: a THUNK, () =>
+        // buildUserNode(showProperties)), same self-consistency request as
+        // buildUserNode's own Properties tab above — clicking a user here
+        // opens their real buildUserNode page. MUST be a thunk, not a direct
+        // call — see buildUserNode's own comment above for why (the actual
+        // RangeError this caused).
+        ...(showProperties
+          ? [
+              {
+                key: 'property-users',
+                label: 'Users',
+                // `crossNav: true` — same reasoning as buildUserNode's
+                // Properties tab above (these two mutually cross-reference
+                // each other) — prevents the breadcrumb from accumulating a
+                // click-history log across repeated back-and-forth
+                // navigation.
+                content: {
+                  type: 'records',
+                  names: SAMPLE_USERS,
+                  detailNode: () => buildUserNode(showProperties),
+                  crossNav: true,
+                  // See buildUserNode's "Properties" tab (mirror case) for
+                  // why this exists — Users is always a flat top-level rail
+                  // item regardless of account type, so this one never
+                  // varies the way Property's key does.
+                  homeItemKey: 'users',
+                },
+                stat: `${SAMPLE_USERS.length} users`,
+              },
+            ]
+          : []),
       ],
     },
   };
@@ -735,6 +783,10 @@ const PAY_LIST = {
 const HEALTH_CHECK_ITEM = {
   key: 'health-check',
   label: 'Health check',
+  // EXPLORATORY, non-functional — illustrative "something needs attention"
+  // dot (CONTEXT.md's notification candidate-model). A plain dot, not a
+  // count — no real data behind it yet.
+  badge: true,
   content: {
     type: 'sketch',
     sketch: 'dashboard-cards',
@@ -759,6 +811,19 @@ export const SCOPE_PROPERTIES = SAMPLE_PROPERTIES;
 export const SCOPE_BRANDS = ['Coastal Collection', 'Heritage Stays'];
 export const SCOPE_CLUSTERS = ['East Coast', 'West Coast', 'Inland'];
 
+// CONFIRMED MODEL (CONTEXT.md): Config's L2 is just two things — the
+// Property dashboard (every property-scoped concept lives here, as a tile)
+// and Products (everything else, below the "Products" heading). MP simply
+// turns "Property" into "Properties" (a picker) and moves the SAME
+// dashboard one level deeper, per selected property — `buildPropertyNode`
+// is the one dashboard both cases share. The only items that break this
+// are ones with an efficiency case for being ALSO reachable as their own
+// flat Config L2 rail item, without first drilling into a specific
+// property — Users is the one so far (buildUserNode's cross-nav already
+// depends on it existing both ways). Channels was considered for the same
+// treatment and explicitly rejected — it lives on the dashboard only now,
+// no separate flat L2 item.
+//
 // The Properties section (Configuration's first item) is shown whenever
 // accountType === 'MP' OR propertyCount === 'multiple' — either condition on
 // its own is sufficient (an MP account with just one property still gets it;
@@ -886,10 +951,34 @@ function buildSmContentTree(showProperties) {
             ],
           },
         },
-        // "Recommendations" is a list page (per user's direction), same
-        // as the other stub list-shaped items (Users, Health check's
-        // tabs) — sketch:'list' rather than content: null.
-        { key: 'recommendations', label: 'Recommendations', content: { type: 'sketch', sketch: 'list' } },
+        // REVISED from a plain `sketch:'list'` — user wants Recommendations
+        // to feel like its own real dashboard, connecting it to the
+        // notification candidate-model (CONTEXT.md): Recommendations is the
+        // OPTIMIZATION half of the global "something needs attention" split
+        // (Health check being the BROKEN half). Reusing dashboard-cards as-
+        // is for now — "reuse but I feel like a concept of groupings could
+        // be good - or maybe that's a later stage thing - I am fine with
+        // reuse." Groupings/categorized recommendations logged as a later-
+        // stage idea, NOT built — don't add grouping structure without
+        // picking this back up. `badge: true` — same illustrative
+        // "something needs attention" dot as Health check.
+        {
+          key: 'recommendations',
+          label: 'Recommendations',
+          badge: true,
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [
+              { shape: 'stat' },
+              { shape: 'chart' },
+              { shape: 'chart' },
+              { shape: 'stat' },
+              { shape: 'chart' },
+              { shape: 'stat' },
+            ],
+          },
+        },
       ],
       // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
       // section. Only Insights and (once built) Health check carry this;
@@ -936,8 +1025,15 @@ function buildSmContentTree(showProperties) {
         // can use the LH calendar style") — same 7-weekday-column, 5-row
         // shape Front desk's calendar uses, but embedded in a NORMAL
         // Distribution page (L2 panel stays visible), not full-width/
-        // noPanel like Front desk's own usage.
-        { key: 'dynamic-pricing', label: 'Dynamic pricing', content: { type: 'sketch', sketch: 'calendar' } },
+        // noPanel like Front desk's own usage. `badge: true` — same
+        // illustrative "something needs attention" dot as Health check/
+        // Recommendations (CONTEXT.md's notification candidate-model).
+        {
+          key: 'dynamic-pricing',
+          label: 'Dynamic pricing',
+          badge: true,
+          content: { type: 'sketch', sketch: 'calendar' },
+        },
         // Distribution's "Properties" item REMOVED (CHANGE-QUEUE.md
         // Distribution batch item 5) — user flagged, on reflection, they
         // weren't sure why Distribution needed its own Properties concept
@@ -1011,10 +1107,6 @@ function buildSmContentTree(showProperties) {
           label: 'Users',
           content: { type: 'records', names: SAMPLE_USERS, detailNode: buildUserNode(showProperties) },
         },
-        // Channels sits ABOVE the Products heading, not inside it — user's
-        // explicit reasoning: "its core functionality for all customers not
-        // an add-on" (CHANGE-QUEUE.md item 9). Content/page-type TBD.
-        { key: 'channels', label: 'Channels', content: null },
         // "Products" — a grouping HEADING (see PATTERNS.md's folder-vs-
         // heading rule), not a folder: always-expanded, no chevron, purely
         // clusters the already-visible items below it under one label.

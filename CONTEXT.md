@@ -241,8 +241,208 @@ whether "sticky" means forever or just per session. Don't build this until it's 
 of each dashboard/report, which resonates with (but is a separate decision from) the
 libraries-vs-assignment idea above.
 
+## Candidate model (not yet decided): notification-driven narrow surfaces vs. full browsable IA
+
+Grew out of a direct question — "what might be a common pattern to surface notifications?" —
+that turned into something bigger once the user connected it back to a design move already
+made elsewhere in this project. Not yet a decision, not yet applied anywhere beyond Health
+check (which arrived at this shape independently, before the pattern was named).
+
+**The two competing instincts, named explicitly by the user:**
+- **Instinct A (what most of this session's work has been doing):** take a real production
+  surface — however many items it has — and find it a home: reorganize, split, tab-ify, but
+  ultimately still make the full breadth of it separately navigable. Pay's original 10 items,
+  Transactions' new tabs, Connectivities/Integrated systems as full tiles — all built this way,
+  on the assumption that a user goes LOOKING for these pages.
+- **Instinct B (what Health check already does, without it being named as a pattern yet):**
+  don't surface everything as separately navigable. Build something NARROWER and PURPOSE-BUILT
+  — exists specifically to answer "is something wrong, and where" — and nothing more. Health
+  check was already simplified this way earlier in the project: 7 real, confirmed tab names
+  (Failed PMS deliveries, Delayed updates, Disabled channels, etc.) collapsed into ONE generic,
+  titleless status page, deliberately not making each area its own navigable destination.
+
+**The connection the user drew:** notifications (a bell/badge pattern, discussed as two common
+approaches — a central bell+dropdown feed, vs. contextual badges on the specific nav item
+that's affected, e.g. a red dot on "Payments" if there's a failed automated payment) aren't
+really a bolt-on feature — they're the SAME underlying move as Health check, applied nav-wide.
+Instead of making every "something might be wrong here" area (a failed payment, a mapping
+error, a disabled channel) a full section a user has to go find, a badge/alert layer means the
+PRODUCT surfaces where to look, and the user drills in only when there's something to actually
+act on — a much thinner "browse everything" surface behind it (or none at all).
+
+**Why this matters for what's already built:** this doesn't invalidate this session's IA work,
+but it reframes the real next question for several areas built as full browsable sections —
+Pay's items, Transactions' tabs, Connectivities/Integrated systems (see the open thread just
+below on consolidating those two) — none of which have actually been asked "is this a browse-
+regularly surface, or a notify-me-and-let-me-drill-straight-to-the-one-thing surface?" Health
+check answered that question correctly for itself; the rest were only structurally organized,
+not designed against this distinction.
+
+**Refined into a clean three-way split, once the user connected it to what already exists —
+this is the CURRENT leading shape of the model, more concrete than the badge/bell framing
+above:**
+
+- **Recommendations** (already in the IA, under Insights) — OPTIMIZATION-focused, portfolio/
+  account-wide framing: "here's something you could do better," not broken, just an
+  opportunity.
+- **Health check** (already built, simplified to one generic status page) — BROKEN-focused,
+  same portfolio/account-wide framing: "here's something actually failing" — connectivity
+  issues, mapping errors, disabled channels.
+- **Contextual recommendations** (NOT YET built, a newer concept) — same optimization spirit as
+  Recommendations, but LOCALIZED to wherever the user already is, rather than its own
+  destination. The user's own framing: "I feel that can be more like the sub-dashboards — they
+  provide an opportunity to highlight any missing fields etc." This is NOT a new mechanism to
+  invent — it's the actual confirmed PURPOSE of `nav-dashboard`'s existing `tile.tip` field
+  (PATTERNS.md), which was speculatively built during the Rate plans work with a broken-flavored
+  example ("2 channels not connected") before this session named what it's really for.
+  Recharacterize `tip`'s intended content as optimization/missing-field tips (contextual
+  recommendations), not primarily failure/status signals — that's Health check's job at the
+  global level, not a per-tile tip's.
+
+**What this means for the areas flagged earlier as badge/alert candidates:** most of what
+seemed to need its own per-area notification treatment (Connectivities/Integrated systems
+needing a badge, Automated payments' "failed" state needing an alert) likely does NOT need a
+THIRD, separate notification system — it should probably just FEED INTO Health check (if
+broken) or Recommendations/contextual recommendations (if optimizable), rather than inventing
+bespoke badges scattered across every area. The three-way split (global-broken /
+global-optimize / local-optimize) may be sufficient on its own — a genuinely separate
+notification-badge system is now the less likely direction, not confirmed abandoned.
+
+**Not yet resolved:** whether ANY area still needs a true badge/alert affordance beyond these
+three surfaces (e.g. is a red dot on a rail item ever still warranted, or does everything route
+through Health check/Recommendations?); how "broken" items surfaced elsewhere in this app
+(a failed automated payment, a disabled channel) actually get INTO Health check's feed
+mechanically; whether contextual recommendations needs its own visual distinction from a plain
+status tip, or reuses the same `tile.tip` rendering as-is. Revisit before building any of this.
+
+**BUILT — first concrete pieces** (see CHANGE-QUEUE.md's "Notification candidate-model" batch
+for the full writeup): (1) a new `item.badge: true` panel-list pattern — an illustrative dot (no
+count), applied to Health check, Recommendations, and Dynamic pricing's own L2 items,
+deliberately NOT on rail icons (avoids the rail-aggregation question above). Color is a
+DELIBERATE exception to this project's greyscale-only rule — "make the dot red - it doesn't
+really parse as black" — via a new `--alert` token scoped to just this element. STATIC, not
+dismissible: a dismiss-on-visit interaction was explored (first per-visit, then refined to
+per-section-visit) and then explicitly dropped — "maybe it's too much to bother with the
+dismiss?" — since nothing in this prototype tracks real resolved/unresolved state to make a
+dismiss meaningful; the real-product "clears once addressed" behavior stays documented as
+INTENT here, not simulated in code. (2) Recommendations converted from a plain `sketch:'list'`
+to a real `dashboard-cards` page — "make that recommendation page richer like a dashboard of
+its own." A "concept of groupings" inside Recommendations was floated and explicitly deferred
+as a later-stage idea, not built — don't add grouping structure without picking this back up.
+Contextual recommendations (the `tile.tip` recharacterization) is now built for its first
+instance: Config → Property's tiles (`buildPropertyNode`) — Property details ("2 required
+fields missing"), Channels ("No channels connected yet"), Integrated systems ("Not connected to
+a PMS") all carry real tip text now, gap/opportunity-framed to match the "optimize" flavor of
+this concept. Scope was deliberately narrowed to Config → Property first, not "both" — Rate
+plan's own Overview tiles (Rooms/Channels/Connectivities/Properties) still show only the plain
+skeleton tip bar, not real text; extending this concept there is a legitimate next step, not yet
+requested.
+
+**Generalized further, and named: "navigation also becomes recommendation."** The user's own
+framing, stated after seeing the tile stat+tip split in browser. A nav-dashboard tile isn't just
+a link with an occasional warning bolted on — every tile can carry a routine, always-on status
+stat ("5 channels connected, 2 awaiting setup," "4 room types"), with an attention callout layered
+on top only where something's actually missing ("1 missing media," "Not connected to a PMS").
+That's the mechanism (`tile.stat` + `tile.tip`, two separate fields — see PATTERNS.md's
+"Navigation dashboard" section) — but the THESIS is broader than the mechanism: plain navigation
+and contextual recommendation aren't two different surfaces competing for space, they're the
+same surface doing both jobs at once. A tile you'd click anyway to check status is already the
+right place to notice something needs attention, without a separate notification system
+interrupting to tell you. Built for all 6 of `buildPropertyNode`'s tiles; Rate plan's Overview
+tiles haven't adopted it yet (see above).
+
+**Correction — `tip`'s DISPLAY, not the thesis, needed a second pass.** The first build rendered
+`tip`'s text as a badged chip right on the dashboard tile. Live, with Property details/Room
+types/Integrated systems all carrying one at once, the user caught the actual effect: "it might
+be too much negative noise on the dashboard level. Maybe just an indicator that there are
+recommendations - a dot? and then show them in more detail when user clicks through." Multiple
+loud callouts stacked on one screen reads as alarm/failure, which contradicts the whole point of
+this being the "optimize" flavor, not Health check's "broken" flavor. Resolution: a two-tier
+disclosure — the dashboard tile shows only a plain dot (same visual language as the panel-item
+badge, no wording, no color block), and the actual explanation moved to a banner on the tile's
+own destination page, shown once the user clicks through (`renderTileTipBanner` in `main.js`).
+The "navigation also becomes recommendation" thesis stands unchanged — a tile still does both
+jobs at once — it's just disclosed progressively (quiet signal → real detail) instead of
+announcing everything at the list level simultaneously. `tile.stat` is unaffected by this
+correction; only `tile.tip`'s presentation changed.
+
+**A related, but genuinely SEPARATE fourth concept surfaced alongside this: "Notifications"
+(user-account-focused, not property/portfolio-focused).** The user's own framing: "notifications
+might be more user-focused - account stuff etc. if we get around to adding it." This is
+DIFFERENT from all three items in the split above — Recommendations/Health check/contextual
+recommendations are about the PROPERTY or PORTFOLIO ("something here needs attention"); this
+fourth concept is about the USER'S OWN ACCOUNT (session/security/billing-style things — "your
+password will expire," "you were mentioned," account-level, not property-level). Lower
+priority, explicitly conditional ("if we get around to it") — logged, not queued.
+
+## Confirmed principle: what promotes a Config tile to the property's top level
+
+`buildPropertyNode`'s tile grid (Config → Property) has now had several items move between
+"top-level tile" and "tab nested inside Property details" — Room types and Media library were
+both lifted OUT to top-level tiles; Users is gated to only appear for multi-property accounts.
+Enough of these have happened that the underlying rule was worth stating explicitly rather than
+re-deriving it case by case. Asked directly ("is this pattern of things moving between L2/tile
+level in MP mode good?"), the user's answer was the actual rule, not a vibe:
+
+**A tile's placement is decided by whether the concept is fundamentally SCOPED TO THE PROPERTY
+or SCOPED TO THE ACCOUNT — not by frequency of use, not by "does this look cleaner," and not by
+account type directly.** Room types and Media library are property-scoped concepts (a room type
+or a photo means nothing outside the one property it belongs to) — they belong at the
+property's own top level regardless of account type, which is why BOTH were lifted out for
+single- and multi-property accounts alike, not just MP. Users is different: individual users
+are an ACCOUNT-level concept (a person's access can span every property on the account) — "which
+users have access to THIS property" is only a meaningful, distinct question once there's more
+than one property to disambiguate between. For a single-property account that question
+collapses to "which users are on the account" — i.e. Config → Users — so showing a Users tile on
+the property page too would just duplicate it. That's why Users is gated by `showProperties`
+while Room types/Media library are not: the gate tracks account-vs-property SCOPE, and
+multi-property just happens to be the condition under which "users on this property" becomes a
+question distinct from "users on the account," not a rule of its own.
+
+Apply this test to any future tile-placement call on `buildPropertyNode` (or an equivalent
+grid): ask "does this concept exist independent of how many properties the account has,
+belonging to the property alone?" — if yes, it's a property-scoped concept and belongs at the
+top level unconditionally. If the concept is really about the ACCOUNT and only turns into a
+property-specific question once there are multiple properties to choose between, gate it by
+`showProperties` instead of promoting it unconditionally.
+
+**Addendum — a single-property flattened variant was tried and explicitly reverted; the card
+grid stays the surface for every account type.** The rule above says a property-scoped concept
+belongs at the property's own top level; the first attempt at applying it to single-property
+accounts flattened Room types/Media library into their own flat rail items instead of tiles,
+reasoning that single-property has no properties-list level to drill through (`buildConfigurationPropertiesItem`
+reuses `buildPropertyNode`'s content DIRECTLY as the flat Config → Property L2 page), so a tile
+felt like one unnecessary level of nesting. The user caught the actual consequence of that
+change live: "this start to mean that single property doesnt get the cards at all - and the
+property L2 items become property details." That surfaced the real tradeoff — the card grid
+isn't just a container solving tab-overload, it's the SURFACE `tile.tip` contextual nudges are
+built on ("2 required fields missing," "Not connected to a PMS"); a flat rail item has no
+equivalent slot for that. The user's resolution: "its actually more about whats a better surface
+- the dashboard allows us to do the contextual hints and nudges - i suspect its the richer
+solution." So the card grid wins on its own merits, independent of the property-vs-account-scope
+test above — Room types and Media library are tiles on `buildPropertyNode` for EVERY account
+type, including single-property, and the single-property flattened variant (which briefly existed
+as `buildPropertyNode`'s `includePropertyLevelTiles` parameter and a `buildConfigurationPropertiesItem`
+array-return) was fully reverted. The scope test still decides WHETHER something is promoted out
+of Property details' tab strip at all (that part holds); it does NOT decide tile-vs-flat-item —
+that's decided by which surface can carry a contextual tip, and today that's always the card
+grid. Don't re-flatten Property's tiles for single-property without picking this back up.
+
 ## Open threads (not yet resolved)
 
+- **"Connectivities" and "Integrated systems" are the SAME concept, named differently by
+  account type — RESOLVED on Config → Property, still open on Rate plan.** User's own framing:
+  "connectivities and integrated systems are actually the samer thing... MP uses
+  connectivities, I think platform uses integrated systems." On `buildPropertyNode` (Config →
+  Property) the standalone Connectivities stub tile has been REMOVED — Integrated systems
+  (`type: 'systems'`, system-count-aware, General settings/Inventory settings/Reservation
+  delivery failure emails/Reservation mappings/Credit card mappings) is now the only tile for
+  this concept there. Still NOT resolved on `buildRatePlanNode` (Rate plan's own Overview tile
+  and Connectivities tab) — that's a separate, untouched instance of the same best-guess
+  `sketch:'list'` stub, still sitting alongside Rate plan's own tabs as its own thing. Whether
+  Rate plan gets the same treatment (removing its Connectivities in favor of some
+  Integrated-systems equivalent, or an account-type label swap) is not yet worked out — don't
+  implement without picking this back up.
 - **The "Transactions" rail section's name may need reconsidering.** Surfaced naturally, not as
   a direct request: mid-conversation the user asked to add "a section called Transactions"
   before realizing the top-level rail item (credit-card icon) is ALREADY called that — "oh ok -

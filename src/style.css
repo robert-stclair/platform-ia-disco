@@ -11,6 +11,15 @@
   --shadow: 0 1px 2px rgba(31, 41, 51, 0.06), 0 1px 1px rgba(31, 41, 51, 0.04);
   --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  /* Deliberate, narrow exception to the greyscale-only rule — the "something
+     needs attention" panel badge (.nav-list-item__badge). User: "make the
+     dot red - it doesn't really parse as black." Scoped to just this one
+     element, not a general accent color for the app. */
+  --alert: #C0392B;
+  /* Tint of --alert for the nav-dashboard tile callout chip's background —
+     same narrow exception, just a background-safe low-saturation variant
+     of the same color rather than a second unrelated hue. */
+  --alert-tint: #FBEAE8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +34,8 @@
     --text-muted: #6B7684;
     --tag-bg: #232A33;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
+    --alert: #E0574A;
+    --alert-tint: #3A2323;
   }
 }
 
@@ -39,6 +50,8 @@
   --text-muted: #6B7684;
   --tag-bg: #232A33;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 1px rgba(0, 0, 0, 0.2);
+  --alert: #E0574A;
+  --alert-tint: #3A2323;
 }
 
 * { box-sizing: border-box; }
@@ -488,6 +501,25 @@ a { color: inherit; }
   );
 }
 
+/* EXPLORATORY, non-functional — illustrative "something needs attention"
+   badge (Health check, Recommendations, Dynamic pricing). A plain dot, not
+   a count — no real number exists yet, and a dot avoids implying a
+   precision this prototype doesn't have. DELIBERATE EXCEPTION to this
+   project's greyscale-only rule — user: "make the dot red - it doesn't
+   really parse as black." Uses the `--alert` token (defined once, scoped
+   to just this element — not a general accent color for the app). STATIC —
+   a dismiss-on-visit interaction was explored and dropped ("maybe it's too
+   much to bother with") since nothing in this prototype tracks real
+   resolved/unresolved state; the real-product "clears once addressed"
+   intent is documented in CONTEXT.md, not simulated here. */
+.nav-list-item__badge {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--alert);
+}
+
 /* Action-row leading icon (e.g. "+ Add products") — marks a panel-list
    item as an ACTION rather than a settings-page destination, a third
    pattern alongside folder/heading (PATTERNS.md). Greyscale, matches the
@@ -715,25 +747,70 @@ a { color: inherit; }
 }
 
 .nav-dashboard__tile-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13.5px;
   font-weight: 600;
   color: var(--text);
 }
 
-/* Status tip (e.g. "2 channels not connected") — real text when the
-   underlying wording/data is decided, a skeleton bar otherwise. Not live
-   data yet, just the SHAPE of a tile that can carry a real-time-feeling
-   status alongside its link. */
-.nav-dashboard__tile-tip {
+/* Attention indicator — deliberately just a dot, no wording, no colored
+   chip. A first version rendered the full tip TEXT as a badged chip right
+   on the tile, but 3+ tiles carrying one at once read as alarm/negative
+   noise on what's meant to be a calm surface (user: "might be too much
+   negative noise on the dashboard level"). Same visual language as the
+   panel-item badge (.nav-list-item__badge) — signals "something to look
+   at," the actual explanation lives on the tile's own destination page
+   (.tile-tip-banner below) instead. */
+.nav-dashboard__tile-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--alert);
+}
+
+/* Always-on status stat (e.g. "5 channels connected, 2 awaiting setup") —
+   real text when the underlying wording/data is decided, a skeleton bar
+   otherwise. Every tile can carry one; not live data yet, just the SHAPE. */
+.nav-dashboard__tile-stat {
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.nav-dashboard__tile-tip-skel {
+.nav-dashboard__tile-stat-skel {
   width: 70%;
   height: 10px;
   border-radius: 4px;
   background: var(--border);
+}
+
+/* Attention callout's actual TEXT — lives on the tile's own destination
+   page (renderTileTipBanner), not on the dashboard tile itself (see
+   .nav-dashboard__tile-dot above for why). One banner on its own page
+   reads as normal page-level messaging, not stacked alarm noise. Reuses
+   the same `--alert`/`--alert-tint` tokens the (now-removed) tile chip
+   used — same narrow, deliberate exception to the greyscale-only rule. */
+.tile-tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--alert);
+  background: var(--alert-tint);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.tile-tip-banner__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--alert);
 }
 
 /* Link affordance — same visual role as `.nav-list-item__chevron` (a

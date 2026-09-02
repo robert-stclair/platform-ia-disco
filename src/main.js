@@ -371,6 +371,34 @@ function wireScopeSwitcher() {
 // step of the chain (what's routed at the top level) plus `expandedKey`
 // (UI-only, independent of routing) — it doesn't call resolveChain itself
 // since it only cares about depth 0; renderCanvas does the full walk.
+// Walks the currently-selected chain looking for the DEEPEST explicit
+// `crossNav` records pick (e.g. following buildPropertyNode's "Users" tile
+// into a user's own buildUserNode page, or the reverse via buildUserNode's
+// "Properties" tab) and returns that pick's `homeItemKey`, if any.
+//
+// Exists because the rail/L2 panel's highlight (`resolveSelected(items, 0)`
+// in renderPanel) only ever reads `state.path[0]` — but a crossNav pick
+// happens much deeper in the tree (inside whichever item the user
+// originally entered through), and never touches `state.path[0]` itself.
+// Caught live: drilling Config → Property → [a property] → Users →
+// [a user] left the rail still highlighting "Properties," even though the
+// canvas was now showing that user's own "User details / Properties" page
+// — a different concept entirely. `homeItemKey` (set alongside each
+// `crossNav: true` in nav-data.js) names which rail item that DESTINATION
+// conceptually belongs to, so the rail can follow the user across the
+// cross-nav instead of staying stuck on wherever they started.
+function findCrossNavHomeItemKey(rootItem) {
+  if (!rootItem?.content) return null;
+  const chain = resolveChain(rootItem);
+  let homeItemKey = null;
+  for (const step of chain) {
+    if (step.content?.type === 'records' && step.isExplicit && step.content.crossNav && step.content.homeItemKey) {
+      homeItemKey = step.content.homeItemKey;
+    }
+  }
+  return homeItemKey;
+}
+
 function renderPanel(data) {
   const items = data.items;
   // Grouping headings (e.g. "Products" — a plain label clustering already-
@@ -380,7 +408,11 @@ function renderPanel(data) {
   // can never accidentally become "the routed item" via the nodes[0]
   // fallback if it happened to sit first in the array.
   const routableItems = items.filter((i) => !i.heading);
-  const routedItem = routableItems.length ? resolveSelected(routableItems, 0) : null;
+  const defaultRoutedItem = routableItems.length ? resolveSelected(routableItems, 0) : null;
+  // A crossNav pick anywhere deeper in the tree overrides the plain
+  // state.path[0] lookup above — see findCrossNavHomeItemKey.
+  const crossNavHomeItemKey = findCrossNavHomeItemKey(defaultRoutedItem);
+  const routedItem = crossNavHomeItemKey ? routableItems.find((i) => i.key === crossNavHomeItemKey) ?? defaultRoutedItem : defaultRoutedItem;
   // Which 'list' item is expanded in the panel — UI-only, independent of
   // routing. No default: nothing is expanded until explicitly clicked.
   const expandedItem = items.find((i) => i.key === state.expandedKey) ?? null;
@@ -416,6 +448,18 @@ function renderPanel(data) {
     // couple of Insights' promoted items show a star to illustrate "this
     // was promoted from My insights because the user starred it."
     const star = item.starred ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
+    // `badge` — illustrative "something needs attention" dot (Health check,
+    // Recommendations, Dynamic pricing — CONTEXT.md's notification
+    // candidate-model). A plain dot, not a count — no real number exists
+    // yet. Deliberately scoped to the L2 panel item only, not the rail
+    // icon — user's explicit choice, avoiding the larger unsolved question
+    // of rail-level badge aggregation. STATIC (always shows, no dismiss
+    // interaction) — a dismiss-on-visit behavior was explored and dropped:
+    // "maybe it's too much to bother with" — nothing in this prototype
+    // tracks real resolved/unresolved state to make a dismiss meaningful.
+    // The real-product intent (a badge clears once its underlying issue is
+    // addressed) is captured in CONTEXT.md, not simulated here.
+    const badge = item.badge ? `<span class="nav-list-item__badge" aria-hidden="true"></span>` : '';
     // `actionIcon` — a leading icon marking this item as an ACTION row
     // (e.g. "+ Add products") rather than a settings-page destination like
     // its siblings — a third panel-list pattern alongside folder/heading
@@ -429,7 +473,7 @@ function renderPanel(data) {
     const labelGroup = actionIcon ? `<span class="nav-list-item__label-group">${actionIcon}${item.label}</span>` : item.label;
     html += `
       <li class="nav-list-item${isRouted ? ' is-active' : ''}${isOpen ? ' is-open' : ''}">
-        <a href="#" data-item-key="${item.key}">${labelGroup}${star}${chevron}</a>
+        <a href="#" data-item-key="${item.key}">${labelGroup}${star}${badge}${chevron}</a>
       </li>
     `;
 
@@ -684,7 +728,13 @@ function renderChainBody(chain, i) {
     const tileCrumb = { label: selectedTile?.label ?? selectedKey, truncateTo: pathIndex + 1 };
     const ownCrumb = i === 0 ? [{ label: step.node.label, truncateTo: pathIndex }] : crumb;
     const inner = renderChainBody(chain, i + 1);
-    return { trail: ownCrumb.concat(tileCrumb, inner.trail), bodyHtml: inner.bodyHtml };
+    // The dashboard tile only shows a plain dot (renderNavDashboard) — the
+    // actual tip TEXT surfaces here instead, once the user has clicked
+    // through to this specific tile's own page. Keeps the dashboard level
+    // calm (see renderNavDashboard's comment) while still explaining the
+    // callout somewhere real, one level in.
+    const tipBanner = selectedTile?.tip ? renderTileTipBanner(selectedTile.tip) : '';
+    return { trail: ownCrumb.concat(tileCrumb, inner.trail), bodyHtml: tipBanner + inner.bodyHtml };
   }
 
   if (content.type === 'systems') {
@@ -755,14 +805,30 @@ function renderRecordTable(names, depth, extraColumns) {
 // cards). Each tile: a real confirmed title (the tile's own label IS the
 // heading — no separate grouping heading above clusters of tiles, per the
 // user's explicit "flat set for now - with the headings in the tile
-// itself"), an OPTIONAL status tip (`t.tip`, e.g. "2 channels not
-// connected" — a real string when the underlying data/wording is decided,
-// a skeleton bar otherwise; per the user's Rate plans direction: "provide
-// real time tips on what is not set up etc." — not live data yet, just the
-// SHAPE of a tile that can carry one), and a trailing "›" chevron
-// affordance marking it as a link, same visual role `.nav-list-item__
-// chevron` plays for a folder-style panel item, but this is a NEW element
-// since these are canvas tiles, not panel-list rows.
+// itself"), an OPTIONAL always-on status stat (`t.stat`, e.g. "5 channels
+// connected, 2 awaiting setup" — a real string when the underlying
+// data/wording is decided, a skeleton block otherwise; fills the slot that
+// used to be a pure metric-skeleton placeholder — "all tiles would have
+// key stats like that"), an OPTIONAL attention callout (`t.tip`, e.g. "Not
+// connected to a PMS" — deliberately SEPARATE from `stat`, not a
+// replacement for it: "and then sometimes a callout for something that
+// needs attention"), and a trailing "›" chevron affordance marking it as a
+// link, same visual role `.nav-list-item__chevron` plays for a
+// folder-style panel item, but this is a NEW element since these are
+// canvas tiles, not panel-list rows.
+//
+// `t.tip`'s TEXT does NOT render on the dashboard tile itself — a first
+// version rendered it as a badged chip right on the tile, but with 3+
+// tiles carrying one at once that read as alarm/negative noise on what's
+// meant to be a calm, "optimize" surface (the user's own call, live: "it
+// might be too much negative noise on the dashboard level"). Revised: the
+// tile shows only a plain dot (`.nav-dashboard__tile-dot`, same visual
+// language as the panel-item badge) signaling "something to look at
+// here" — no wording, no color-block chip. The actual tip text moved to a
+// banner (`renderTileTipBanner`) on the tile's OWN destination page,
+// prepended once the user clicks through (see renderChainBody's
+// `nav-dashboard` branch) — "show them in more detail when user clicks
+// through."
 //
 // `t.key` (mode a, standalone — see resolveChain) vs. `t.linksToTab` (mode
 // b, nested in a tab — the tile switches a SIBLING tab instead of pushing
@@ -775,21 +841,39 @@ function renderNavDashboard(tiles, depth) {
   return `<div class="nav-dashboard">${tiles
     .map((t) => {
       const routeKey = t.linksToTab ?? t.key;
-      const tip = t.tip
-        ? `<span class="nav-dashboard__tile-tip">${t.tip}</span>`
-        : `<div class="nav-dashboard__tile-tip-skel"></div>`;
+      const stat = t.stat
+        ? `<span class="nav-dashboard__tile-stat">${t.stat}</span>`
+        : `<div class="nav-dashboard__tile-stat-skel"></div>`;
+      // `t.tip`'s actual text does NOT render here — three-plus red chips
+      // sitting on one dashboard read as alarm, not "optimize" (the user's
+      // own call: "might be too much negative noise on the dashboard
+      // level"). Just a plain dot next to the title, same visual language
+      // as the panel-item badge (.nav-list-item__badge) — "is there
+      // something to look at," not what it is. The real explanation moved
+      // to a banner on the tile's OWN destination page instead (see
+      // renderChainBody's nav-dashboard branch) — click through for detail.
+      const tipDot = t.tip ? `<span class="nav-dashboard__tile-dot" aria-hidden="true"></span>` : '';
       return `
         <a href="#" class="nav-dashboard__tile" data-path-key="${depth}:${routeKey}">
           <div class="nav-dashboard__tile-metric-skel"></div>
           <span class="nav-dashboard__tile-body">
-            <span class="nav-dashboard__tile-title">${t.label}</span>
-            ${tip}
+            <span class="nav-dashboard__tile-title">${t.label}${tipDot}</span>
+            ${stat}
           </span>
           <svg class="nav-dashboard__tile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
         </a>
       `;
     })
     .join('')}</div>`;
+}
+
+// The tip TEXT's actual home — a tile's destination page, prepended once
+// the user clicks through from the dashboard (see renderChainBody's
+// `nav-dashboard` branch). Deliberately a plain banner, not the dashboard
+// tile's old badged-chip treatment repeated here — one callout on its own
+// page reads as normal page-level messaging, not stacked alarm noise.
+function renderTileTipBanner(tip) {
+  return `<div class="tile-tip-banner"><span class="tile-tip-banner__dot" aria-hidden="true"></span>${tip}</div>`;
 }
 
 // Wraps a nav-dashboard's tile grid with an optional page title and
@@ -1091,6 +1175,36 @@ document.querySelectorAll('[data-system-count]').forEach((el) => {
       b.classList.toggle('is-active', b === el);
     });
     render();
+  });
+});
+
+// Theme override — 'system' (default) removes the attribute entirely so
+// style.css's `prefers-color-scheme` media query decides, matching every
+// other artifact/page in this app; 'light'/'dark' stamp `data-theme` on
+// <html> to force one, same mechanism style.css's token blocks already key
+// off. Persisted in localStorage (prototype-only convenience, not app
+// state) so the choice survives a reload instead of resetting to System.
+const THEME_STORAGE_KEY = 'platform-ia-disco:theme';
+
+function applyTheme(choice) {
+  if (choice === 'light' || choice === 'dark') {
+    document.documentElement.setAttribute('data-theme', choice);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+
+const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+applyTheme(storedTheme);
+document.querySelectorAll('[data-theme-choice]').forEach((el) => {
+  el.classList.toggle('is-active', el.dataset.themeChoice === storedTheme);
+  el.addEventListener('click', () => {
+    const choice = el.dataset.themeChoice;
+    applyTheme(choice);
+    localStorage.setItem(THEME_STORAGE_KEY, choice);
+    document.querySelectorAll('[data-theme-choice]').forEach((b) => {
+      b.classList.toggle('is-active', b === el);
+    });
   });
 });
 
