@@ -13,17 +13,97 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: every queued item is implemented; NOT YET committed/pushed as of the Rate plan
-Overview page composition, Small fixes/additions, and Users/Properties self-consistency
-batches below** (the Config → Properties nav-dashboard conversion from the prior session, and
-everything in these three batches, are all local, uncommitted changes — confirm before
-assuming they're live). Earlier batches (original
-1–21, Distribution 1–7, My account, Rate plans nav-dashboard) were merged to `main` and deployed
-previously (Basic Auth sits in front of the live Heroku site — see CONTEXT.md's Deployment
-section for credentials). The only unfinished thread is the foundational property/cluster/brand
-scope switcher (its own section below) — Distribution's shape is explicitly unsolved there, not
-a queue item to implement yet. Add new requests to a fresh numbered list below this status
-block as they come in.
+**Status: every batch through "Bug fix: rail highlight didn't follow cross-navigation" was
+committed and deployed (both GitHub remotes + Heroku) on 2026-09-02.** The Notifications/AI
+assistant/Communication+Preferences batch below is NOT YET committed — confirm before assuming
+it's live. The only unfinished thread is the foundational property/cluster/brand scope switcher
+(its own section below) — Distribution's shape is explicitly unsolved there, not a queue item to
+implement yet. Add new requests to a fresh numbered list below this status block as they come in.
+
+## "Transactions" rail section renamed to "Operations"
+
+Resolves the open thread CONTEXT.md logged earlier ("we might need to think of a better rail
+section name... not sure what it is... maybe log as an open question") — picked back up
+directly: "lets rename transaction rail to operations - and need to think of an icon."
+
+1. Rail item's `label` ("Transactions" → "Operations") AND its internal `key`/tree property
+   (`transactions` → `operations` in `nav-data.js`'s `BASE_RAIL_ITEMS` and `buildSmContentTree`)
+   both renamed together — not just the visible label, so the internal key stays legible and
+   matches what it's actually called now.
+2. New icon (`icons.js`'s `operations`, replacing `transactions`) — a clipboard with a
+   checkmark, chosen over an inbox/tray or an activity-pulse line. The old receipt/credit-card
+   glyph fit "Transactions" but not "Operations," which covers Reservations/Guest
+   communications/Payments together as the day-to-day running of a property, not payments
+   specifically.
+3. Verified in browser: rail icon renders correctly at rail size, clearly distinct from
+   Configuration's gear and Distribution's globe; clicking it still routes to
+   Reservations/Guest communications/Payments unchanged; tooltip/title shows "Operations." No
+   console errors.
+
+## Rail utility icons: AI assistant, Notifications; My account gains Communication + Preferences
+
+Four related additions to the rail's utility area (above the avatar) and My account's L2, all
+requested together: "lets add communication preferences to the user menu L2... lets add an app
+preferences there as well... lets add a simple notifications bell above the user... lets add an
+AI chat above that."
+
+1. **My account gains two new items** between Security and the action rows: **Communication**
+   (comms/notification-channel preferences — email/SMS toggles — deliberately a DIFFERENT word
+   from "Notifications" so it's not confused with the new bell below, which is a different
+   concept: an inbox of what's actually happened, not a preferences page) and **Preferences**
+   (general app-level settings; currently just Theme — see item 4).
+2. **Support code's icon retired** — used to be a bare "?"; removed because it read too similarly
+   to the new AI assistant's circled-"?" rail icon (see item 3) and risked exactly the "is this
+   help or is this the assistant" confusion being avoided there. Plain label carries it fine.
+3. **New "Notifications" rail button** (bell + red dot, `.rail-item__badge` reused, index.html's
+   `railNotifications`) — switches to a new `notifications` section, same mechanism as My
+   account's avatar. L2 becomes the notification list itself (a real `records` picker,
+   `SAMPLE_NOTIFICATIONS` → `NOTIFICATION_DETAIL_NODE`, same generic pattern as
+   Dashboards/Charts/Properties/Users); canvas shows a real (if generic) detail page once one is
+   picked — "we could wireframe a detail view even though we dont currently have it." This is the
+   user-account-focused "Notifications" concept CONTEXT.md logged as a separate, lower-priority
+   fourth thread months ago, alongside the Recommendations/Health check/contextual-
+   recommendations three-way split — "it has become a bit of a gap this would solve for."
+   Follow-up correction: rows were initially plain single-line, same as every other `records`
+   picker — the user wanted an EMAIL-INBOX layout instead: "have the summaries stacked in the L2
+   panel and the detail in the main panel - just like an email browser might have it." Added a
+   new optional `content.showSnippet: true` flag to the generic `records` mechanism
+   (`renderRecordPicker` in `main.js`) — when set, each row shows the real title PLUS a second
+   skeleton preview line stacked underneath (`.wf-list--snippets`/`.wf-list__row-snippet-skel` in
+   `style.css`), not real preview text (no real notification body copy exists — same "real
+   titles, skeleton content" rule as everywhere else). Only Notifications sets this flag; every
+   other `records` caller (Properties, Users, Dashboards, Charts, Yield rules) is unaffected and
+   keeps the plain single-line row — verified unchanged in browser.
+4. **New AI assistant rail button** (`railAssistant`) — icon is a circled "?" (`.rail-item__icon--
+   assistant`), chosen deliberately over both a bare "?" (reads as human support/help, wrong
+   signal for an agentic in-product assistant) and a sparkle (avoided as a cliché, and the
+   product isn't ready to use its real assistant branding yet) — "a ? in a circle" reads more like
+   "ask this" than "get human help." Switches to a new `assistant` section: L2 is "chat history
+   and controls" — a "+ New chat" action row (active by default) above a flat "History" skeleton
+   list (no individual chat threads are clickable yet — genuinely undecided what re-opening one
+   should show). Canvas shows a new `chat-start` sketch: a centered skeleton greeting, 3 skeleton
+   "suggested prompt" chips, and a skeleton input bar pinned near the bottom — a wireframe of a
+   fresh-chat landing screen, not any specific conversation.
+5. **Theme toggle MOVED into Preferences, not duplicated** — "move your colour theme from the
+   proto overlay into there." Removed entirely from the hidden prototype settings sheet (it's a
+   real product preference now, not a prototype-only demo toggle like account type/property
+   count) and rebuilt as a new section shape, `shape: 'theme-toggle'`
+   (`renderThemeToggle`/`wireThemeToggle` in `main.js`) — genuinely the first LIVE (non-skeleton)
+   control in this prototype, per explicit instruction: "make it a skeleton - but make it work!"
+   Visually it's three plain skeleton bars (no visible "System"/"Light"/"Dark" text) inside the
+   existing `.scope-toggle` shell, so it reads as more skeleton content next to Profile/
+   Security's fields — but each bar is a real `data-theme-choice` button underneath, wired
+   per-render (`wireThemeToggle`, called from `renderCanvas` every time, unlike the old
+   settings-sheet version's one-time `querySelectorAll` at load, which would never have found
+   this control since it wasn't in the static `index.html` shell).
+6. Verified in browser: bell + circled-"?" render correctly above the avatar (checked in both
+   light and dark mode); Notifications lists 5 sample entries and opens a real skeleton detail
+   page with correct breadcrumb; AI assistant's L2 shows New chat (active)/History, canvas shows
+   the chat-start wireframe, History shows a plain skeleton list; My account now reads Profile/
+   Security/Communication/Preferences/Support code (no icon)/Logout; Preferences' theme toggle
+   is fully clickable and actually changes the theme; the hidden settings sheet no longer has a
+   Theme group (ends at Live link); normal navigation (Insights, Configuration) unaffected. No
+   console errors.
 
 ## Bug fix: rail highlight didn't follow cross-navigation
 

@@ -50,8 +50,30 @@ function resetPath() {
 
 const railEl = document.getElementById('rail');
 const railUserEl = document.getElementById('railUser');
+const railAssistantEl = document.getElementById('railAssistant');
+const railNotificationsEl = document.getElementById('railNotifications');
 const panelEl = document.getElementById('secondaryPanel');
 const canvasEl = document.getElementById('canvas');
+
+// Theme override — 'system' (default) removes the attribute entirely so
+// style.css's `prefers-color-scheme` media query decides, matching every
+// other artifact/page in this app; 'light'/'dark' stamp `data-theme` on
+// <html> to force one, same mechanism style.css's token blocks already key
+// off. Persisted in localStorage so the choice survives a reload. Lives in
+// My account → Preferences (moved there, not duplicated, from an earlier
+// hidden-prototype-settings-sheet version) — a real product preference,
+// not a prototype-only demo toggle like account type/property count.
+const THEME_STORAGE_KEY = 'platform-ia-disco:theme';
+
+function applyTheme(choice) {
+  if (choice === 'light' || choice === 'dark') {
+    document.documentElement.setAttribute('data-theme', choice);
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+}
+
+applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'system');
 
 function getSystemsForCurrentProperty() {
   return state.multipleSystems ? MULTIPLE_SYSTEMS : DEFAULT_SYSTEMS;
@@ -312,17 +334,24 @@ function renderRail() {
   });
 
   railUserEl.classList.toggle('is-active', state.section === 'my-account');
+  railAssistantEl.classList.toggle('is-active', state.section === 'assistant');
+  railNotificationsEl.classList.toggle('is-active', state.section === 'notifications');
 }
 
-// My account isn't a rail item (getRailItems is unaffected) — it's reached
-// via this separate avatar button instead, but follows the exact same
-// section-switch mechanism as a rail item click.
-railUserEl.addEventListener('click', () => {
-  if (state.section === 'my-account') return;
-  state.section = 'my-account';
+// Switches to a section that isn't one of getRailItems' own rail buttons
+// (My account, Notifications, AI assistant) — same underlying mechanism
+// a normal rail-item click uses (state.section + resetPath + render), just
+// triggered from a separate utility button instead of the main icon list.
+function switchToUtilitySection(key) {
+  if (state.section === key) return;
+  state.section = key;
   resetPath();
   render();
-});
+}
+
+railUserEl.addEventListener('click', () => switchToUtilitySection('my-account'));
+railAssistantEl.addEventListener('click', () => switchToUtilitySection('assistant'));
+railNotificationsEl.addEventListener('click', () => switchToUtilitySection('notifications'));
 
 // EXPLORATORY — property/cluster/brand scope switcher sketch. See
 // CHANGE-QUEUE.md "Foundational, unsolved" section — a section-level
@@ -579,6 +608,7 @@ function renderCanvas(data) {
   wireScopeSwitcher();
   wirePathLinks();
   wireBreadcrumb();
+  wireThemeToggle();
 }
 
 // Render every step in `chain` from `i` onward into nested HTML, plus the
@@ -670,7 +700,7 @@ function renderChainBody(chain, i) {
       const bodyHtml =
         content.display === 'table'
           ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3)
-          : renderRecordPicker(step.options, pathIndex, starredNames);
+          : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet);
       return { trail: [], bodyHtml };
     }
     // `content.crossNav` (buildUserNode's Properties tab / buildPropertyNode's
@@ -769,11 +799,28 @@ function renderChainBody(chain, i) {
 // duplicated top-level entry, so it "gets across" visually in both places
 // (user's explicit direction). Only meaningful for the `records` pattern's
 // custom-dashboard pickers; the properties/systems pickers never pass this.
-function renderRecordPicker(names, depth, starredNames) {
-  return `<ul class="wf-list">${names
+// `showSnippet` (optional) — an email-inbox-style row instead of a plain
+// single line: the real name stays the title, plus a second skeleton line
+// underneath standing in for a preview/summary — "have the summaries
+// stacked in the L2 panel and the detail in the main panel - just like an
+// email browser might have it" (Notifications' own request). Skeleton, not
+// real preview text, matching this prototype's standing "real titles,
+// skeleton content" rule — no real notification body copy is confirmed.
+// Every other `records` caller (Properties, Users, Dashboards, Charts,
+// Yield rules) omits this and keeps the plain single-line row.
+function renderRecordPicker(names, depth, starredNames, showSnippet) {
+  return `<ul class="wf-list${showSnippet ? ' wf-list--snippets' : ''}">${names
     .map((name) => {
       const star = starredNames?.has(name) ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
-      return `<li><a href="#" class="wf-list__row" data-path-key="${depth}:${name}">${name}${star}</a></li>`;
+      const snippet = showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
+      return `
+        <li>
+          <a href="#" class="wf-list__row" data-path-key="${depth}:${name}">
+            <span class="wf-list__row-title">${name}${star}</span>
+            ${snippet}
+          </a>
+        </li>
+      `;
     })
     .join('')}</ul>`;
 }
@@ -982,7 +1029,29 @@ function renderSectionShape(shape) {
   if (shape === 'list') {
     return `<div class="sketch-col">${Array(3).fill(skeletonField()).join('')}</div>`;
   }
+  if (shape === 'theme-toggle') return renderThemeToggle();
   return `<div class="sketch-col">${Array(2).fill(skeletonField()).join('')}</div>`;
+}
+
+// The one deliberately LIVE (non-skeleton-only) control in this prototype
+// — "make it a skeleton - but make it work!" Looks exactly like every
+// other section's skeleton content (plain bars, no visible label text,
+// same treatment as .sketch-skel-value) so it doesn't stand out as
+// obviously more "finished" than its neighbors — but is fully wired
+// underneath: each bar is a real `data-theme-choice` button, same
+// mechanism/CSS shell (`.scope-toggle`) the old hidden-settings-sheet
+// version used before this control MOVED here (not duplicated — see
+// `wireThemeToggle`, called once per render since this section only
+// exists on Preferences, not present in the static index.html shell the
+// old one-time wiring assumed).
+function renderThemeToggle() {
+  const current = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+  return `<div class="scope-toggle theme-toggle-skel">${['system', 'light', 'dark']
+    .map(
+      (choice) =>
+        `<button class="theme-toggle-skel__bar${choice === current ? ' is-active' : ''}" data-theme-choice="${choice}" aria-label="${choice}"></button>`
+    )
+    .join('')}</div>`;
 }
 
 function renderSectionsSketch(sections) {
@@ -1064,6 +1133,20 @@ function renderSketch(content) {
     // omitted entirely, for a plain grid with no row-label column at all
     // (calendar's case).
     return renderGridSketch(content);
+  }
+  if (content.sketch === 'chat-start') {
+    // AI assistant's fresh-chat landing — a centered greeting, a few
+    // skeleton "suggested prompt" chips, and a skeleton input bar pinned to
+    // the bottom. Shape only, same skeleton-until-confirmed convention as
+    // everywhere else — no real greeting copy or prompt suggestions
+    // decided yet.
+    return `
+      <div class="chat-start">
+        <div class="chat-start__greeting-skel"></div>
+        <div class="chat-start__prompts">${Array(3).fill('<div class="chat-start__prompt-skel"></div>').join('')}</div>
+        <div class="chat-start__input-skel"></div>
+      </div>
+    `;
   }
   return '';
 }
@@ -1178,35 +1261,26 @@ document.querySelectorAll('[data-system-count]').forEach((el) => {
   });
 });
 
-// Theme override — 'system' (default) removes the attribute entirely so
-// style.css's `prefers-color-scheme` media query decides, matching every
-// other artifact/page in this app; 'light'/'dark' stamp `data-theme` on
-// <html> to force one, same mechanism style.css's token blocks already key
-// off. Persisted in localStorage (prototype-only convenience, not app
-// state) so the choice survives a reload instead of resetting to System.
-const THEME_STORAGE_KEY = 'platform-ia-disco:theme';
-
-function applyTheme(choice) {
-  if (choice === 'light' || choice === 'dark') {
-    document.documentElement.setAttribute('data-theme', choice);
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-  }
-}
-
-const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
-applyTheme(storedTheme);
-document.querySelectorAll('[data-theme-choice]').forEach((el) => {
-  el.classList.toggle('is-active', el.dataset.themeChoice === storedTheme);
-  el.addEventListener('click', () => {
-    const choice = el.dataset.themeChoice;
-    applyTheme(choice);
-    localStorage.setItem(THEME_STORAGE_KEY, choice);
-    document.querySelectorAll('[data-theme-choice]').forEach((b) => {
-      b.classList.toggle('is-active', b === el);
+// Wires the theme-toggle skeleton's buttons — called per-render (from
+// wirePathLinks, alongside every other canvas interactive element), NOT
+// once at load like the rest of this file's `[data-...]` toggles. Those
+// all live in index.html's static shell; this control instead renders
+// fresh into the canvas's innerHTML every time Preferences is shown, so a
+// one-time querySelectorAll (as the old settings-sheet version used)
+// would only ever find it the very first time and go stale after any
+// re-render.
+function wireThemeToggle() {
+  canvasEl.querySelectorAll('[data-theme-choice]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const choice = el.dataset.themeChoice;
+      applyTheme(choice);
+      localStorage.setItem(THEME_STORAGE_KEY, choice);
+      canvasEl.querySelectorAll('[data-theme-choice]').forEach((b) => {
+        b.classList.toggle('is-active', b === el);
+      });
     });
   });
-});
+}
 
 // ---------- Hidden prototype settings sheet ----------
 // Not part of the product surface being wireframed — deliberately kept off the

@@ -103,14 +103,28 @@ a { color: inherit; }
   box-shadow: var(--shadow);
 }
 
-.scope-toggle--sheet {
-  padding: 3px;
+/* Theme toggle, on My account → Preferences — the one deliberately LIVE
+   (non-skeleton-only) control in this prototype ("make it a skeleton -
+   but make it work!"). Reuses .scope-toggle's shell but renders each
+   button as a plain skeleton bar, no visible label text, so it reads as
+   just more skeleton content next to Profile/Security's fields — fully
+   wired underneath (data-theme-choice), just visually understated. */
+.theme-toggle-skel {
+  width: fit-content;
 }
 
-.scope-toggle--sheet button {
-  font-size: 13.5px;
-  padding: 9px 16px;
-  flex: 1;
+.theme-toggle-skel__bar {
+  width: 44px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--border-strong);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.theme-toggle-skel__bar.is-active {
+  background: var(--text-muted);
+  opacity: 0.9;
 }
 
 /* ---------- Settings bottom sheet ---------- */
@@ -286,6 +300,45 @@ a { color: inherit; }
   align-items: center;
   gap: 6px;
   padding: 4px 0;
+}
+
+/* AI assistant + notifications — both sit above the avatar, below the
+   main section list. Neither is a rail SECTION (getRailItems is
+   unaffected) — same treatment as railUser: a separate mode switch that
+   swaps the L2 panel/canvas without being one of the section icons. */
+.rail__utility {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+/* Circled "?" — deliberately NOT a bare "?" (which reads as help/support,
+   already used contextually elsewhere) and NOT a sparkle (avoided as a
+   cliché, and this app isn't ready to use its real assistant branding
+   yet). A circled "?" reads more like "ask this" than "get human help." */
+.rail-item__icon--assistant {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.6px solid currentColor;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Static, always-on — same convention as the L2 panel-item badge
+   (.nav-list-item__badge): illustrative "something's here," no real
+   count/dismiss mechanism exists in this prototype. */
+.rail-item__badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--alert);
 }
 
 .rail__user {
@@ -872,6 +925,58 @@ a { color: inherit; }
    appears (properties picker, systems picker) or a plain list-shaped
    sketch (e.g. Users). Rows share the same card treatment; only whether
    they're a real link vs. a static block differs. */
+/* AI assistant's fresh-chat landing (PATTERNS.md) — a centered greeting +
+   suggested-prompt chips, input bar pinned to the bottom of the canvas.
+   Skeleton-only, same convention as every other sketch. */
+.chat-start {
+  position: relative;
+  height: 100%;
+  min-height: 480px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding-bottom: 64px;
+}
+
+.chat-start__greeting-skel {
+  width: 320px;
+  max-width: 60%;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
+.chat-start__prompts {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.chat-start__prompt-skel {
+  width: 140px;
+  height: 34px;
+  border-radius: 17px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+.chat-start__input-skel {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  max-width: 80%;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
 .wf-list {
   list-style: none;
   margin: 24px 0;
@@ -1049,6 +1154,33 @@ a.wf-list__row:hover {
   border-radius: 4px;
   background: var(--border-strong);
   opacity: 0.6;
+}
+
+/* Email-inbox-style row (Notifications) — real title + a skeleton preview
+   line stacked underneath, instead of one bare centered line. Opted into
+   per-picker via `renderRecordPicker`'s `showSnippet` param; every other
+   `records` caller keeps the plain single-line row above. */
+.wf-list--snippets .wf-list__row {
+  height: auto;
+  min-height: 48px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 16px;
+}
+
+.wf-list__row-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wf-list__row-snippet-skel {
+  width: 70%;
+  height: 9px;
+  border-radius: 4px;
+  background: var(--border);
 }
 
 /* EXPLORATORY, non-functional — illustrative star for "My insights"

@@ -26,6 +26,7 @@ These render as the whole content of a `sketch`-type node (a tab, a leaf item).
 | `'table'` | A `.sketch-table` — real header row (`content.columns`), skeleton cells | A record list needing more than one visible field per row |
 | `'calendar'` | A month-calendar PRESET of `'grid'` (see below) — 7 weekday columns, 5 rows, no row labels | Calendar/scheduling views needing maximum canvas space (Front desk) |
 | `'grid'` | A `.sketch-grid` — real column headers, OPTIONAL real row labels down the left, skeleton fill per cell | Any grid/matrix-shaped page — a room-type × date inventory matrix, or anything calendar-like that isn't specifically a month view |
+| `'chat-start'` | `.chat-start` — a centered skeleton greeting bar, 3 skeleton "suggested prompt" chips, and a skeleton input bar pinned near the bottom | The AI assistant's fresh-chat landing screen — a wireframe of a chat START state, not any specific conversation's transcript |
 
 These are the project's canonical page-skeleton types (list / table / stacked cards / card
 grid / calendar+grid — see "Dashboard card grid" below for the 4th, and "Navigation dashboard"
@@ -81,10 +82,32 @@ under it:
 | `'chips'` | A wrapped row of 7 `.sketch-chip` pills | A card whose content is a set of toggle-able tags (Inventory settings' sync directions) |
 | `'cols'` | Two columns of 3 skeleton fields each | A card with a two-column field layout (Contact, Reservation mappings) |
 | `'list'` | 3 stacked skeleton fields, single column | A card whose content is itself list-like but doesn't need the full `.wf-list` treatment (Credit card mappings) |
+| `'theme-toggle'` | A real, clickable System/Light/Dark toggle, styled as 3 plain skeleton bars (no visible label text) inside the `.scope-toggle` shell | The ONE deliberately live (non-skeleton-only) control in this prototype — My account → Preferences' Theme card. See "Live theme toggle" below. |
 
 **Note:** `shape: 'list'` (a card's internal shape) and `sketch: 'list'` (a whole
 page that's just a list) are different things at different levels — don't confuse
 them when adding new sections.
+
+**Live theme toggle (`shape: 'theme-toggle'`) — the one exception to "every
+section is decorative skeleton only."** Built when the user asked to move the
+theme control out of the hidden prototype settings sheet into My account →
+Preferences as its real home ("move your colour theme from the proto overlay
+into there"), then clarified the visual treatment: "make it a skeleton - but
+make it work!" So it LOOKS exactly like every other section's skeleton content
+(plain bars, no visible "System"/"Light"/"Dark" text) but is fully wired
+underneath — each bar is a real `data-theme-choice` button
+(`renderThemeToggle` in `main.js`), reusing the same `applyTheme`/
+`THEME_STORAGE_KEY` mechanism a settings-sheet version used before this MOVED
+here (not duplicated — the settings sheet no longer has a Theme group at
+all). Wiring is done via `wireThemeToggle()`, called every render from
+`renderCanvas` — NOT a one-time `querySelectorAll` at page load (which is how
+every other hidden-settings-sheet toggle still works, since those buttons are
+static in `index.html`); this control instead renders fresh into the canvas's
+`innerHTML` each time Preferences is shown, so a one-time wiring pass would
+only ever find it the first time and go stale after any later re-render. Only
+add another genuinely-live control to this prototype with the same
+explicit go-ahead — the skeleton-only convention is the default for a reason
+(this repo tests navigation MODELS, not working features).
 
 ## The reusable list component (`.wf-list`)
 
@@ -133,11 +156,20 @@ Not a canvas sketch — a NAVIGATION pattern (part of the content-model shape in
 names should each open the SAME shared detail page.
 
 ```js
-{ type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number }
+{ type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, showSnippet?: boolean }
 ```
 
 - `names` — real names, rendered via `renderRecordPicker` (`.wf-list`, real
   text per the breadcrumb-clarity exception above) by default.
+- `showSnippet` (optional) — an email-inbox-style row instead of the plain
+  single-line default: the real name stays the title, plus a second SKELETON
+  line underneath standing in for a preview/summary (`.wf-list--snippets`,
+  `.wf-list__row-snippet-skel`) — not real preview text, same "real titles,
+  skeleton content" rule as everywhere else. Built for Notifications: "have
+  the summaries stacked in the L2 panel and the detail in the main panel -
+  just like an email browser might have it." Every other `records` caller
+  (Properties, Users, Dashboards, Charts, Yield rules) omits this and keeps
+  the plain single-line row — additive, not a replacement.
 - `detailNode` — one shared Node (usually `type: 'tabs'` or `type:
   'nav-dashboard'`) that every record opens. The SAME node reference for every
   name — there's one shared detail shape, not one Node per record.
@@ -518,7 +550,7 @@ Three different things can sit in the panel item list — don't conflate them:
 |---|---|---|
 | **Folder** (`content.type: 'list'`) | Collapsed by default, chevron, clicking expands/collapses (does NOT navigate), children hidden until expanded | Direct Booking, My insights |
 | **Grouping heading** (`{ heading: true, label }`) | Always-expanded, no chevron, never clickable — purely visually clusters already-visible sibling items under a label | Products |
-| **Action row** (`{ actionIcon, ... }`) | Plain clickable item, same as any normal panel item, but with a leading icon marking it as an ACTION (does something) rather than a navigable settings page | Add products (`+`); My account's Support code (`?`) and Logout (power icon) |
+| **Action row** (`{ actionIcon, ... }`) | Plain clickable item, same as any normal panel item, but with a leading icon marking it as an ACTION (does something) rather than a navigable settings page | Add products (`+`); My account's Logout (power icon); AI assistant's New chat (`+`) |
 
 Use a folder when the label is itself a nav concept whose children are hidden
 until opened. Use a heading when you're just visually clustering already-visible
@@ -529,4 +561,58 @@ only difference from a normal item; it's still a real Node with a real `key`
 and routes/selects normally. Heading items are filtered out before
 `resolveSelected`/`resolveChain` ever see them — they can never become "the
 routed item," even via a `nodes[0]` fallback. Action rows are NOT filtered out
-this way — they're real, routable items, just visually marked.
+this way — they're real, routable items, just visually marked. My account's
+"Support code" USED to have an `actionIcon` (a bare `?`) but had it removed —
+see "Rail utility buttons" below for why.
+
+## Rail utility buttons (My account, Notifications, AI assistant)
+
+Three buttons live in a small stack above the rail's avatar (`.rail__utility`,
+between `.rail__items` and `.rail__user` in `index.html`) — top to bottom:
+AI assistant (circled "?"), Notifications (bell + red dot), My account
+(avatar, unchanged). None of these are rail SECTIONS — `getRailItems` is
+unaffected by any of them — they're a separate class of mode-switch, each
+setting `state.section` to a value with no icon in the main rail list at all
+(`'assistant'` / `'notifications'` / `'my-account'`), wired via a small shared
+`switchToUtilitySection(key)` helper in `main.js` rather than three near-
+identical click handlers.
+
+- **My account** (existing) — flat panel-list items (Profile/Security/
+  Communication/Preferences/Support code/Logout). See "Live theme toggle"
+  above for Preferences' one live control.
+- **Notifications** (`tree['notifications']`, `NOTIFICATIONS_ITEMS` in
+  `nav-data.js`) — L2 IS the notification list itself: a real `records`
+  picker (`SAMPLE_NOTIFICATIONS` → `NOTIFICATION_DETAIL_NODE`, same generic
+  mechanism as Dashboards/Charts/Properties/Users, not a special case), with
+  `showSnippet: true` (see the Records pattern section for what that adds) —
+  an email-inbox-style layout: each row shows the real title plus a skeleton
+  preview line stacked underneath, "just like an email browser might have
+  it." Picking one opens a real (if generic) skeleton detail page —
+  deliberately NOT a dead end, even though no real notification
+  data/taxonomy exists yet: "we could wireframe a detail view even though we
+  dont currently have it." This is the user-account-focused "Notifications"
+  concept from CONTEXT.md's three-way/four-way notification-model writeup —
+  distinct from Recommendations/Health check/contextual recommendations,
+  which are all property/portfolio-focused, not account-focused.
+- **AI assistant** (`tree['assistant']`, `ASSISTANT_ITEMS` in `nav-data.js`)
+  — L2 is "chat history and controls": a "+ New chat" action row (active by
+  default) above a flat "History" skeleton list. Canvas shows the
+  `chat-start` sketch (see the top-level sketches table above) when New chat
+  is selected — a fresh-chat landing wireframe, not a specific conversation.
+  Individual past chat threads are NOT individually clickable yet — genuinely
+  undecided what re-opening one should show (a full transcript? the same
+  start screen scrolled down?) — don't wire them as a `records` picker until
+  that's confirmed.
+
+**Icon choices were deliberate, not just "whatever fits at rail size":**
+the AI assistant's circled "?" (`.rail-item__icon--assistant`) was chosen
+over a bare "?" (reads as human support/help — the wrong signal for an
+agentic, in-product assistant that takes actions, not a call-centre-style
+help chat) and over a sparkle (a common "AI" cliché the user explicitly
+wanted to avoid, and this product isn't ready to use its real assistant
+branding yet). "A ? in a circle... reads more like 'ask this' than 'get
+human help'" (user's own reasoning). Because of this, My account's
+"Support code" item had its own `?` icon RETIRED — a bare `?` right next to
+the new circled `?` risked exactly the "is this help or the assistant"
+confusion the choice above was designed to avoid; the plain label carries
+Support code fine on its own.

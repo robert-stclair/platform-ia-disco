@@ -18,6 +18,17 @@
           <span class="rail__brand-mark" aria-hidden="true"></span>
         </div>
         <div class="rail__items" id="rail"></div>
+        <div class="rail__utility">
+          <button class="rail-item" id="railAssistant" title="Assistant" aria-label="AI assistant">
+            <span class="rail-item__icon rail-item__icon--assistant" aria-hidden="true">?</span>
+          </button>
+          <button class="rail-item" id="railNotifications" title="Notifications" aria-label="Notifications">
+            <span class="rail-item__icon">
+              <svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6.5H4c.5-1 2-2.5 2-6.5Z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+            </span>
+            <span class="rail-item__badge" aria-hidden="true"></span>
+          </button>
+        </div>
         <button class="rail__user" id="railUser" aria-label="My account">
           <span class="rail__user-avatar" aria-hidden="true">RS</span>
         </button>
@@ -63,16 +74,6 @@
       <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Integrated systems count">
         <button class="is-active" data-system-count="single">Single system</button>
         <button data-system-count="multiple">Multiple systems</button>
-      </div>
-    </div>
-
-    <div class="settings-sheet__group">
-      <div class="settings-sheet__label">Theme</div>
-      <div class="settings-sheet__hint">Follows your OS setting unless overridden here</div>
-      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Theme">
-        <button class="is-active" data-theme-choice="system">System</button>
-        <button data-theme-choice="light">Light</button>
-        <button data-theme-choice="dark">Dark</button>
       </div>
     </div>
 

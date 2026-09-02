@@ -18,7 +18,7 @@
 //   Content =
 //     | { type: 'tabs', tabs: Node[] }             // horizontal tab strip; each tab is a Node
 //     | { type: 'list', items: Node[] }            // vertical sub-nav list (packed away until its parent is clicked)
-//     | { type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, crossNav?: boolean, homeItemKey?: string }
+//     | { type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, crossNav?: boolean, homeItemKey?: string, showSnippet?: boolean }
 //                                                   // GENERIC "clickable records list -> shared detail node" pattern
 //                                                   // (PATTERNS.md) — selecting a name shows `detailNode`'s content.
 //                                                   // Properties (-> buildPropertyNode) and Users (-> buildUserNode) are
@@ -172,7 +172,18 @@
 const BASE_RAIL_ITEMS = [
   { key: 'insights', label: 'Insights', icon: 'insights' },
   { key: 'distribution', label: 'Distribution', icon: 'distribution' },
-  { key: 'transactions', label: 'Transactions', icon: 'transactions' },
+  // Renamed from "Transactions" — CONTEXT.md logged this rail section's own
+  // name as an open thread ("we might need to think of a better rail
+  // section name... not sure what it is") after the user reached for
+  // "Transactions" as a name for something NEW mid-conversation before
+  // recalling this section already existed — a sign the old name wasn't
+  // sticking in the mental model. "Operations" is the chosen replacement —
+  // covers Reservations/Guest communications/Payments as the day-to-day
+  // running of a property, not just its payment-transaction content (which
+  // is only one of the three L2 items here). `key`/tree property renamed
+  // to match (`operations`, not `transactions`) rather than leaving an
+  // internal key that no longer matches its visible label.
+  { key: 'operations', label: 'Operations', icon: 'operations' },
   { key: 'configuration', label: 'Configuration', icon: 'configuration' },
 ];
 
@@ -511,15 +522,55 @@ const MY_ACCOUNT_ITEMS = [
       ],
     },
   },
+  // "Communication" — comms/notification-channel preferences (which
+  // updates arrive by email/SMS/push etc.), NOT the same concept as the
+  // new notifications bell (rail-level, an inbox of what's actually
+  // happened) — kept a distinct label/word from "Notifications" so the
+  // two aren't confused with each other.
+  {
+    key: 'communication',
+    label: 'Communication',
+    content: {
+      type: 'sketch',
+      sketch: 'sections',
+      sections: [
+        { title: 'Email notifications', shape: 'field' },
+        { title: 'SMS notifications', shape: 'field' },
+      ],
+    },
+  },
+  // "Preferences" — general app-level settings. Contains this prototype's
+  // FIRST genuinely live (non-skeleton) control — the theme toggle, MOVED
+  // here from the hidden prototype settings sheet (user: "move your colour
+  // theme from the proto overlay into there") rather than duplicated —
+  // it's a real product-level preference, not a prototype-only demo
+  // toggle like account type/property count, so it doesn't belong hidden
+  // behind the `~` overlay alongside those. `shape: 'theme-toggle'` is a
+  // NEW section shape specifically for this — every other section shape
+  // is decorative skeleton only; this one is deliberately real, wired the
+  // same way (`data-theme-choice`) the settings-sheet version was, just
+  // rendered inline instead of in the sheet. See renderSectionShape/
+  // wireThemeToggle in main.js.
+  {
+    key: 'preferences',
+    label: 'Preferences',
+    content: {
+      type: 'sketch',
+      sketch: 'sections',
+      sections: [{ title: 'Theme', shape: 'theme-toggle' }],
+    },
+  },
   // Action rows (PATTERNS.md's third panel-list pattern, alongside folder/
   // heading) — plain-clickable but visually distinct from the destinations
   // above via actionIcon, same treatment as Configuration's "Add products".
   // Neither has real content — clicking through isn't the point of a
-  // wireframe stub for a sign-out/support-code action.
+  // wireframe stub for a sign-out/support-code action. Support code's icon
+  // was retired (used to be "?") — it read too similarly to the new AI
+  // assistant's circled-"?" rail icon; the plain label carries it fine on
+  // its own, same as how a folder/heading item needs no icon either.
   {
     key: 'support-code',
     label: 'Support code',
-    actionIcon: '?',
     content: null,
   },
   {
@@ -529,6 +580,94 @@ const MY_ACCOUNT_ITEMS = [
     content: null,
   },
 ];
+
+// Notifications — reached via the rail's own bell button (railNotifications
+// in index.html), not a rail SECTION (getRailItems unaffected), same
+// treatment as My account's avatar. This is the USER-ACCOUNT-FOCUSED
+// notifications concept CONTEXT.md logged as a separate, lower-priority
+// fourth thread alongside the Recommendations/Health check/contextual-
+// recommendations three-way split — "it has become a bit of a gap this
+// would solve for," now built. Distinct from all three of those (which are
+// about the PROPERTY/PORTFOLIO) — this is account/session-level: "your
+// password will expire," "you were mentioned," etc.
+//
+// Shared detail node every notification opens — same generic `records`
+// pattern as Dashboards/Charts/Properties/Users (PATTERNS.md), not a
+// special case. A real destination even though no live notification DATA
+// exists yet — "we could wireframe a detail view even though we dont
+// currently have it." Plain sections skeleton: a summary plus whatever
+// else a real notification might link to (kept generic, not notification-
+// type-specific, since no real notification taxonomy is confirmed yet).
+export const NOTIFICATION_DETAIL_NODE = {
+  key: 'notification-detail',
+  label: 'Notification',
+  content: {
+    type: 'sketch',
+    sketch: 'sections',
+    sections: [
+      { title: 'Summary', shape: 'field' },
+      { title: 'Related', shape: 'field' },
+    ],
+  },
+};
+
+// EXPLORATORY — sample notification labels, same generic-realistic-names
+// treatment as SAMPLE_PROPERTIES/SAMPLE_USERS/SAMPLE_DASHBOARDS. Mixed
+// account-level concerns (security/billing/mentions), matching the
+// "account stuff" framing from CONTEXT.md's original notifications note —
+// deliberately NOT property/portfolio concerns (that's Recommendations/
+// Health check/contextual recommendations' territory, not this).
+const SAMPLE_NOTIFICATIONS = [
+  'Your password will expire in 3 days',
+  'You were added to a new property',
+  'Priya Patel mentioned you in a comment',
+  'Your support ticket was updated',
+  'A new login was detected on your account',
+];
+
+const NOTIFICATIONS_ITEMS = {
+  items: [
+    {
+      key: 'notifications-list',
+      label: 'Notifications',
+      active: true,
+      // `showSnippet: true` — email-inbox-style rows (title + a skeleton
+      // preview line stacked underneath), not the plain single-line row
+      // every other `records` caller uses: "have the summaries stacked in
+      // the L2 panel and the detail in the main panel - just like an email
+      // browser might have it."
+      content: { type: 'records', names: SAMPLE_NOTIFICATIONS, detailNode: NOTIFICATION_DETAIL_NODE, showSnippet: true },
+    },
+  ],
+};
+
+// AI assistant — reached via the rail's own circled-"?" button
+// (railAssistant in index.html), same treatment as Notifications/My
+// account above. L2 is "chat history and controls" (user's own framing):
+// a "+ New chat" action row (actionIcon pattern, same as Configuration's
+// "Add products") above a flat skeleton list of past chat threads: canvas
+// shows a wireframe chat-start screen (a centered prompt input, no
+// message history yet) — same shape a real product's fresh-chat landing
+// takes, not a specific past conversation.
+//
+// Past chat threads have NO real detail node (unlike Notifications above)
+// — genuinely nothing decided yet about what re-opening a past chat should
+// show (a full transcript? the same start screen scrolled to the bottom?)
+// — so history is one plain skeleton list (sketch:'list', same shape Room
+// types/Channels use elsewhere), not individually clickable `records`.
+// Don't wire individual threads as navigable until that's confirmed.
+const ASSISTANT_ITEMS = {
+  items: [
+    {
+      key: 'new-chat',
+      label: 'New chat',
+      actionIcon: '+',
+      active: true,
+      content: { type: 'sketch', sketch: 'chat-start' },
+    },
+    { key: 'chat-history', label: 'History', content: { type: 'sketch', sketch: 'list' } },
+  ],
+};
 
 // A single custom dashboard/chart's own content — every custom dashboard
 // (whether a plain "Dashboards"/"Charts" list entry or a starred/promoted
@@ -1051,7 +1190,9 @@ function buildSmContentTree(showProperties) {
       // unsolved case, this just makes the shape visible to react to.
       scopeSwitcher: showProperties,
     },
-    transactions: {
+    // Renamed from "transactions" alongside the rail item's own rename —
+    // see BASE_RAIL_ITEMS' comment for why.
+    operations: {
       items: [
         // sketch:'list' (CHANGE-QUEUE.md item 7) — a plain list, NOT the
         // clickable `records` pattern (unlike Rate plans/Yield rules).
@@ -1148,6 +1289,12 @@ export function getContent(accountType, propertyCount) {
   // property count, so it's added here rather than inside
   // buildSmContentTree.
   tree['my-account'] = { items: MY_ACCOUNT_ITEMS };
+  // Notifications and AI assistant — same treatment as My account above:
+  // reached via their own rail buttons (railNotifications/railAssistant in
+  // index.html), not rail sections, same regardless of account type/
+  // property count.
+  tree['notifications'] = NOTIFICATIONS_ITEMS;
+  tree['assistant'] = ASSISTANT_ITEMS;
   if (accountType === 'LH') {
     // Front desk (CHANGE-QUEUE.md item 1) — LH's own rail item (see
     // getRailItems). `noPanel: true` tells render() to hide the L2 panel

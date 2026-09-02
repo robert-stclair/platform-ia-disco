@@ -367,13 +367,24 @@ announcing everything at the list level simultaneously. `tile.stat` is unaffecte
 correction; only `tile.tip`'s presentation changed.
 
 **A related, but genuinely SEPARATE fourth concept surfaced alongside this: "Notifications"
-(user-account-focused, not property/portfolio-focused).** The user's own framing: "notifications
-might be more user-focused - account stuff etc. if we get around to adding it." This is
-DIFFERENT from all three items in the split above — Recommendations/Health check/contextual
-recommendations are about the PROPERTY or PORTFOLIO ("something here needs attention"); this
-fourth concept is about the USER'S OWN ACCOUNT (session/security/billing-style things — "your
-password will expire," "you were mentioned," account-level, not property-level). Lower
-priority, explicitly conditional ("if we get around to it") — logged, not queued.
+(user-account-focused, not property/portfolio-focused) — NOW BUILT.** The user's own original
+framing: "notifications might be more user-focused - account stuff etc. if we get around to
+adding it." This is DIFFERENT from all three items in the split above — Recommendations/Health
+check/contextual recommendations are about the PROPERTY or PORTFOLIO ("something here needs
+attention"); this fourth concept is about the USER'S OWN ACCOUNT (session/security/billing-style
+things — "your password will expire," "you were mentioned," account-level, not property-level).
+Logged as lower priority at the time ("if we get around to it") — picked back up once the gap
+became concrete: "it has become a bit of a gap this would solve for." Built as a new rail button
+(bell + red dot) above the avatar, switching to its own `notifications` section — L2 is the
+notification list itself (a real `records` picker, generic-realistic sample entries: "Your
+password will expire in 3 days," "You were added to a new property," etc.), and — deliberately,
+even with no real notification data or taxonomy confirmed yet — clicking one opens a real (if
+generic) skeleton detail page, not a dead end: "we could wireframe a detail view even though we
+dont currently have it." Built alongside a new AI assistant rail button (circled "?" — an
+agentic in-product assistant, explicitly NOT framed as human support chat or branded with a
+sparkle) and two new My account items, Communication and Preferences (the latter now holding
+this prototype's first genuinely live control — a moved-in, skeleton-styled theme toggle). See
+CHANGE-QUEUE.md's "Rail utility icons" batch for the full build.
 
 ## Confirmed principle: what promotes a Config tile to the property's top level
 
@@ -443,19 +454,19 @@ grid. Don't re-flatten Property's tiles for single-property without picking this
   Rate plan gets the same treatment (removing its Connectivities in favor of some
   Integrated-systems equivalent, or an account-type label swap) is not yet worked out — don't
   implement without picking this back up.
-- **The "Transactions" rail section's name may need reconsidering.** Surfaced naturally, not as
-  a direct request: mid-conversation the user asked to add "a section called Transactions"
-  before realizing the top-level rail item (credit-card icon) is ALREADY called that — "oh ok -
-  i forgot it was called that." Reaching for "Transactions" as a name for something NEW before
-  recalling it already exists suggests the current name isn't fully sticking in the mental
-  model of this IA. The user's own instinct: "we might need to think of a better rail section
-  name... not sure what it is... maybe log as an open question." No replacement name proposed
-  or chosen — don't rename anything without picking this back up directly. **Note: the
-  section's own "Transactions" L2 item is no longer a bare stub** — it turned out to BE Pay's
-  own "Transactions" item once the Payments IA got split out (Payouts/Virtual terminal/
-  Invoices/Payment requests now sit alongside it — see CHANGE-QUEUE.md's "Pay IA split" batch).
-  This open thread is specifically about the RAIL section's own name, not the L2 item's
-  content, which is now real.
+- **The "Transactions" rail section's name — RESOLVED, renamed to "Operations."** Originally
+  surfaced naturally, not as a direct request: mid-conversation the user asked to add "a section
+  called Transactions" before realizing the top-level rail item (credit-card icon) was ALREADY
+  called that — "oh ok - i forgot it was called that," logged as an open question with no
+  replacement chosen. Picked back up and resolved: "lets rename transaction rail to operations."
+  Both the rail item's `label` AND its internal `key`/tree-property (`transactions` →
+  `operations` in `nav-data.js`) were renamed together, not just the visible label — an internal
+  key that no longer matched its own visible name would have been its own confusion later. Icon
+  also changed, from the old receipt/credit-card glyph to a clipboard-with-checkmark
+  (`icons.js`'s `operations`) — chosen because "Operations" covers Reservations/Guest
+  communications/Payments as the day-to-day running of a property, not payments specifically, so
+  a payment-flavored icon no longer fit. The L2 item's own content is unaffected — still
+  Reservations/Guest communications/Payments, same as before this rename.
 - **Products group's property scope (Direct Booking / Channels Plus / Metasearch) — BLOCKED on
   business logic, not a nav-design question yet.** The premise itself isn't confirmed: it's not
   known whether these products' config (Direct Booking's Selling tools/Setup — Booking rules,
