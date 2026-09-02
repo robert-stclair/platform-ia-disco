@@ -118,7 +118,7 @@ function resolveChain(rootNode) {
     if (content.type === 'tabs') {
       const tabs = content.tabs.filter((t) => !t.mpOnly || state.accountType === 'MP');
       const explicitKey = state.path[pathIndex];
-      const selected = (explicitKey && tabs.find((t) => t.key === explicitKey)) || tabs.find((t) => t.active) || tabs[0] || null;
+      let selected = (explicitKey && tabs.find((t) => t.key === explicitKey)) || tabs.find((t) => t.active) || tabs[0] || null;
       chain.push({
         node,
         content,
@@ -135,6 +135,16 @@ function resolveChain(rootNode) {
         isExplicit: Boolean(explicitKey && selected?.key === explicitKey),
       });
       if (!selected) break;
+      // If the tab we're entering has its own content as a nav-dashboard
+      // using linksToTab tiles (Rate plans' "tiles nested inside a tab"
+      // case), stamp this tabs node's OWN pathIndex onto it here — the
+      // only point where a tabs node and a nested nav-dashboard actually
+      // meet — so its tiles know which pathIndex to write to (this tabs
+      // strip's own, not a level of their own). See the nav-dashboard
+      // branch below for why that distinction exists.
+      if (selected.content?.type === 'nav-dashboard' && selected.content.tiles.some((t) => t.linksToTab)) {
+        selected = { ...selected, content: { ...selected.content, parentTabsPathIndex: pathIndex } };
+      }
       node = selected;
       pathIndex += 1;
       continue;
@@ -166,6 +176,22 @@ function resolveChain(rootNode) {
       // and Users (-> USER_NODE) are both instances of this one mechanism,
       // not separate ones — generalized from an earlier version hardcoded
       // to `type: 'properties'` recursing into PROPERTY_NODE specifically.
+      //
+      // `detailNode` may be a Node OR a zero-arg function returning one —
+      // resolved lazily, right here, only once a name is actually picked.
+      // Required for buildPropertyNode/buildUserNode's mutual cross-links
+      // (a property's Users tab opens buildUserNode; a user's Properties
+      // tab opens buildPropertyNode): calling both functions EAGERLY while
+      // building either one's content recurses forever (each call
+      // constructs the other's full tree, which constructs the first
+      // one's again, ...) — a real RangeError caught live, not a
+      // theoretical concern. Passing a thunk instead defers the recursive
+      // call until a render actually needs that specific detail page, at
+      // which point the OTHER side's thunk is what gets stored, not
+      // invoked — the cycle never actually unwinds infinitely because nav
+      // is finite (a person can't click infinitely many times in one
+      // session). Every other `records` caller still passes a plain Node
+      // — unaffected.
       const explicitKey = state.path[pathIndex];
       chain.push({
         node,
@@ -176,7 +202,54 @@ function resolveChain(rootNode) {
         isExplicit: Boolean(explicitKey),
       });
       if (!explicitKey) break;
-      node = content.detailNode;
+      node = typeof content.detailNode === 'function' ? content.detailNode() : content.detailNode;
+      pathIndex += 1;
+      continue;
+    }
+
+    if (content.type === 'nav-dashboard') {
+      // Navigation dashboard (6th canonical page-skeleton type, CONTEXT.md's
+      // "tabs move a level deeper" candidate model) — a fixed set of named
+      // tiles, either:
+      //   (a) STANDALONE, replacing a tab strip entirely — each tile is a
+      //       distinct child Node (content.tiles[].content), picked via
+      //       state.path[pathIndex] same as `tabs`, but rendered as tiles
+      //       and NOT staying visible once picked (breadcrumb takes over —
+      //       see renderChainBody). This is the Configuration > Properties
+      //       case: PROPERTY_NODE's tab strip is wide enough to overload,
+      //       so nav-dashboard replaces it as the landing step.
+      //   (b) NESTED inside one tab of an otherwise-normal `tabs` node
+      //       (content.tiles[].linksToTab, a sibling tab's key, instead of
+      //       its own content) — clicking a tile just SWITCHES which
+      //       sibling tab is active, same as clicking the tab strip
+      //       directly would, no new path level pushed at all. This is
+      //       Rate plans' case: the tab strip stays, tiles are a richer,
+      //       status-aware entry point into the SAME tabs, not a
+      //       replacement for them. Requires the caller (the `tabs` branch
+      //       above) to pass `content.parentTabsPathIndex` — the enclosing
+      //       tabs node's own pathIndex — since a linksToTab tile writes to
+      //       THAT index, not a new one.
+      const usesLinksToTab = content.tiles.some((t) => t.linksToTab);
+      if (usesLinksToTab) {
+        // Mode (b): no descent, no separate path level — this step is
+        // purely presentational. The actual tab switch is handled by the
+        // SAME tabs-strip mechanism one level up (data-path-key targets
+        // content.parentTabsPathIndex, wired in renderNavDashboard).
+        chain.push({ node, content, pathIndex, options: content.tiles, selectedKey: null, isExplicit: false });
+        break;
+      }
+      const explicitKey = state.path[pathIndex];
+      const selected = explicitKey ? content.tiles.find((t) => t.key === explicitKey) : null;
+      chain.push({
+        node,
+        content,
+        pathIndex,
+        options: content.tiles,
+        selectedKey: selected?.key ?? null,
+        isExplicit: Boolean(selected),
+      });
+      if (!selected) break;
+      node = selected;
       pathIndex += 1;
       continue;
     }
@@ -487,7 +560,16 @@ function renderChainBody(chain, i) {
 
   const { content, pathIndex, selectedKey, isExplicit } = step;
   const prevStep = chain[i - 1];
-  const isDetailNodeRoot = prevStep?.content?.type === 'records' && prevStep.isExplicit;
+  // A step reached via an explicit `records` pick OR a standalone
+  // (non-linksToTab) `nav-dashboard` tile pick already got its OWN crumb
+  // segment from that prior step (the record name / the tile's label) —
+  // this step's destination node then gets treated as a new root, so its
+  // own `step.node.label` must NOT also crumb, or the label doubles up
+  // (e.g. a tile named the same as the node it opens, like Property
+  // details -> PROPERTY_DETAILS_NODE, both called "Property details").
+  const prevWasStandaloneNavDashboard =
+    prevStep?.content?.type === 'nav-dashboard' && !prevStep.content.parentTabsPathIndex && prevStep.isExplicit;
+  const isDetailNodeRoot = (prevStep?.content?.type === 'records' && prevStep.isExplicit) || prevWasStandaloneNavDashboard;
   const crumb = i > 0 && !isDetailNodeRoot && isExplicit ? [{ label: step.node.label, truncateTo: pathIndex }] : [];
 
   if (content.type === 'tabs') {
@@ -534,9 +616,39 @@ function renderChainBody(chain, i) {
       // `content.starredNames` (optional, e.g. My insights' Dashboards/
       // Charts): shows the illustrative star on specific rows.
       const starredNames = content.starredNames ? new Set(content.starredNames) : null;
-      return { trail: [], bodyHtml: renderRecordPicker(step.options, pathIndex, starredNames) };
+      // `content.display: 'table'` (optional, e.g. Rate plans): renders the
+      // SAME real, clickable names as a table-styled skeleton instead of a
+      // plain list — first column real + clickable, remaining columns
+      // skeleton-only, no real headers (same titleless-skeleton convention
+      // as everywhere else). Every other `records` caller (Properties,
+      // Users, Dashboards, Charts, Yield rules) omits this and keeps the
+      // plain list — this is additive, not a replacement.
+      const bodyHtml =
+        content.display === 'table'
+          ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3)
+          : renderRecordPicker(step.options, pathIndex, starredNames);
+      return { trail: [], bodyHtml };
     }
-    const recordCrumb = { label: selectedKey, truncateTo: pathIndex + 1 };
+    // `content.crossNav` (buildUserNode's Properties tab / buildPropertyNode's
+    // Users tile — two `records` pickers that point at EACH OTHER): marks
+    // this crumb as a RESET POINT. The breadcrumb must show "where I am,"
+    // not "how I clicked here" — without this, repeated back-and-forth
+    // (User → Property → User → ...) accumulates every hop into one
+    // ever-growing trail (a genuine bug caught live via screenshot: "Users /
+    // Jane Smith / Properties / Harbourview Hotel / Users / Jane Smith",
+    // names repeated). Simply dropping the locally-accumulated `ownCrumb`
+    // here does NOT work — every ANCESTOR call (e.g. the tabs strip for
+    // Jane Smith's own User details/Properties tabs, one level up) has
+    // already prepended its own crumb via `.concat()` before this code
+    // runs, and concatenation can't un-prepend what a caller already added.
+    // So instead: tag this one crumb with `resetTrail: true` and let it
+    // flow normally through every ancestor's `.concat()` (trail keeps
+    // growing structurally, same as always) — then `breadcrumbHtml` (the
+    // single place the FINAL trail is consumed) slices off everything
+    // before the LAST `resetTrail` crumb, once, right before rendering.
+    // `state.path` itself is untouched either way — still the real click
+    // history for routing/truncateTo purposes.
+    const recordCrumb = { label: selectedKey, truncateTo: pathIndex + 1, resetTrail: content.crossNav === true };
     // A records picker's own crumb (`crumb`, e.g. "Properties") is normally
     // only added when i > 0 (wrapped in an outer tabs strip, like
     // Configuration → Properties/Brands/Clusters → Properties). But when a
@@ -551,6 +663,28 @@ function renderChainBody(chain, i) {
     const ownCrumb = i === 0 ? [{ label: step.node.label, truncateTo: pathIndex }] : crumb;
     const inner = renderChainBody(chain, i + 1);
     return { trail: ownCrumb.concat(recordCrumb, inner.trail), bodyHtml: inner.bodyHtml };
+  }
+
+  if (content.type === 'nav-dashboard') {
+    // Mode (b), nested in a tab (content.tiles[].linksToTab set): tiles
+    // target the ENCLOSING tabs node's own pathIndex, not this step's —
+    // clicking one just switches the active sibling tab, no path level of
+    // its own, no crumb (nothing was pushed). Mode (a), standalone: tiles
+    // target this step's own pathIndex, same as before.
+    const targetPathIndex = content.parentTabsPathIndex ?? pathIndex;
+    if (!selectedKey) {
+      // Still on the dashboard itself — no crumb yet, same as an
+      // unselected `records` picker.
+      return { trail: [], bodyHtml: renderNavDashboardPage(content, step.options, targetPathIndex) };
+    }
+    // Once a tile is picked, the tile grid does NOT stay visible (unlike
+    // `tabs`' strip) — the breadcrumb takes over as the way back, per
+    // CONTEXT.md's "tabs move a level deeper" plan.
+    const selectedTile = content.tiles.find((t) => t.key === selectedKey);
+    const tileCrumb = { label: selectedTile?.label ?? selectedKey, truncateTo: pathIndex + 1 };
+    const ownCrumb = i === 0 ? [{ label: step.node.label, truncateTo: pathIndex }] : crumb;
+    const inner = renderChainBody(chain, i + 1);
+    return { trail: ownCrumb.concat(tileCrumb, inner.trail), bodyHtml: inner.bodyHtml };
   }
 
   if (content.type === 'systems') {
@@ -594,6 +728,104 @@ function renderRecordPicker(names, depth, starredNames) {
     .join('')}</ul>`;
 }
 
+// Table-styled variant of the same real-names exception above (e.g. Rate
+// plans, per the user's direction: "let's make it a table skeleton - but
+// show clickable names just like the current list"). First column is the
+// SAME real, clickable name renderRecordPicker uses; `extraColumns` (a
+// count, not real data) renders as plain skeleton cells alongside it — no
+// real headers at all, same titleless-skeleton convention as everywhere
+// else (this is a table's SHAPE, not its confirmed content).
+function renderRecordTable(names, depth, extraColumns) {
+  const rows = names
+    .map(
+      (name) => `
+        <tr>
+          <td><a href="#" class="sketch-table__name-link" data-path-key="${depth}:${name}">${name}</a></td>
+          ${Array(extraColumns).fill('<td><div class="sketch-table-cell"></div></td>').join('')}
+        </tr>
+      `
+    )
+    .join('');
+  return `<table class="sketch-table">${rows}</table>`;
+}
+
+// Navigation dashboard (6th canonical page-skeleton type) — a flat grid of
+// clickable TILES, each a real navigation destination (not decoration, and
+// not the same thing as the inert `dashboard-cards` sketch's stat/chart
+// cards). Each tile: a real confirmed title (the tile's own label IS the
+// heading — no separate grouping heading above clusters of tiles, per the
+// user's explicit "flat set for now - with the headings in the tile
+// itself"), an OPTIONAL status tip (`t.tip`, e.g. "2 channels not
+// connected" — a real string when the underlying data/wording is decided,
+// a skeleton bar otherwise; per the user's Rate plans direction: "provide
+// real time tips on what is not set up etc." — not live data yet, just the
+// SHAPE of a tile that can carry one), and a trailing "›" chevron
+// affordance marking it as a link, same visual role `.nav-list-item__
+// chevron` plays for a folder-style panel item, but this is a NEW element
+// since these are canvas tiles, not panel-list rows.
+//
+// `t.key` (mode a, standalone — see resolveChain) vs. `t.linksToTab` (mode
+// b, nested in a tab — the tile switches a SIBLING tab instead of pushing
+// a path level) both route through the same `data-path-key` mechanism
+// (`wirePathLinks`/`select`) — the only difference is which key routes and
+// which pathIndex it targets (passed in as `depth`, resolved by the caller
+// to either this step's own pathIndex or the enclosing tabs node's, per
+// renderChainBody's `targetPathIndex`).
+function renderNavDashboard(tiles, depth) {
+  return `<div class="nav-dashboard">${tiles
+    .map((t) => {
+      const routeKey = t.linksToTab ?? t.key;
+      const tip = t.tip
+        ? `<span class="nav-dashboard__tile-tip">${t.tip}</span>`
+        : `<div class="nav-dashboard__tile-tip-skel"></div>`;
+      return `
+        <a href="#" class="nav-dashboard__tile" data-path-key="${depth}:${routeKey}">
+          <div class="nav-dashboard__tile-metric-skel"></div>
+          <span class="nav-dashboard__tile-body">
+            <span class="nav-dashboard__tile-title">${t.label}</span>
+            ${tip}
+          </span>
+          <svg class="nav-dashboard__tile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+        </a>
+      `;
+    })
+    .join('')}</div>`;
+}
+
+// Wraps a nav-dashboard's tile grid with an optional page title and
+// optional stacked EXTRA sections below it — e.g. Rate plans' Overview:
+// "Configuration" (a titled heading over the existing Rooms/Channels/
+// Connectivities/Properties tiles — user's direction: "top strip we
+// currently have is configuration, can have a title"), then "Performance"
+// (a few dashboard-cards chart widgets) and "Adoption" (a channel-adoption
+// table, skeleton-only for now — "we can keep it to skeleton concepts for
+// now"). The tile grid itself is UNCHANGED and stays fully routable
+// (clicking a tile still switches tabs/pushes a path level exactly as
+// before) — only decorative content, via the extra sections, using the
+// SAME `renderSketch` dispatcher every other sketch-only leaf uses. Extra
+// sections are never navigable — this is purely a display composition
+// around the one routable element (the tile grid), not a new content type
+// every node needs to support.
+//
+// `content.title` (optional): heading shown above the tile grid.
+// `content.extraSections` (optional): [{ title, content: { type:'sketch', ... } }],
+// rendered below the tile grid, each with its own `.nav-dashboard-page__section-title`.
+function renderNavDashboardPage(content, tiles, depth) {
+  const titleHtml = content.title ? `<h2 class="nav-dashboard-page__title">${content.title}</h2>` : '';
+  const tileGrid = renderNavDashboard(tiles, depth);
+  const extraSections = (content.extraSections ?? [])
+    .map(
+      (s) => `
+        <div class="nav-dashboard-page__section">
+          <h3 class="nav-dashboard-page__section-title">${s.title}</h3>
+          ${renderSketch(s.content)}
+        </div>
+      `
+    )
+    .join('');
+  return `<div class="nav-dashboard-page">${titleHtml}${tileGrid}${extraSections}</div>`;
+}
+
 function wirePathLinks() {
   canvasEl.querySelectorAll('[data-path-key]').forEach((el) => {
     el.addEventListener('click', (e) => {
@@ -606,14 +838,24 @@ function wirePathLinks() {
 }
 
 function breadcrumbHtml(trail) {
+  // Slice off everything before the LAST `resetTrail` crumb (see the
+  // `records` branch's `crossNav` handling in renderChainBody) — a
+  // cross-navigation re-entry (User ↔ Property) marks its own crumb this
+  // way so the breadcrumb shows "where I am," not the full click history
+  // that led here. `state.path`/truncateTo are untouched by this — only
+  // what's DISPLAYED is trimmed, applied once here since every ancestor's
+  // `.concat()` along the way can only grow the trail, never retroactively
+  // shorten what a caller already prepended.
+  const lastResetIndex = trail.reduce((acc, t, i) => (t.resetTrail ? i : acc), -1);
+  const visibleTrail = lastResetIndex > 0 ? trail.slice(lastResetIndex) : trail;
   // A single crumb with nothing above or below it is noise — only show the
   // breadcrumb once there's an actual multi-level trail to convey.
-  if (trail.length <= 1) return '';
+  if (visibleTrail.length <= 1) return '';
   return (
     `<div class="breadcrumb">` +
-    trail
+    visibleTrail
       .map((t, i) => {
-        const isLast = i === trail.length - 1;
+        const isLast = i === visibleTrail.length - 1;
         const piece = isLast
           ? `<span class="breadcrumb__current">${t.label}</span>`
           : `<a href="#" data-crumb-truncate="${t.truncateTo}">${t.label}</a>`;
@@ -824,7 +1066,17 @@ document.querySelectorAll('[data-account-type]').forEach((el) => {
 document.querySelectorAll('[data-property-count]').forEach((el) => {
   el.addEventListener('click', () => {
     state.propertyCount = el.dataset.propertyCount;
-    resetPath();
+    // Deliberately NOT calling resetPath() here (unlike account-type, which
+    // can change which sections/items exist at all) — property count only
+    // gates a few things within an otherwise-identical structure
+    // (showProperties-driven tabs/tiles, the scope switcher, mpOnly items),
+    // so staying on the current path lets the user watch a page react to
+    // the toggle in place, instead of bouncing back to that section's
+    // default landing item. resolveSelected/resolveChain's explicit-key-or-
+    // fallback lookups already handle the rare case where the current path
+    // points at something that stops existing (e.g. a Properties tab that
+    // disappears going single-property) by falling back to that level's
+    // default, not crashing.
     document.querySelectorAll('[data-property-count]').forEach((b) => {
       b.classList.toggle('is-active', b === el);
     });

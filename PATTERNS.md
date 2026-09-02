@@ -28,9 +28,10 @@ These render as the whole content of a `sketch`-type node (a tab, a leaf item).
 | `'grid'` | A `.sketch-grid` — real column headers, OPTIONAL real row labels down the left, skeleton fill per cell | Any grid/matrix-shaped page — a room-type × date inventory matrix, or anything calendar-like that isn't specifically a month view |
 
 These are the project's canonical page-skeleton types (list / table / stacked cards / card
-grid / calendar+grid — see "Dashboard card grid" below for the 4th). Not a closed set — add a
-new one here first when a genuinely new page shape comes up, following the same "skeleton
-content, real titles/headers only" rule as everything else.
+grid / calendar+grid — see "Dashboard card grid" below for the 4th, and "Navigation dashboard"
+further below for the 6th, a NAVIGATION pattern rather than a `sketch` value, so it isn't in
+this table). Not a closed set — add a new one here first when a genuinely new page shape comes
+up, following the same "skeleton content, real titles/headers only" rule as everything else.
 
 **`'grid'` is the generic mechanism; `'calendar'` is one named preset of it** — generalized
 this way (Distribution batch item 4) so the SAME renderer covers both a month calendar
@@ -132,23 +133,60 @@ Not a canvas sketch — a NAVIGATION pattern (part of the content-model shape in
 names should each open the SAME shared detail page.
 
 ```js
-{ type: 'records', names: string[], detailNode: Node }
+{ type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number }
 ```
 
 - `names` — real names, rendered via `renderRecordPicker` (`.wf-list`, real
-  text per the breadcrumb-clarity exception above).
-- `detailNode` — one shared Node (usually `type: 'tabs'`) that every record
-  opens. The SAME node reference for every name — there's one shared detail
-  shape, not one Node per record.
+  text per the breadcrumb-clarity exception above) by default.
+- `detailNode` — one shared Node (usually `type: 'tabs'` or `type:
+  'nav-dashboard'`) that every record opens. The SAME node reference for every
+  name — there's one shared detail shape, not one Node per record.
+  **Can also be a zero-arg FUNCTION (thunk)** instead of a plain Node —
+  REQUIRED whenever two `records` pickers cross-reference each other (e.g.
+  `buildPropertyNode`'s Users tile opens `buildUserNode`; `buildUserNode`'s
+  Properties tab opens `buildPropertyNode`). Calling either builder EAGERLY
+  inside the other's return value recurses forever — a real caught
+  `RangeError: Maximum call stack size exceeded`, not a theoretical risk.
+  `resolveChain`'s `records` branch resolves a thunk lazily
+  (`typeof content.detailNode === 'function' ? content.detailNode() :
+  content.detailNode`), only once a name is actually clicked. Pass a plain
+  Node whenever there's no cycle — a thunk is only needed for genuinely
+  mutual references.
+- `display: 'table'` (optional) — renders the same real, clickable names as a
+  table-styled skeleton instead (`renderRecordTable`, `.sketch-table` +
+  `.sketch-table__name-link`) — first column real + clickable, remaining
+  columns (`tableColumns`, default 3) skeleton-only, no real headers at all
+  (same titleless-skeleton convention as everywhere else — this is a table's
+  SHAPE, not confirmed column content). Every other `records` caller omits
+  this and keeps the plain list — additive, not a replacement.
 - Breadcrumb: "[picker label] / [record name]" once a record is picked, then
   the detail node's own tabs render with no additional crumb segment of their
   own (the detail node is treated as a new root once reached this way — see
   `renderChainBody`'s `isDetailNodeRoot` handling in `main.js`).
+- `crossNav: true` (optional) — marks this picker as a CROSS-NAVIGATION point
+  between two entities that reference each other (e.g. a user's Properties
+  tab and a property's Users tile). Without this, repeated back-and-forth
+  navigation between two such pickers accumulates every hop into one
+  ever-growing breadcrumb — a real bug, caught live: "Users / Jane Smith /
+  Properties / Harbourview Hotel / Users / Jane Smith," the same names
+  repeated, reading as click history rather than current position. When
+  `crossNav` is set, picking a record tags its crumb `resetTrail: true`;
+  `breadcrumbHtml` slices the DISPLAYED trail to start from the last such
+  crumb (once, at final render) — `state.path` itself is untouched, so
+  routing/`truncateTo` behavior is unaffected, only what's shown. Every
+  other `records` caller (Properties/Users from Configuration's own list,
+  Dashboards, Charts, Yield rules, Rate plans) omits this and keeps the
+  normal accumulating trail.
 
 **Existing instances:** Properties (`names: SAMPLE_PROPERTIES`, `detailNode:
-PROPERTY_NODE`) and Users (`names: SAMPLE_USERS`, `detailNode: buildUserNode(...)`).
-Both are the SAME mechanism — never add a new content type for "a picker that
-opens a shared detail page." Reuse `records` and give it a new `detailNode`.
+buildPropertyNode(...)`), Users (`names: SAMPLE_USERS`, `detailNode:
+buildUserNode(...)`) — these two ALSO cross-reference each other one level
+deeper (a property's own Users tile, a user's own Properties tab — both use
+thunks, see above), and Rate plans (`names: SAMPLE_RATE_PLANS`, `display:
+'table'`, `detailNode: buildRatePlanNode(...)` — a `nav-dashboard`, see
+below). All are the SAME mechanism — never add a new content type for "a
+picker that opens a shared detail page." Reuse `records` and give it a new
+`detailNode`.
 
 ## Dashboard card grid (`sketch: 'dashboard-cards'`)
 
@@ -173,6 +211,136 @@ don't add a real title without explicit confirmation this has changed.
 The skeleton title bar (`.sketch-dashboard-card__title-skel`) is sized larger
 than a typical skeleton label, per "make them larger" — it's standing in for
 a real heading, not a minor field label.
+
+## Navigation dashboard (`type: 'nav-dashboard'`)
+
+NOT a canvas sketch either — like `records`, a NAVIGATION pattern (part of the
+content-model shape, not a `sketch` value). Easy to confuse with
+`dashboard-cards` above since both render a grid of cards — the difference is
+functional, not visual: `dashboard-cards`' cards are inert (stat/chart
+placeholders, a data-display page); `nav-dashboard`'s TILES are real
+navigation destinations (clicking one routes deeper, breadcrumb-relevant),
+structurally closer to `tabs` than to `dashboard-cards`.
+
+```js
+{ type: 'nav-dashboard', tiles: Node[] }
+```
+
+**Two distinct modes — pick per node, don't default to one:**
+
+- **(a) Standalone** — replaces a tab strip entirely. `tiles` are real child
+  Nodes with their own `content` (NOT one shared detail node for all of them,
+  unlike `records`). Clicking a tile pushes a real path level, same as
+  `resolveChain`'s `tabs` branch does for a tab — but **unlike `tabs`, the
+  tile grid does NOT stay visible once a tile is picked**: the breadcrumb
+  takes over as the way back (`renderChainBody`'s `nav-dashboard` branch
+  returns straight to the inner content once `selectedKey` is set, same
+  "picker disappears once committed" shape `records` already uses, not
+  `tabs`' persistent strip). No `active` default — this is a landing page,
+  nothing is picked until a tile is clicked. Use this when a tab strip would
+  genuinely be too wide (7+ tabs) — it both overloads the tab bar and leaves
+  the L2 sidebar sitting idle once drilled in. **Target case, NOT YET
+  built:** `PROPERTY_NODE`'s 8 tabs (Config → Properties).
+- **(b) Nested inside one tab of a normal `tabs` node** — the tab strip
+  stays exactly as it always would; one tab (usually a default "Overview")
+  has a nav-dashboard as its OWN content. Tiles use `linksToTab: <sibling
+  tab key>` instead of their own content — clicking one just SWITCHES the
+  active sibling tab (same effect as clicking the tab strip directly), no
+  new path level, tab strip never disappears. Mechanically: `resolveChain`'s
+  `tabs` branch stamps its own `pathIndex` onto the nested nav-dashboard as
+  `content.parentTabsPathIndex` at the one point the two node types meet; a
+  `linksToTab` tile's link then targets THAT index (see `renderChainBody`'s
+  `targetPathIndex`), not a level of its own. Use this when the tab strip
+  isn't overloaded but would benefit from a richer, status-aware landing
+  view than jumping straight to the first tab's raw content. **Built
+  instance:** Rate plans (`buildRatePlanNode` in `nav-data.js`) — see below.
+
+Both modes share the same tile rendering (`renderNavDashboard`): a leading
+skeleton block (`.nav-dashboard__tile-metric-skel` — hints "a metric could
+show here," shape only, no real content decided), the tile's own real,
+confirmed title (the tile's label IS the heading — no separate grouping
+heading above clusters of tiles), an OPTIONAL status tip
+(`tile.tip` — a real string once decided, e.g. "2 channels not connected,"
+or a skeleton bar otherwise; `.nav-dashboard__tile-tip`/`-skel` — not live
+data, just the shape of a tile that can carry one), and a trailing `›`
+chevron marking it as a link (`.nav-dashboard__tile-chevron` — same visual
+role as a folder's `.nav-list-item__chevron`, but for a canvas tile, not a
+panel-list row).
+
+**Optional page composition — `content.title` and `content.extraSections`:**
+a nav-dashboard's tile grid can carry an optional heading above it
+(`title`, e.g. "Configuration") and optional STACKED, purely decorative
+sections below it (`extraSections: [{ title, content }]`, each `content`
+any existing `sketch` value, rendered via the same `renderSketch`
+dispatcher every sketch-only leaf uses — see `renderNavDashboardPage` in
+`main.js`). The tile grid's own routing is completely unaffected — tiles
+stay fully clickable exactly as before; only the surrounding page grows.
+Extra sections are NEVER navigable — this is a display composition around
+the one routable element, not a new content type every node needs to
+support. Use this when a nav-dashboard's landing page needs more than just
+tiles (e.g. Rate plans' Overview: a "Configuration" heading over the
+existing tiles, then "Performance" — a few `dashboard-cards` chart widgets
+— and "Adoption" — a channel-adoption/distribution snapshot, currently
+`sketch:'grid'`, skeleton-only, no real columns/rows confirmed yet).
+
+**Why this exists — the "tabs move a level deeper" model, revised to two
+modes after a direct reversal** (see CONTEXT.md's candidate-model writeup
+for the full reasoning trail): first built as mode (a) only, applied to
+Rate plans — then the user reversed that specific choice on seeing it:
+"I now realise Rate plans don't need the extra level, but they could maybe
+benefit from this as a sub-dashboard under a default tab heading." Config →
+Properties (`PROPERTY_NODE`) was confirmed to still need mode (a) — "I
+think we will need the extra level" — so the type was generalized to
+support both rather than picking one, per explicit instruction: "keep this
+as a page type that can appear in a tabbed view or a non tabbed view."
+
+**Built instance (mode b):** Rate plans' detail (`buildRatePlanNode` in
+`nav-data.js`) — tab strip Overview/Rooms/Channels/Connectivities/Properties
+(Properties only for MP/multi-property, same `showProperties` gating
+`buildUserNode`'s own "Properties" tab uses); "Overview" (default/active)
+holds the nav-dashboard, its tiles (`linksToTab`) switching to the matching
+sibling tab. Rate plans' list itself also changed alongside this — now a
+table skeleton (see the `records` section's `display: 'table'` above), not
+a plain list. Tile set explicitly NOT closed — "there will be others I
+haven't thought of yet." Every current tile leaves `tip` unset (renders as
+skeleton) — no real status wording/data decided yet.
+
+**Built instance (mode a):** `PROPERTY_NODE` (Config → Properties) — the
+actual tab-overload case this pattern was originally built to solve. Its
+old 8-tab strip is gone; tiles are Property details / Channels /
+Connectivities / Integrated systems / Users. NOT a straight 1:1 conversion
+of the old tabs — most of them moved a level deeper:
+
+- **Property details** (tile) drills into a NEW sub-node
+  (`PROPERTY_DETAILS_NODE`, a normal `tabs` strip): General information /
+  Room types / Services / Policies / Media library. Most of the old 8 tabs
+  live HERE now, not as top-level tiles — "those move to a level under
+  property details, or at least most of them."
+- **Channels, Connectivities** (tiles) — brand new, mirroring Rate plans'
+  own tile names; same best-guess `sketch:'list'` stub.
+- **Integrated systems, Users** (tiles) — deliberately kept at the TOP
+  level rather than folded under Property details — "users and integrated
+  systems move to the top level."
+- The OLD tab literally named "Property details" (Property/Contact/Extra
+  information fields) collided with the NEW top-level tile of the same
+  name — resolved by merging its fields into General information (now 6
+  sections: Currency/Inventory/Language and region/Property/Contact/Extra
+  information) rather than keeping two same-named things at different
+  levels.
+
+**Bug caught and fixed here — crumb duplication on a standalone tile whose
+destination node shares its label:** `isDetailNodeRoot` (the check that
+stops a step's OWN node-label crumb from doubling up with the crumb its
+parent step already added) originally only covered a `records` pick. A
+standalone (mode a) `nav-dashboard` tile pick needed the exact same
+treatment and didn't have it — clicking "Property details" (the tile)
+showed "Property / Property details / Property details" (the tile's own
+crumb, then `PROPERTY_DETAILS_NODE.label`'s crumb, both "Property details").
+Fixed by extending `isDetailNodeRoot` in `renderChainBody` to also treat a
+standalone `nav-dashboard` step (no `parentTabsPathIndex`, i.e. not mode b)
+as a detail-node root, same as `records`. Mode (b) tiles (Rate plans) were
+never affected — they don't push a path level at all, so no double crumb
+was possible there.
 
 ## Not yet built
 

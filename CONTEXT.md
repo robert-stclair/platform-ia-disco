@@ -80,9 +80,9 @@ one consistent recursive shape (see `nav-data.js`'s top comment) — never reint
 
 **Direct Booking (renamed from "Booking engine") has its own sublist**: Selling tools (tabs:
 Promotions/Extras) / Setup (tabs: Booking rules/Guest details/Email settings/Translations/About
-page/Contact page/Policies page) / Branding (no content yet). Confirmed from real production
-screenshots. Configuration's item order is: Property settings, Users, Direct Booking, Channels
-Plus.
+page/Contact page/Policies page) / Branding (no content yet) / Website (no content yet).
+Confirmed from real production screenshots. Configuration's item order is: Property settings,
+Users, Direct Booking, Channels Plus.
 
 **Integrated systems (a Property settings tab) is system-count-aware.** With one connected
 system it collapses straight to that system's sections (General settings/Inventory settings/
@@ -243,6 +243,19 @@ libraries-vs-assignment idea above.
 
 ## Open threads (not yet resolved)
 
+- **The "Transactions" rail section's name may need reconsidering.** Surfaced naturally, not as
+  a direct request: mid-conversation the user asked to add "a section called Transactions"
+  before realizing the top-level rail item (credit-card icon) is ALREADY called that — "oh ok -
+  i forgot it was called that." Reaching for "Transactions" as a name for something NEW before
+  recalling it already exists suggests the current name isn't fully sticking in the mental
+  model of this IA. The user's own instinct: "we might need to think of a better rail section
+  name... not sure what it is... maybe log as an open question." No replacement name proposed
+  or chosen — don't rename anything without picking this back up directly. **Note: the
+  section's own "Transactions" L2 item is no longer a bare stub** — it turned out to BE Pay's
+  own "Transactions" item once the Payments IA got split out (Payouts/Virtual terminal/
+  Invoices/Payment requests now sit alongside it — see CHANGE-QUEUE.md's "Pay IA split" batch).
+  This open thread is specifically about the RAIL section's own name, not the L2 item's
+  content, which is now real.
 - **Products group's property scope (Direct Booking / Channels Plus / Metasearch) — BLOCKED on
   business logic, not a nav-design question yet.** The premise itself isn't confirmed: it's not
   known whether these products' config (Direct Booking's Selling tools/Setup — Booking rules,
@@ -357,22 +370,78 @@ libraries-vs-assignment idea above.
       to hold the entity picker (Properties list) plus true account-wide items, while everything
       specific to whichever entity is drilled into lives in that entity's own contextual
       dashboard, reached via breadcrumb — not tabs, and not a second sidebar.
-    - **NOT YET BUILT anywhere.** `PROPERTY_NODE` and `BOOKING_ENGINE_LIST` still land directly
-      on a tab strip with no landing dashboard (see "Property settings has direct tabs — no
-      extra nesting layer" above, which this candidate would effectively supersede if adopted).
-      This is the leading direction for whenever entity-detail pages are revisited, not a
-      decision to implement without discussing scope first — it touches every existing
-      tabs-based detail node (PROPERTY_NODE, Direct Booking, buildUserNode, RATE_PLAN_NODE),
-      not just the Products group that started this thread.
-    - **Framing to pick this back up with:** the user's own closing framing of this thread —
-      "it might be a[n option for a] nav-based dashboard concept as an optional THIRD nav level
-      before tabs." I.e. not a mandatory replacement for every entity-detail node uniformly, but
-      a nav-level PATTERN to reach for: L1 (rail) → L2 (panel) → this contextual dashboard
-      (optional third level) → tabs (only where a sub-area still needs them). Some existing
-      tabs-based nodes may turn out to have few enough peers that they don't need this third
-      level at all (e.g. Branding alone, or a 2-tab node) — decide per-node whether the third
-      level earns its place, don't apply it mechanically everywhere just because the pattern
-      now exists.
+    - **BUILT — `nav-dashboard` now has TWO modes, not one, after a direct reversal on Rate
+      plans specifically.** First pass built Rate plans as a STANDALONE nav-dashboard (tab strip
+      replaced entirely, tiles pushed a real path level — the original "tabs move a level
+      deeper" shape). The user then reversed this once they saw it: "I now realise Rate plans
+      don't need the extra level" — Rate plans was never actually the tab-strip-overload case
+      (only 3-4 tabs), that's `PROPERTY_NODE`'s problem, not this one. What Rate plans DOES
+      benefit from: a tab strip that still exists, PLUS a status-aware dashboard living inside
+      its OWN default tab — "they could maybe benefit from this as a sub-dashboard under a
+      default tab heading, the tiles would link to tabs but provide real time tips on what is
+      not set up etc." Config → Properties (`PROPERTY_NODE`) is confirmed to still need the
+      original standalone/replacing shape: "in config → properties I think we will need the
+      extra level." Explicit instruction: "keep this as a page type that can appear in a tabbed
+      view or a non tabbed view."
+      - **Mode (a), standalone** (`PROPERTY_NODE`, BUILT — see below): tiles are real child
+        Nodes (`tile.content`), clicking one pushes a path level, breadcrumb takes over, no
+        persistent tab strip. This is the ORIGINAL shape, unchanged.
+      - **Mode (b), nested in a tab** (Rate plans' actual shape, BUILT — see
+        `buildRatePlanNode` in `nav-data.js`): the tabs node keeps its normal strip
+        (Overview/Rooms/Channels/Connectivities/Properties); "Overview" (the default/active tab)
+        has a nav-dashboard as ITS content; each tile uses `linksToTab` (a sibling tab's key)
+        instead of its own content — clicking a tile just SWITCHES the active sibling tab, same
+        as clicking the tab strip directly would ("switches the tab... matches how a normal tab
+        click already works," confirmed explicitly), no new path level, tab strip stays visible
+        the whole time. Mechanically: `resolveChain`'s `tabs` branch stamps its own `pathIndex`
+        onto a nested nav-dashboard as `content.parentTabsPathIndex` at the one point the two
+        node types meet; a `linksToTab` tile's `data-path-key` targets that index instead of
+        pushing one of its own (`renderChainBody`'s `nav-dashboard` branch, `targetPathIndex`).
+      - **Tiles can carry a real-time-feeling status tip** (`tile.tip`, optional — real string
+        when decided, skeleton bar otherwise) — "provide real time tips on what is not set up
+        etc." Not live data yet, just the SHAPE (`.nav-dashboard__tile-tip`/`-skel` in
+        `style.css`) — every current instance leaves `tip` unset.
+      - Rate plans' list itself also changed shape alongside this: the picker is now a table
+        skeleton (`display: 'table'` on the `records` content type — real, clickable names in
+        column 1, skeleton-only cells elsewhere, no real headers), not a plain list.
+      - The tile set (Rooms/Channels/Connectivities/Properties[MP]) is explicitly NOT closed —
+        "there will be others I haven't thought of yet."
+    - **BUILT — `PROPERTY_NODE` converted to mode (a), standalone**, superseding "Property
+      settings has direct tabs — no extra nesting layer" above (the 8-tab strip that pattern
+      described no longer exists as a flat strip). Confirmed mode (a), not (b) — "in config →
+      properties I think we will need the extra level." Final tile set, arrived at via a
+      dedicated back-and-forth on which of the old 8 tabs become tiles vs. sub-items (worth
+      reading in full since it wasn't a simple 1:1 conversion):
+      - **Property details** (tile) — drills into a NEW sub-node (`PROPERTY_DETAILS_NODE`, a
+        normal `tabs` strip: General information / Room types / Services / Policies / Media
+        library). Most of the old 8 tabs moved HERE, not to top-level tiles — "those move to a
+        level under property details, or at least most of them."
+      - **Channels, Connectivities** (tiles) — brand new, not on the old 8-tab list at all;
+        same best-guess `sketch:'list'` stub treatment as Rate plans' own Channels/
+        Connectivities tiles, mirroring that tile set intentionally.
+      - **Integrated systems, Users** (tiles) — explicitly kept at the TOP level, NOT folded
+        under Property details with the rest: "users and integrated systems move to the top
+        level under property[,] the nav dashboard." Content unchanged from before.
+      - **Naming collision, resolved:** the OLD tab strip already had a tab called "Property
+        details" (Property/Contact/Extra information fields) — different from the NEW
+        top-level tile of the same name. Resolved by folding the old tab's fields into General
+        information (now: Currency/Inventory/Language and region/Property/Contact/Extra
+        information, 6 sections) rather than keeping two same-named things at different levels
+        — user's explicit call: "old 'Property details' becomes part of General information."
+      - `PROPERTY_NODE`'s two existing call sites (`buildConfigurationPropertiesItem`'s
+        single-property collapse, and the multi-property Properties list's `detailNode`) both
+        needed zero code changes — both only ever referenced `PROPERTY_NODE`/`.content` as an
+        opaque value, never assumed its internal shape.
+    - **`BOOKING_ENGINE_LIST` (Direct Booking) is NOT yet converted** — still lands directly on
+      its own tab/sublist structure, untouched by this pattern so far.
+    - **Framing to pick this back up with:** the user's own closing framing — "it might be a[n
+      option for a] nav-based dashboard concept as an optional THIRD nav level before tabs" (mode
+      a) alongside "a sub-dashboard under a default tab heading" (mode b) as a SEPARATE, lighter
+      option for cases that don't have the tab-overload problem. Decide per-node which mode (if
+      either) fits — mode (a) for genuinely overloaded tab strips (PROPERTY_NODE's 8 tabs), mode
+      (b) for a normal-sized tab strip that would just benefit from a richer, status-aware
+      landing view (Rate plans' case). Don't apply either mechanically just because the pattern
+      now exists in both shapes.
 
 - **Bulk rate distribution mechanics** once a Properties tab exists under Distribution → Rate
   plans. MP's current production model (Group Rate Plan → Property Rate Plan → Property Room

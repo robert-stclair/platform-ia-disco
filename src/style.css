@@ -664,6 +664,119 @@ a { color: inherit; }
   opacity: 0.6;
 }
 
+/* Navigation dashboard (6th canonical page-skeleton type) — a grid of
+   clickable TILES, real nav destinations, distinct from the inert
+   `.sketch-dashboard-card` above. Reuses that pattern's card visual
+   language (padding/border/radius) since both are "card in a grid," but
+   a tile is a link (hover state, chevron) where a dashboard card isn't. */
+.nav-dashboard {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.nav-dashboard__tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.nav-dashboard__tile:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
+}
+
+/* Skeleton block hinting "a metric could show here" — shape only, no real
+   content decided (same skeleton-until-confirmed rule as everywhere else). */
+.nav-dashboard__tile-metric-skel {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
+/* Groups title + tip so they stack vertically as one flex child, leaving
+   the metric skeleton and chevron as the tile's other two children. */
+.nav-dashboard__tile-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.nav-dashboard__tile-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* Status tip (e.g. "2 channels not connected") — real text when the
+   underlying wording/data is decided, a skeleton bar otherwise. Not live
+   data yet, just the SHAPE of a tile that can carry a real-time-feeling
+   status alongside its link. */
+.nav-dashboard__tile-tip {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.nav-dashboard__tile-tip-skel {
+  width: 70%;
+  height: 10px;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+/* Link affordance — same visual role as `.nav-list-item__chevron` (a
+   folder's expand indicator), but this marks a canvas tile as clickable,
+   not a panel-list row as expandable. */
+.nav-dashboard__tile-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+/* Wraps a nav-dashboard with an optional page title and optional stacked
+   EXTRA sections below the (still fully routable) tile grid — e.g. Rate
+   plans' Overview: "Configuration" heading over the tiles, then
+   "Performance"/"Adoption" sketch sections underneath. See
+   renderNavDashboardPage in main.js. */
+.nav-dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.nav-dashboard-page__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.nav-dashboard-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nav-dashboard-page__section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .sketch-form {
   display: flex;
   flex-direction: column;
@@ -724,8 +837,23 @@ a { color: inherit; }
   opacity: 0.6;
 }
 
+/* Real, clickable name in a table's first column (e.g. Rate plans) — same
+   real-names breadcrumb exception as `.wf-list__row`/renderRecordPicker,
+   just table-styled instead of a plain list. See renderRecordTable. */
+.sketch-table__name-link {
+  color: var(--text);
+  font-weight: 500;
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+.sketch-table__name-link:hover {
+  text-decoration: underline;
+}
+
 /* Generic grid pattern (Distribution batch item 4) — 5th canonical
-   page-skeleton type, generalized from an earlier calendar-only version so
+   page-skeleton type (nav-dashboard, added later, is the 6th — see below),
+   generalized from an earlier calendar-only version so
    the SAME mechanism covers both a month calendar (columns only, e.g.
    Front desk) and a matrix with real row labels (e.g. Inventory's
    room-type x date grid). Column count comes from `grid-template-columns`

@@ -5,21 +5,254 @@
 > type), `NOTES-CLEANUP.md` (sitemap + coding standards — why path-index bugs kept happening),
 > `REFACTOR-PLAN.md` (what this branch's refactor did and why), `PATTERNS.md` (reusable
 > wireframe pattern catalog, including `nav-data.js`'s item-by-item type retrofit table), then
-> this file last. You're most likely on the `refactor/structure-cleanup` branch, not `main` —
-> check with `git branch --show-current`. The 4 page-skeleton types are a starting set, not a
-> closed list — the user adds new types as new page needs come up.
+> this file last. `refactor/structure-cleanup` was merged to `main` — work happens on `main`
+> now, check with `git branch --show-current` if unsure. The page-skeleton types are a starting
+> set, not a closed list — the user adds new types as new page needs come up (currently 6:
+> list/table/stacked-cards/card-grid/grid/nav-dashboard).
 
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: every queued item across all batches so far is implemented and pushed** — the
-original numbered batch (1–21, see `## Done` below), the Distribution batch (1–7, just below
-this status line), and the My account batch (below that). Merged to `main` and deployed
-(Basic Auth now sits in front of the live Heroku site — see CONTEXT.md's Deployment section
-for credentials). The only unfinished thread is the foundational property/cluster/brand scope
-switcher (its own section below) — Distribution's shape is explicitly unsolved there, not a
-queue item to implement yet. Add new requests to a fresh numbered list below this status block
-as they come in.
+**Status: every queued item is implemented; NOT YET committed/pushed as of the Rate plan
+Overview page composition, Small fixes/additions, and Users/Properties self-consistency
+batches below** (the Config → Properties nav-dashboard conversion from the prior session, and
+everything in these three batches, are all local, uncommitted changes — confirm before
+assuming they're live). Earlier batches (original
+1–21, Distribution 1–7, My account, Rate plans nav-dashboard) were merged to `main` and deployed
+previously (Basic Auth sits in front of the live Heroku site — see CONTEXT.md's Deployment
+section for credentials). The only unfinished thread is the foundational property/cluster/brand
+scope switcher (its own section below) — Distribution's shape is explicitly unsolved there, not
+a queue item to implement yet. Add new requests to a fresh numbered list below this status
+block as they come in.
+
+## Pay IA split + small additions batch
+
+1. **Dynamic pricing is now a calendar-style grid** — user: "dynamic pricing is a grid as well
+   - can use the LH calendar style." Uses the existing `sketch:'calendar'` preset (7 weekday
+   columns Sun–Sat, 5 rows, no row labels — same shape Front desk's calendar uses) but embedded
+   in a NORMAL Distribution page (L2 panel stays visible), not full-width/`noPanel` like Front
+   desk's own usage.
+2. **"Pay" (Config → Products) split from production's current single flat "Payments" section**
+   (real screenshot reviewed: Payments/Transactions/Payouts/Virtual terminal/Invoices/Automated
+   payments/Payment requests/Accepted payments/Taxes/Service charges, all stacked under one
+   top-level nav item today) — per the user's own principle: "the low-touch setup stuff lives
+   under Config → Pay, but anything more transactional goes elsewhere - likely under either
+   distribution or transactions."
+   - **First pass (SUPERSEDED — see revision below):** flattened all 5 "transactional" items
+     (Payouts, Virtual terminal, Invoices, Payment requests, plus the existing "Transactions"
+     item) as 5 separate top-level L2 rows in the Transactions section. The user caught this
+     live via screenshot: "this has ended up a bit messy - is this what you intended?" — a real
+     miss, not a deliberate design.
+   - **Revised split, confirmed directly:** "I think [virtual] terminal, accepted payments,
+     taxes and service charges are all config stuff. The rest can be tabs underneath an L2
+     maybe called Payments." Explicit caveat, worth remembering for anyone revisiting this:
+     "this is a product area I know little about so we are really just roughing it in" — none
+     of this split is confirmed business logic.
+   - **Config → Pay** (folder sublist, same pattern as Direct Booking's — `PAY_LIST` in
+     `nav-data.js`): Automated payments, **Virtual terminal** (moved here from Transactions
+     after the correction), Accepted payments, Taxes, Service charges — all simple stubs, no
+     confirmed internal sub-structure. The status/enablement "Payments" page itself
+     (`sketch:'sections'`, mirroring the "SiteMinder Payments is enabled" banner from the real
+     screenshot) was DROPPED entirely, not kept as a peer item — "it's just a stub to hold an
+     upsell page in the current state," not a real settings destination worth modeling here.
+     "Automated payments" is now the default/active item in this list.
+   - **Transactions section: ONE new L2 entry, not four.** Reservations and Guest
+     communications stay untouched. The pre-existing "Payments" L2 item (previously
+     `content: null`) now holds a `tabs` strip: Transactions / Payouts / Invoices / Payment
+     requests. This is the SAME "Payments" item, not a new one — no duplicate label.
+3. Verified in browser: Dynamic pricing renders correctly (weekday grid, L2 panel intact); Pay
+   expands as a folder (doesn't auto-navigate, matching the folder-vs-heading rule) with 5
+   items (no "Payments" status page), Automated payments now the default; Transactions section
+   is back to 3 clean L2 rows (Reservations, Guest communications, Payments), with Payments now
+   showing a 4-tab strip (Transactions/Payouts/Invoices/Payment requests); no console errors.
+4. **Added a 5th tab to Transactions → Payments: "Automated payments"** — home for "scheduled
+   and failed automated payments," a real gap noticed once the automation RULES landed under
+   Config → Pay → Automated payments but the actual payment ACTIVITY those rules produce had
+   nowhere to live. Confirmed transactional (not nested under Config → Pay), and ONE combined
+   tab rather than separate Scheduled/Failed tabs — status would be a column in the list, not
+   a page split. Verified rendering correctly alongside the other 4 tabs, no console errors.
+
+## Breadcrumb history-log bug fix
+
+Caught live by the user via screenshot: "the breadcrumb is off here - it's behaving like a true
+breadcrumb of where I have been rather than where I am in the product hierarchy." Reproduced
+via the Users/Properties self-consistency cross-navigation: Users → Jane Smith → Properties →
+Harbourview Hotel → Users → Jane Smith showed breadcrumb "Users / Jane Smith / Properties /
+Harbourview Hotel / Users / Jane Smith" — the same two names repeated, a click-history log
+rather than a hierarchy position.
+
+**Root cause:** `state.path` genuinely IS a full click history (it just keeps appending one
+level per click) — that's fine for ROUTING, but the breadcrumb display was rendering it
+verbatim. Every cross-navigation hop between `buildUserNode`'s Properties tab and
+`buildPropertyNode`'s Users tile adds 2 more path levels on top of whatever came before,
+without end.
+
+**Fix (asked directly, confirmed): "just the current entity, no trail at all."** Simply
+discarding the locally-accumulated crumb at the point of cross-navigation does NOT work —
+`renderChainBody` builds the trail bottom-up via nested `.concat()`, so by the time a
+cross-nav'd record's own code runs, every ANCESTOR call (e.g. the tabs strip for "Jane Smith"'s
+own User details/Properties tabs one level up) has already prepended its own crumb; concatenation
+can't retroactively un-prepend what a caller already added.
+
+Implemented instead as a **sentinel marker**: the two `records` content declarations that
+cross-reference each other (`buildUserNode`'s Properties tab, `buildPropertyNode`'s Users tile)
+now carry `crossNav: true`. When a record is picked from one of these, its crumb is tagged
+`resetTrail: true` and flows normally through every ancestor's `.concat()` (the trail keeps
+growing structurally, exactly as before) — then `breadcrumbHtml` (the ONE place the final,
+fully-assembled trail is actually consumed, right before rendering) slices off everything
+before the LAST `resetTrail` crumb, once. `state.path` itself and `truncateTo` are completely
+unaffected — only what's DISPLAYED is trimmed. Verified: repeated back-and-forth (User →
+Property → User → different property → different user) never re-accumulates; a single crumb
+after trimming is correctly suppressed (same "noise" rule as everywhere else); Rate plans'
+unrelated breadcrumb (no `crossNav` flag) is unaffected.
+
+## Rate plan Overview page composition batch
+
+Built out Rate plans' Overview page (previously just the bare tile grid) per the user's direct
+request: "top strip we currently have is configuration, can have a title... then another
+section called performance with a few graph widgets... then another section called adoption -
+it's a table showing channel adoption, some kind of distribution snapshot for the RP but we can
+keep it to skeleton concepts for now."
+
+1. **`nav-dashboard` gains two new optional fields: `title` and `extraSections`** — a heading
+   above the tile grid, and purely decorative sections stacked BELOW it (each rendered via the
+   same `renderSketch` dispatcher every sketch-only leaf uses). The tile grid's own routing is
+   completely unaffected — tiles stay fully clickable exactly as before. New
+   `renderNavDashboardPage` in `main.js` composes title + tile grid + extra sections into one
+   page; `renderChainBody`'s `nav-dashboard` branch now calls this instead of
+   `renderNavDashboard` directly. This is a display composition around the ONE routable element
+   (the tile grid), not a new content type every node needs to support.
+2. **Rate plans' Overview tab now has 3 stacked sections:** "Configuration" (heading over the
+   existing Rooms/Channels/Connectivities/Properties tiles — unchanged, still fully routable),
+   "Performance" (3 titleless `dashboard-cards` chart widgets, same skeleton convention as
+   Insights/Health check), "Adoption" (a channel-adoption/distribution snapshot — confirmed
+   skeleton-only for now: `sketch:'grid'` with `columns:4, rows:5`, no real labels — NOT
+   `sketch:'table'`, which requires real confirmed header text this doesn't have yet).
+3. Verified: tile routing (Rooms/Channels/Connectivities/Properties → sibling tabs) still works
+   correctly nested inside the composed page; returning to Overview re-renders the full
+   3-section page correctly; no console errors.
+
+## Small fixes/additions batch
+
+1. **Bug fix: the property-count toggle (hidden settings sheet) no longer resets your
+   position.** User: "when I switch settings in the switcher I want to stay in the same view so
+   I can see the change - currently it's reverting to a reload of the app." The
+   `data-property-count` click handler called `resetPath()` unconditionally — removed that call
+   specifically for this toggle (account-type's toggle still resets, since IT can change which
+   sections/items exist at all; property count only gates a few things within an otherwise-
+   identical structure). `resolveSelected`/`resolveChain`'s existing explicit-key-or-fallback
+   lookups already handle the rare case where the current path points at something that stops
+   existing — no crash, just falls back to that level's default.
+2. **New Distribution item: "Dynamic pricing"** — placed after Yield rules, before Health
+   check. `content: null` stub, no shape decided yet.
+3. **New Transactions L2 item, literally called "Transactions"** — placed FIRST (before
+   Reservations/Guest communications/Payments), `content: null` stub, now the section's default/
+   active item. Surfaced a real naming tension: the user first asked to add "a section called
+   Transactions... maybe under the guest section," then realized the top-level rail section
+   (credit-card icon) is ALREADY called "Transactions" ("oh ok - i forgot it was called that").
+   Resolved for now as: add the new L2 item, revisit the RAIL section's own name later — logged
+   as an open question in CONTEXT.md, not resolved here.
+
+## Users/Properties self-consistency batch
+
+Raised by the user directly, worth quoting in full since it's a real IA principle, not just a
+feature request: "Config > Users is all users in the account... and then for MP users Config >
+Property > Users is the users assigned to that property. So then Config > Users > Properties
+would list those properties so it's all self consistent." Confirmed explicitly: real names AND
+real cross-navigation (clicking a name jumps to that user's/property's actual detail page), not
+just matching text.
+
+1. **`buildUserNode`'s "Properties" tab is now a real `records` picker** (`SAMPLE_PROPERTIES`,
+   `detailNode`) instead of a `sketch:'list'` stub — clicking a property name opens that
+   property's real nav-dashboard.
+2. **`buildPropertyNode`'s "Users" tile is now a real `records` picker** (`SAMPLE_USERS`,
+   `detailNode`) instead of a `sketch:'list'` stub — clicking a user name opens their real
+   `buildUserNode` page. (`PROPERTY_NODE` — the const — was converted to a function,
+   `buildPropertyNode(showProperties)`, purely to support this; see item 4 below.)
+3. **Bug caught and fixed: infinite recursion (`RangeError: Maximum call stack size
+   exceeded`).** `buildUserNode`'s Properties tab and `buildPropertyNode`'s Users tile
+   reference EACH OTHER — a genuine two-way cycle. The first version called each other EAGERLY
+   inline while constructing the object literal (`detailNode: buildPropertyNode(showProperties)`
+   evaluated immediately as part of building `buildUserNode`'s own return value), which
+   recurses forever: building A calls B, which calls A again, indefinitely. Confirmed via a
+   real stack-overflow exception in the browser console, not a theoretical risk — sections
+   stopped switching (rail clicks did nothing) because `render()` was throwing silently.
+   **Fixed by making `records`' `detailNode` accept EITHER a Node OR a zero-arg function
+   (thunk)** — `resolveChain`'s `records` branch now does
+   `typeof content.detailNode === 'function' ? content.detailNode() : content.detailNode`,
+   resolved lazily only once a name is actually clicked. Both mutually-recursive call sites now
+   pass thunks (`() => buildPropertyNode(showProperties)` / `() => buildUserNode(showProperties)`);
+   every other `records` caller (Properties' own external call site, Configuration's Users item,
+   Dashboards, Charts, Yield rules, Rate plans) is unaffected — they call the builder functions
+   directly, from OUTSIDE the cycle, which is safe (one terminating call, not mutual recursion).
+4. **Declaration order reshuffled** in `nav-data.js`: `SAMPLE_PROPERTIES` and the
+   `SAMPLE_USERS`/`buildUserNode` block both moved earlier in the file (before
+   `PROPERTY_DETAILS_NODE`/`buildPropertyNode`) so both functions can reference each other's
+   sample-data arrays regardless of which is defined first — necessary groundwork for the thunk
+   fix above, not a behavior change on its own.
+5. **Verified end-to-end, both directions, both property-count states:** Properties →
+   Harbourview Hotel → Users → Jane Smith → Properties → Harbourview Hotel (full loop, no
+   crash, correct breadcrumb, no duplicate crumb segments) in multi-property mode; Property →
+   Users → Jane Smith (User details only, no Properties tab, correctly gated) in single-property
+   mode.
+
+## Rate plans nav-dashboard batch
+
+Built to prove out CONTEXT.md's "tabs move a level deeper" candidate model concretely, on the
+case the user named as the trickiest to work through: "let's tackle this in the context of
+rate plans - this is the trickiest problem space and I have been circling around it." Includes
+a direct reversal, caught after seeing the first version live — see item 3.
+
+1. **Rate plans list is now a table skeleton**, not a plain list — same real, clickable names as
+   before (`renderRecordPicker` → `renderRecordTable`), first column real, remaining columns
+   (`tableColumns`, default 3) skeleton-only, no real headers. New `records` content field:
+   `display: 'table'`. Every other `records` caller (Properties, Users, Dashboards, Charts,
+   Yield rules) is unaffected — this is additive, opt-in per instance.
+2. **New page-skeleton type: `nav-dashboard`** (`type: 'nav-dashboard', tiles: Node[]`) — a flat
+   grid of clickable TILES, each a real navigation destination, not the same thing as the inert
+   `dashboard-cards` sketch. Each tile: a skeleton metric block, its own real title (the label IS
+   the heading — "flat set for now - with the headings in the tile itself"), an optional status
+   tip (`tile.tip`, skeleton until real wording/data is decided), and a `›` chevron link
+   affordance. See PATTERNS.md for the full writeup (now covering both modes below).
+3. **REVERSED after seeing it live: Rate plans doesn't need a standalone nav-dashboard after
+   all.** First built with the tab strip replaced entirely (tiles pushed a real path level,
+   breadcrumb took over) — the user then caught this: "I now realise Rate plans don't need the
+   extra level, but they could maybe benefit from this as a sub-dashboard under a default tab
+   heading." Config → Properties DOES still need the original standalone shape ("in config →
+   properties I think we will need the extra level") — so `nav-dashboard` was generalized to
+   support BOTH, per explicit instruction: "keep this as a page type that can appear in a
+   tabbed view or a non tabbed view." Rate plans' final shape (`buildRatePlanNode` in
+   `nav-data.js`): a normal `tabs` node — Overview/Rooms/Channels/Connectivities/Properties
+   (Properties MP-only, same gating as `buildUserNode`'s own Properties tab) — where "Overview"
+   (default/active) holds the nav-dashboard as ITS content; each tile uses `linksToTab` (a
+   sibling tab's key) instead of its own content, so clicking a tile just SWITCHES the active
+   tab (confirmed: "switches the tab... matches how a normal tab click already works") — tab
+   strip never disappears, no new path level. Tile set explicitly not closed — "there will be
+   others I haven't thought of yet."
+4. **`PROPERTY_NODE` (Config → Properties) converted to mode (a), standalone** — the actual
+   tab-overload case (8 tabs) this whole pattern was built to solve. NOT a straight 1:1
+   conversion of the old tabs — most moved a level deeper. Tiles: Property details, Channels,
+   Connectivities, Integrated systems, Users. "Property details" (tile) drills into a NEW
+   sub-node (`PROPERTY_DETAILS_NODE`, a normal tab strip: General information/Room types/
+   Services/Policies/Media library) — most of the old 8 tabs live there now, not as top-level
+   tiles ("those move to a level under property details, or at least most of them"). Channels
+   and Connectivities are brand new tiles (best-guess `sketch:'list'` stub, mirroring Rate
+   plans' own tile names). Integrated systems and Users were explicitly kept at the TOP level
+   rather than folded under Property details ("users and integrated systems move to the top
+   level"). A naming collision surfaced and was resolved: the OLD tab literally named "Property
+   details" (Property/Contact/Extra information fields) collided with the NEW top-level tile of
+   the same name — its fields were merged into General information (now 6 sections) rather than
+   keeping two same-named things at different levels. Both of `PROPERTY_NODE`'s existing call
+   sites needed zero code changes (both only ever referenced it as an opaque value).
+5. **Bug fix: crumb duplication when a standalone tile's label matches its destination node's
+   label.** Caught live by the user via screenshot ("see what's going on here? it's an error") —
+   clicking "Property details" showed "Property / Property details / Property details" (tile
+   crumb + `PROPERTY_DETAILS_NODE.label` crumb, both the same string). `isDetailNodeRoot`
+   (`renderChainBody`, the check that prevents a step's own node-label crumb from doubling up
+   with the crumb its parent step already added) originally only covered a `records` pick —
+   extended to also cover a standalone (non-`linksToTab`) `nav-dashboard` step. Verified fixed
+   on Property details, and verified NOT regressed on Rate plans' mode (b) tiles (which never
+   push a path level, so were never at risk).
 
 ## My account batch
 

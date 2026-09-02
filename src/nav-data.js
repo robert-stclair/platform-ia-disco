@@ -18,12 +18,52 @@
 //   Content =
 //     | { type: 'tabs', tabs: Node[] }             // horizontal tab strip; each tab is a Node
 //     | { type: 'list', items: Node[] }            // vertical sub-nav list (packed away until its parent is clicked)
-//     | { type: 'records', names: string[], detailNode: Node }
+//     | { type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, crossNav?: boolean }
 //                                                   // GENERIC "clickable records list -> shared detail node" pattern
 //                                                   // (PATTERNS.md) — selecting a name shows `detailNode`'s content.
-//                                                   // Properties (-> PROPERTY_NODE) and Users (-> USER_NODE) are both
-//                                                   // instances of this ONE mechanism — never hardcode a new content
-//                                                   // type for "a picker that opens a shared detail page," reuse this.
+//                                                   // Properties (-> buildPropertyNode) and Users (-> buildUserNode) are
+//                                                   // both instances of this ONE mechanism — never hardcode a new
+//                                                   // content type for "a picker that opens a shared detail page,"
+//                                                   // reuse this.
+//                                                   // `detailNode` as a FUNCTION (thunk, zero args) instead of a plain
+//                                                   // Node: REQUIRED whenever two detail nodes cross-reference each
+//                                                   // other (buildPropertyNode's Users tile opens buildUserNode;
+//                                                   // buildUserNode's Properties tab opens buildPropertyNode) — an
+//                                                   // eager call on either side recurses forever (a real caught
+//                                                   // RangeError, not theoretical). resolveChain resolves the thunk
+//                                                   // lazily, only once a name is actually clicked. Every other
+//                                                   // caller can keep passing a plain Node.
+//                                                   // `crossNav: true` (optional): marks a picker as a cross-navigation
+//                                                   // point between two entities referencing each other (same pair as
+//                                                   // above) — without it, repeated back-and-forth accumulates every
+//                                                   // hop into one ever-growing breadcrumb (a real caught bug, not
+//                                                   // theoretical: "Users / Jane Smith / Properties / Harbourview
+//                                                   // Hotel / Users / Jane Smith"). breadcrumbHtml trims the DISPLAYED
+//                                                   // trail to start from the last `crossNav` pick — state.path
+//                                                   // itself is untouched, only what's shown. See PATTERNS.md.
+//                                                   // `display: 'table'` (optional, e.g. Rate plans): same real,
+//                                                   // clickable names, rendered as a table-styled skeleton instead
+//                                                   // of a plain list — `tableColumns` (default 3) controls how many
+//                                                   // extra skeleton-only columns render alongside the name column.
+//     | { type: 'nav-dashboard', tiles: Node[], parentTabsPathIndex?: number, title?: string, extraSections?: Array }
+//                                                   // navigation dashboard (6th canonical page-skeleton type) — a flat
+//                                                   // grid of clickable TILES, each a real destination (not the same
+//                                                   // thing as the inert `dashboard-cards` sketch below). TWO modes
+//                                                   // (PATTERNS.md) — (a) STANDALONE: tiles are real child Nodes
+//                                                   // (tile.content), replaces a tab strip entirely, breadcrumb takes
+//                                                   // over once picked (built: buildPropertyNode); (b) NESTED in one
+//                                                   // tab of a normal `tabs` node (tile.linksToTab, a sibling tab's
+//                                                   // key, instead of tile.content) — clicking a tile just switches
+//                                                   // the active sibling tab, tab strip never disappears (built:
+//                                                   // Rate plans). `parentTabsPathIndex` is set by resolveChain
+//                                                   // automatically when mode (b) is detected — never set it by hand
+//                                                   // in nav-data.js. Optional `tile.tip`: a real-time-feeling status
+//                                                   // string (skeleton bar if omitted). Optional `title`: heading
+//                                                   // shown above the tile grid. Optional `extraSections`:
+//                                                   // [{ title, content }] — purely decorative sections stacked
+//                                                   // BELOW the (still fully routable) tile grid, each `content` any
+//                                                   // `sketch` value — see renderNavDashboardPage in main.js, and
+//                                                   // buildRatePlanNode's Overview tab for the first instance.
 //     | { type: 'sketch', sketch, ... }            // see PATTERNS.md for every `sketch` value + its own options
 //     | { type: 'systems' }                        // "Integrated systems"-style: system count drives whether a
 //                                                   //   systems list appears before the selected system's content
@@ -40,21 +80,37 @@
 //
 //   Item                                    | Type              | Notes
 //   ----------------------------------------|--------------------|------
-//   Configuration > Properties                | records (nav)      | type:'records' -> PROPERTY_NODE; picker
-//                                                                    rows are 'list' via renderRecordPicker.
+//   Configuration > Properties                | records (nav)      | type:'records' -> buildPropertyNode(...);
+//                                                                    picker rows are 'list' via renderRecordPicker.
 //                                                                    Distribution's own Properties item was
 //                                                                    REMOVED — see IA-BY-USER-TYPE.md's open
 //                                                                    question, don't reintroduce without that
 //                                                                    being resolved first.
-//   PROPERTY_NODE's 4 settings tabs           | stacked cards      | sketch:'sections' (General
-//                                                                    information/Property
-//                                                                    details/Services/Policies)
-//   PROPERTY_NODE > Room types                | list               | sketch:'list'
-//   PROPERTY_NODE > Media library            | card grid (media)  | sketch:'media'
-//   PROPERTY_NODE > Integrated systems       | stacked cards      | sketch:'sections' via 'systems' type
-//   PROPERTY_NODE > Users (always shown)      | list               | sketch:'list' (which users have access
-//                                                                    to this property — mirror of USER_NODE's
-//                                                                    Properties tab, but unconditional)
+//   PROPERTY_NODE (top level)                 | nav dashboard      | type:'nav-dashboard', mode a (standalone —
+//                                                                    PATTERNS.md); tiles: Property details,
+//                                                                    Channels, Connectivities, Integrated
+//                                                                    systems, Users. Was an 8-tab strip before
+//                                                                    this conversion — see CONTEXT.md.
+//   PROPERTY_NODE > Property details (tile)   | tabs               | drills into PROPERTY_DETAILS_NODE: General
+//                                                                    information/Room types/Services/Policies/
+//                                                                    Media library
+//   PROPERTY_DETAILS_NODE > General info      | stacked cards      | sketch:'sections' — absorbed the OLD
+//                                                                    "Property details" tab's fields
+//                                                                    (Property/Contact/Extra information) after
+//                                                                    a naming collision with the new top-level
+//                                                                    tile of the same name
+//   PROPERTY_DETAILS_NODE > Room types        | list               | sketch:'list'
+//   PROPERTY_DETAILS_NODE > Media library     | card grid (media)  | sketch:'media'
+//   PROPERTY_NODE > Channels, Connectivities  | list               | sketch:'list', NEW tiles, best-guess stub
+//     (tiles)                                                       (same treatment as Rate plans' own
+//                                                                    Channels/Connectivities)
+//   PROPERTY_NODE > Integrated systems (tile) | stacked cards      | sketch:'sections' via 'systems' type —
+//                                                                    kept at TOP level, not folded under
+//                                                                    Property details
+//   PROPERTY_NODE > Users (tile, always       | list               | sketch:'list' (which users have access
+//     shown)                                                        to this property — mirror of USER_NODE's
+//                                                                    Properties tab, but unconditional) — also
+//                                                                    kept at TOP level
 //   Direct Booking > Selling tools's 2 tabs  | stacked cards      | sketch:'sections'
 //   Direct Booking > Setup's 7 tabs          | stacked cards      | sketch:'sections'
 //   Direct Booking > Branding                | none yet           | content: null, stub
@@ -74,8 +130,14 @@
 //                                                                    columns/rows, no real labels — "just a
 //                                                                    skeleton without words") — real
 //                                                                    columns/rows not decided, don't guess
-//   Distribution > Rate plans                 | records (nav)      | type:'records' -> RATE_PLAN_NODE (a
-//                                                                    simple stacked-cards stub for now)
+//   Distribution > Rate plans                 | records (nav,      | type:'records', display:'table' ->
+//                                                table)               buildRatePlanNode(showProperties) — tabs
+//                                                                    (Overview/Rooms/Channels/
+//                                                                    Connectivities/Properties[MP]) whose
+//                                                                    Overview tab holds a nav-dashboard
+//                                                                    (mode b, nested-in-a-tab — see
+//                                                                    PATTERNS.md); tiles use linksToTab to
+//                                                                    switch sibling tabs, no extra nav level
 //   Distribution > Yield rules                | records (nav)      | type:'records' -> YIELD_RULE_NODE (same
 //                                                                    simple treatment)
 //   Distribution > Health check                | dashboard cards    | sketch:'dashboard-cards' — ONE page, 7
@@ -126,14 +188,107 @@ export function getRailItems(accountType) {
   return BASE_RAIL_ITEMS;
 }
 
-// A single property's own settings — same structure regardless of whether
-// the account is single- or multi-property (the "one IA, not two" decision).
-// This is a Node with tabs content; reused directly as Property settings'
-// content, and as what a drilled-in property (from an MP properties list)
-// shows.
-export const PROPERTY_NODE = {
-  key: 'property',
-  label: 'Property settings',
+// EXPLORATORY — sample property names for the generic `records` pattern
+// (CHANGE-QUEUE.md item 3). Generic realistic names, not real confirmed
+// data. Declared here (moved up from further down the file) so
+// buildPropertyNode/buildUserNode below can both reference it — the two
+// are mutually cross-linked (a property's Users tab links to buildUserNode,
+// a user's Properties tab links to buildPropertyNode), so their shared
+// data needs to exist before either function is defined.
+const SAMPLE_PROPERTIES = [
+  'Harbourview Hotel',
+  'The Grand Meridian',
+  'Coastal Breeze Inn',
+  'Alpine Lodge & Suites',
+  'Riverside Boutique Hotel',
+];
+
+// EXPLORATORY — sample user names for the generic `records` pattern
+// (CHANGE-QUEUE.md item 3). Generic realistic names, not real confirmed
+// user data, not placeholder-style labels — same treatment as
+// SAMPLE_PROPERTIES above.
+const SAMPLE_USERS = ['Jane Smith', 'Michael Chen', 'Priya Patel', 'Tom Reilly'];
+
+// A single user's own detail page — "User details" always, plus
+// "Properties" (which properties this user has access to) only for
+// multi-property accounts. Built as a function of `showProperties`
+// (same parameter `buildConfigurationPropertiesItem`/`buildPropertyNode`
+// use), since this tab strip's shape itself varies by account state, not
+// just its content.
+//
+// "Properties" tab is now a REAL `records` picker (SAMPLE_PROPERTIES,
+// detailNode: a THUNK, () => buildPropertyNode(showProperties)) — not a
+// skeleton stub — per the user's explicit self-consistency request:
+// Config > Users lists every user on the account; Config > Property > Users
+// lists the users assigned to THAT property; Config > Users > [a user] >
+// Properties should list the properties THAT user has access to, using the
+// SAME names either way round, and clicking through should actually
+// navigate to the real property/user page on the other side, not just
+// display text: "so it's all self consistent."
+//
+// This is a genuinely circular reference (buildUserNode's Properties tab
+// opens buildPropertyNode; buildPropertyNode's Users tab opens
+// buildUserNode) — MUST pass a THUNK (`() => build...(showProperties)`),
+// NOT the result of calling it directly. An earlier version called each
+// other eagerly INSIDE the object literal being built (e.g. `detailNode:
+// buildPropertyNode(showProperties)` evaluated immediately as part of
+// constructing buildUserNode's own return value) — that recurses forever
+// (building A calls B, which calls A again, ...) and threw a real
+// `RangeError: Maximum call stack size exceeded`, caught live in the
+// browser console, not a theoretical risk. A thunk defers the call until
+// `resolveChain` actually needs that specific detail page (see its
+// `records` branch in `main.js`) — nothing about their being `function`
+// declarations (vs. `const`) made the ORIGINAL version safe on its own;
+// the eager call inside each body was the actual bug.
+function buildUserNode(showProperties) {
+  return {
+    key: 'user',
+    label: 'User',
+    content: {
+      type: 'tabs',
+      tabs: [
+        {
+          key: 'user-details',
+          label: 'User details',
+          active: true,
+          content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'User details', shape: 'field' }] },
+        },
+        ...(showProperties
+          ? [
+              {
+                key: 'user-properties',
+                label: 'Properties',
+                content: {
+                  type: 'records',
+                  names: SAMPLE_PROPERTIES,
+                  detailNode: () => buildPropertyNode(showProperties),
+                  // Cross-navigation, not a deeper drill-down — this picker
+                  // and buildPropertyNode's own "Users" tile point at EACH
+                  // OTHER, so following one from the other must not keep
+                  // accumulating breadcrumb depth (caught live: "Users /
+                  // Jane Smith / Properties / Harbourview Hotel / Users /
+                  // Jane Smith" — a click-history log, not a hierarchy
+                  // position). See renderChainBody's `crossNav` handling.
+                  crossNav: true,
+                },
+              },
+            ]
+          : []),
+      ],
+    },
+  };
+}
+
+// "Property details" — a tabs node reached by drilling into PROPERTY_NODE's
+// own "Property details" tile (below). General information now absorbs what
+// used to be a SEPARATE "Property details" tab (Property/Contact/Extra
+// information fields) — the two shared a name once PROPERTY_NODE's own
+// top-level tile became "Property details", so the old tab's fields were
+// folded into General information rather than keeping two same-named
+// things at different levels (user's explicit resolution).
+const PROPERTY_DETAILS_NODE = {
+  key: 'property-details-detail',
+  label: 'Property details',
   content: {
     type: 'tabs',
     tabs: [
@@ -148,16 +303,6 @@ export const PROPERTY_NODE = {
             { title: 'Currency', shape: 'field' },
             { title: 'Inventory', shape: 'field' },
             { title: 'Language and region', shape: 'field' },
-          ],
-        },
-      },
-      {
-        key: 'property-details',
-        label: 'Property details',
-        content: {
-          type: 'sketch',
-          sketch: 'sections',
-          sections: [
             { title: 'Property', shape: 'field' },
             { title: 'Contact', shape: 'cols' },
             { title: 'Extra information', shape: 'field' },
@@ -204,36 +349,86 @@ export const PROPERTY_NODE = {
         label: 'Media library',
         content: { type: 'sketch', sketch: 'media' },
       },
-      {
-        key: 'integrated-systems',
-        label: 'Integrated systems',
-        content: {
-          type: 'systems',
-          sections: [
-            { title: 'General settings', shape: 'field' },
-            { title: 'Inventory settings', shape: 'chips' },
-            { title: 'Reservation delivery failure emails', shape: 'field' },
-            { title: 'Reservation mappings', shape: 'cols' },
-            { title: 'Credit card mappings', shape: 'list' },
-          ],
-        },
-      },
-      // Mirror of USER_NODE's "Properties" tab (CHANGE-QUEUE.md item 5) —
-      // which users have access to THIS property. Unlike USER_NODE's
-      // "Properties" tab, this one is ALWAYS shown, not property-count-
-      // gated: every property, single- or multi-property account alike,
-      // has users with access to it.
-      {
-        key: 'property-users',
-        label: 'Users',
-        content: { type: 'sketch', sketch: 'list' },
-      },
     ],
   },
 };
 
+// A single property's own settings — same structure regardless of whether
+// the account is single- or multi-property (the "one IA, not two" decision).
+// Now a `nav-dashboard` (6th canonical page-skeleton type, mode a —
+// STANDALONE, replacing what used to be an 8-tab strip) instead of `tabs`
+// directly — PROPERTY_NODE was the original target case for this pattern's
+// standalone mode (the actual tab-overload problem it was built to solve).
+// Reused directly as Property settings' content, and as what a drilled-in
+// property (from an MP properties list) shows.
+//
+// Tile set: "Property details" (drills into PROPERTY_DETAILS_NODE above —
+// General information/Room types/Services/Policies/Media library), Channels
+// and Connectivities (NEW — same best-guess sketch:'list' stub treatment as
+// Rate plans' own Channels/Connectivities tiles, not confirmed business
+// logic), Integrated systems and Users (both moved to the TOP level per the
+// user's explicit direction — "users and integrated systems move to the
+// top level" — rather than folding under Property details with the rest).
+// `showProperties` is needed here now (function, not a plain const) purely
+// so the Users tile below can correctly build buildUserNode(showProperties)
+// — the tile itself is ALWAYS shown regardless of property count (mirror of
+// buildUserNode's own "Properties" tab, which IS gated — every property,
+// single- or multi-property account alike, has users with access to it).
+// See buildUserNode above for the other half of this circular reference.
+function buildPropertyNode(showProperties) {
+  return {
+    key: 'property',
+    label: 'Property settings',
+    content: {
+      type: 'nav-dashboard',
+      tiles: [
+        { key: 'property-details', label: 'Property details', content: PROPERTY_DETAILS_NODE.content },
+        { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'list' } },
+        { key: 'connectivities', label: 'Connectivities', content: { type: 'sketch', sketch: 'list' } },
+        {
+          key: 'integrated-systems',
+          label: 'Integrated systems',
+          content: {
+            type: 'systems',
+            sections: [
+              { title: 'General settings', shape: 'field' },
+              { title: 'Inventory settings', shape: 'chips' },
+              { title: 'Reservation delivery failure emails', shape: 'field' },
+              { title: 'Reservation mappings', shape: 'cols' },
+              { title: 'Credit card mappings', shape: 'list' },
+            ],
+          },
+        },
+        // Mirror of buildUserNode's "Properties" tab (CHANGE-QUEUE.md item
+        // 5) — which users have access to THIS property. Unlike
+        // buildUserNode's "Properties" tab, this tile is ALWAYS shown, not
+        // property-count-gated. Now a REAL `records` picker (SAMPLE_USERS,
+        // detailNode: a THUNK, () => buildUserNode(showProperties)), same
+        // self-consistency request as buildUserNode's own Properties tab
+        // above — clicking a user here opens their real buildUserNode page.
+        // MUST be a thunk, not a direct call — see buildUserNode's own
+        // comment above for why (the actual RangeError this caused).
+        {
+          key: 'property-users',
+          label: 'Users',
+          // `crossNav: true` — same reasoning as buildUserNode's Properties
+          // tab above (these two mutually cross-reference each other) —
+          // prevents the breadcrumb from accumulating a click-history log
+          // across repeated back-and-forth navigation.
+          content: {
+            type: 'records',
+            names: SAMPLE_USERS,
+            detailNode: () => buildUserNode(showProperties),
+            crossNav: true,
+          },
+        },
+      ],
+    },
+  };
+}
+
 // My account — reached via the rail's user avatar, not a rail item itself
-// (getRailItems is unaffected). Unlike PROPERTY_NODE/buildUserNode, this
+// (getRailItems is unaffected). Unlike buildPropertyNode/buildUserNode, this
 // isn't one tabs node — Profile and Security are separate top-level panel
 // items (flat list, like Configuration's), so Support code and Logout can
 // sit alongside them in the same L2 list as plain action rows rather than
@@ -287,45 +482,6 @@ const MY_ACCOUNT_ITEMS = [
   },
 ];
 
-// EXPLORATORY — sample user names for the generic `records` pattern
-// (CHANGE-QUEUE.md item 3). Generic realistic names, not real confirmed
-// user data, not placeholder-style labels — same treatment as
-// SAMPLE_PROPERTIES below.
-const SAMPLE_USERS = ['Jane Smith', 'Michael Chen', 'Priya Patel', 'Tom Reilly'];
-
-// A single user's own detail page — "User details" always, plus
-// "Properties" (which properties this user has access to) only for
-// multi-property accounts. Built as a function of `showProperties`
-// (same parameter `buildConfigurationPropertiesItem` uses) rather than a
-// static export like PROPERTY_NODE, since this tab strip's shape itself
-// varies by account state, not just its content.
-function buildUserNode(showProperties) {
-  return {
-    key: 'user',
-    label: 'User',
-    content: {
-      type: 'tabs',
-      tabs: [
-        {
-          key: 'user-details',
-          label: 'User details',
-          active: true,
-          content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'User details', shape: 'field' }] },
-        },
-        ...(showProperties
-          ? [
-              {
-                key: 'user-properties',
-                label: 'Properties',
-                content: { type: 'sketch', sketch: 'list' },
-              },
-            ]
-          : []),
-      ],
-    },
-  };
-}
-
 // A single custom dashboard/chart's own content — every custom dashboard
 // (whether a plain "Dashboards"/"Charts" list entry or a starred/promoted
 // top-level item) opens the SAME shared detail node, per the generic
@@ -362,14 +518,82 @@ const SAMPLE_CHARTS = ['ADR by channel', 'Length of stay', 'Cancellation rate'];
 const SAMPLE_RATE_PLANS = ['Standard Rate', 'Non-Refundable', 'Advance Purchase', 'Long Stay'];
 const SAMPLE_YIELD_RULES = ['Weekend surcharge', 'Last-minute discount', 'Length-of-stay discount'];
 
-// Shared detail node every rate plan opens — kept deliberately simple for
-// now ("start simple... unless told otherwise"), a basic stacked-cards
-// sketch. Revisit if a real rate-plan detail shape is confirmed later.
-const RATE_PLAN_NODE = {
-  key: 'rate-plan',
-  label: 'Rate plan',
-  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Rate plan', shape: 'field' }] },
-};
+// Shared detail node every rate plan opens — a normal `tabs` node (NOT a
+// standalone nav-dashboard — Rate plans doesn't need the extra nav LEVEL
+// after all, per the user's own reversal: "rate plans don't need the extra
+// level"). Instead, nav-dashboard (6th canonical page-skeleton type — see
+// CONTEXT.md/PATTERNS.md) is nested INSIDE the default "Overview" tab as
+// that tab's own content — the tab strip stays, tiles are a richer, status-
+// aware entry point into the SAME sibling tabs, not a replacement for them.
+// Each tile uses `linksToTab` (a sibling tab's key) instead of its own
+// content — clicking one just switches the active tab (confirmed
+// explicitly: "switches the tab... matches how a normal tab click already
+// works"), no new path level, tab strip stays visible throughout.
+// `tip` is left unset everywhere for now (renders as a skeleton bar) — the
+// user's direction ("provide real time tips on what is not set up") is
+// about the tile's SHAPE being able to carry a status string, not live data
+// existing yet. Properties tab/tile only for MP/multi-property accounts,
+// same `showProperties` gating buildUserNode's own "Properties" tab uses.
+function buildRatePlanNode(showProperties) {
+  return {
+    key: 'rate-plan',
+    label: 'Rate plan',
+    content: {
+      type: 'tabs',
+      tabs: [
+        {
+          key: 'overview',
+          label: 'Overview',
+          active: true,
+          content: {
+            type: 'nav-dashboard',
+            // "top strip we currently have is configuration, can have a
+            // title" — the tile grid itself is unchanged (still fully
+            // routable), just labeled now.
+            title: 'Configuration',
+            tiles: [
+              { key: 'rooms-tile', label: 'Rooms', linksToTab: 'rooms' },
+              { key: 'channels-tile', label: 'Channels', linksToTab: 'channels' },
+              { key: 'connectivities-tile', label: 'Connectivities', linksToTab: 'connectivities' },
+              ...(showProperties ? [{ key: 'properties-tile', label: 'Properties', linksToTab: 'properties' }] : []),
+            ],
+            // Two purely decorative sections stacked below the tile grid —
+            // never navigable, rendered via the same renderSketch dispatcher
+            // every other sketch-only leaf uses (renderNavDashboardPage in
+            // main.js). "Performance": a few graph widgets (dashboard-cards,
+            // chart-shaped, titleless per this project's convention).
+            // "Adoption": a channel-adoption / distribution snapshot table
+            // for this rate plan — skeleton concepts only for now, no real
+            // headers or data decided ("we can keep it to skeleton concepts
+            // for now").
+            extraSections: [
+              {
+                title: 'Performance',
+                content: {
+                  type: 'sketch',
+                  sketch: 'dashboard-cards',
+                  cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'chart' }],
+                },
+              },
+              {
+                title: 'Adoption',
+                // Skeleton-only grid (columns/rows as plain counts, no real
+                // labels — same "just a skeleton without words" treatment
+                // Inventory uses), not `sketch:'table'` (which requires
+                // real confirmed header text — not the case here yet).
+                content: { type: 'sketch', sketch: 'grid', columns: 4, rows: 5 },
+              },
+            ],
+          },
+        },
+        { key: 'rooms', label: 'Rooms', content: { type: 'sketch', sketch: 'list' } },
+        { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'list' } },
+        { key: 'connectivities', label: 'Connectivities', content: { type: 'sketch', sketch: 'list' } },
+        ...(showProperties ? [{ key: 'properties', label: 'Properties', content: { type: 'sketch', sketch: 'list' } }] : []),
+      ],
+    },
+  };
+}
 
 // Shared detail node every yield rule opens — same "start simple" treatment.
 const YIELD_RULE_NODE = {
@@ -456,6 +680,44 @@ const BOOKING_ENGINE_LIST = {
       },
     },
     { key: 'branding', label: 'Branding', content: null },
+    { key: 'website', label: 'Website', content: null },
+  ],
+};
+
+// Pay's sublist — SPLIT from production's current single flat "Payments"
+// tab (Payments/Transactions/Payouts/Virtual terminal/Invoices/Automated
+// payments/Payment requests/Accepted payments/Taxes/Service charges, all
+// stacked under one top-level nav item), per the user's own principle:
+// "the low-touch setup stuff lives under Config → Pay, but anything more
+// transactional goes elsewhere - likely under either distribution or
+// transactions." REVISED once the initial flat split looked messy in
+// practice (caught live via screenshot: "this has ended up a bit messy -
+// is this what you intended?") — the user then reclassified specifically:
+// "I think [virtual] terminal, accepted payments, taxes and service charges
+// are all config stuff. The rest can be tabs underneath an L2 maybe called
+// Payments." Virtual terminal moved HERE from Transactions (it was
+// originally, incorrectly, grouped with the transactional items). Explicit
+// caveat from the user: "this is a product area I know little about so we
+// are really just roughing it in" — don't treat this split as confirmed
+// business logic, it's a rough first pass. The production "Payments" status/
+// enablement page itself was DROPPED entirely (not just moved) — "it's just
+// a stub to hold an upsell page in the current state," not a real settings
+// destination worth modeling as a peer alongside these. Folder sublist
+// (same pattern as BOOKING_ENGINE_LIST above) — none of these 4 have
+// confirmed internal sub-structure yet, so all stay simple leaf stubs for
+// now.
+const PAY_LIST = {
+  type: 'list',
+  items: [
+    // "Payments" (the status/enablement banner — "SiteMinder Payments is
+    // enabled", bullet points, external doc links) REMOVED — user: "it's
+    // just a stub to hold an upsell page in the current state," not a real
+    // settings destination worth modeling as a peer alongside these.
+    { key: 'automated-payments', label: 'Automated payments', active: true, content: null },
+    { key: 'virtual-terminal-config', label: 'Virtual terminal', content: null },
+    { key: 'accepted-payments', label: 'Accepted payments', content: null },
+    { key: 'taxes', label: 'Taxes', content: null },
+    { key: 'service-charges', label: 'Service charges', content: null },
   ],
 };
 
@@ -488,14 +750,6 @@ const HEALTH_CHECK_ITEM = {
   },
 };
 
-const SAMPLE_PROPERTIES = [
-  'Harbourview Hotel',
-  'The Grand Meridian',
-  'Coastal Breeze Inn',
-  'Alpine Lodge & Suites',
-  'Riverside Boutique Hotel',
-];
-
 // EXPLORATORY — sample data for the property/cluster/brand scope switcher
 // sketch (Insights, Health check once built). Not a confirmed decision —
 // see CHANGE-QUEUE.md's "Foundational, unsolved" section: this whole
@@ -518,10 +772,10 @@ export const SCOPE_CLUSTERS = ['East Coast', 'West Coast', 'Inland'];
 function buildConfigurationPropertiesItem(showProperties) {
   if (!showProperties) {
     // Renamed from "Property settings" to "Property" (CHANGE-QUEUE.md item
-    // 1) — scoped to just this panel item's label; PROPERTY_NODE itself
-    // (the shared tab-strip shown once drilled into a specific property)
+    // 1) — scoped to just this panel item's label; buildPropertyNode itself
+    // (the shared nav-dashboard shown once drilled into a specific property)
     // keeps its own label/key unchanged.
-    return { key: 'property-settings', label: 'Property', active: true, content: PROPERTY_NODE.content };
+    return { key: 'property-settings', label: 'Property', active: true, content: buildPropertyNode(showProperties).content };
   }
   return {
     key: 'properties-config',
@@ -534,7 +788,7 @@ function buildConfigurationPropertiesItem(showProperties) {
           key: 'properties-list',
           label: 'Properties',
           active: true,
-          content: { type: 'records', names: SAMPLE_PROPERTIES, detailNode: PROPERTY_NODE },
+          content: { type: 'records', names: SAMPLE_PROPERTIES, detailNode: buildPropertyNode(showProperties) },
         },
         { key: 'brands', label: 'Brands', content: null, mpOnly: true },
         { key: 'clusters', label: 'Clusters', content: null, mpOnly: true },
@@ -656,10 +910,21 @@ function buildSmContentTree(showProperties) {
         },
         // Clickable `records` list (Distribution batch item 1 — "go
         // deep"), same generic pattern as Properties/Users/Dashboards.
+        // `display: 'table'` (new): renders as a table-styled skeleton
+        // instead of a plain list — user's direction: "let's make it a
+        // table skeleton - but show clickable names just like the current
+        // list." `detailNode` is now a nav-dashboard (see
+        // buildRatePlanNode) — the first case this new page type was built
+        // against.
         {
           key: 'rate-plans',
           label: 'Rate plans',
-          content: { type: 'records', names: SAMPLE_RATE_PLANS, detailNode: RATE_PLAN_NODE },
+          content: {
+            type: 'records',
+            names: SAMPLE_RATE_PLANS,
+            display: 'table',
+            detailNode: buildRatePlanNode(showProperties),
+          },
         },
         // Same pattern (item 2), own shared detail node.
         {
@@ -667,6 +932,12 @@ function buildSmContentTree(showProperties) {
           label: 'Yield rules',
           content: { type: 'records', names: SAMPLE_YIELD_RULES, detailNode: YIELD_RULE_NODE },
         },
+        // Calendar-style grid (user: "dynamic pricing is a grid as well -
+        // can use the LH calendar style") — same 7-weekday-column, 5-row
+        // shape Front desk's calendar uses, but embedded in a NORMAL
+        // Distribution page (L2 panel stays visible), not full-width/
+        // noPanel like Front desk's own usage.
+        { key: 'dynamic-pricing', label: 'Dynamic pricing', content: { type: 'sketch', sketch: 'calendar' } },
         // Distribution's "Properties" item REMOVED (CHANGE-QUEUE.md
         // Distribution batch item 5) — user flagged, on reflection, they
         // weren't sure why Distribution needed its own Properties concept
@@ -690,7 +961,43 @@ function buildSmContentTree(showProperties) {
         // clickable `records` pattern (unlike Rate plans/Yield rules).
         { key: 'reservations', label: 'Reservations', active: true, content: { type: 'sketch', sketch: 'list' } },
         { key: 'guest-communications', label: 'Guest communications', content: null },
-        { key: 'payments', label: 'Payments', content: null },
+        // "Payments" — the TRANSACTIONAL half of Pay's IA split (the other
+        // half, low-touch setup, lives under Config → Pay, see PAY_LIST).
+        // REVISED from an earlier version that flattened these into 4
+        // separate top-level L2 items alongside Transactions itself — the
+        // user caught that as messy ("this has ended up a bit messy - is
+        // this what you intended?"). Now ONE L2 entry, tabs inside it:
+        // "I think [virtual] terminal, accepted payments, taxes and service
+        // charges are all config stuff. The rest can be tabs underneath an
+        // L2 maybe called Payments." Explicit caveat: "this is a product
+        // area I know little about so we are really just roughing it in" —
+        // don't treat this grouping as confirmed, it's a rough first pass.
+        // The rail SECTION itself is also literally called "Transactions"
+        // (credit-card icon) — a separate open naming question, see
+        // CONTEXT.md.
+        {
+          key: 'payments',
+          label: 'Payments',
+          content: {
+            type: 'tabs',
+            tabs: [
+              { key: 'transactions-tab', label: 'Transactions', active: true, content: { type: 'sketch', sketch: 'list' } },
+              { key: 'payouts', label: 'Payouts', content: { type: 'sketch', sketch: 'list' } },
+              { key: 'invoices', label: 'Invoices', content: { type: 'sketch', sketch: 'list' } },
+              { key: 'payment-requests', label: 'Payment requests', content: { type: 'sketch', sketch: 'list' } },
+              // Home for "scheduled and failed automated payments" — user's
+              // own framing, a real gap noticed after Automated payments'
+              // RULES were placed under Config → Pay (PAY_LIST) but the
+              // actual scheduled/failed payment ACTIVITY those rules
+              // produce had nowhere to live. Confirmed: transactional, not
+              // config-adjacent — belongs here, not nested under Config →
+              // Pay → Automated payments. One combined tab (not separate
+              // Scheduled/Failed tabs) — status would be a column in this
+              // list, not a page split.
+              { key: 'automated-payments-tab', label: 'Automated payments', content: { type: 'sketch', sketch: 'list' } },
+            ],
+          },
+        },
       ],
     },
     configuration: {
@@ -715,6 +1022,8 @@ function buildSmContentTree(showProperties) {
         { key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST },
         { key: 'channels-plus', label: 'Channels Plus', content: null },
         { key: 'metasearch', label: 'Metasearch', content: null },
+        // NEW — stub for now (content: null), no shape decided yet.
+        { key: 'pay', label: 'Pay', content: PAY_LIST },
         // Renamed from "Manage products" (CHANGE-QUEUE.md item 6) — "Add
         // products" more precisely signals its action (add a NEW product
         // to the account) vs. the settings-page items above it. `actionIcon`
