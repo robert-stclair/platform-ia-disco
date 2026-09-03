@@ -632,18 +632,30 @@ Users. When `data.customPanel === 'records-inbox'`:
 
 - **`renderPanel`** (`main.js`) skips its normal nav-item-list rendering
   entirely and calls `renderRecordsInboxPanel(data)` instead — this reads
-  the picker's `content.names`/`showSnippet` directly and renders them AS
-  the L2 panel's actual markup (`.wf-list--inbox`). Reuses the same
-  title+snippet STRUCTURE `showSnippet` produces in the canvas, but with
-  its own CLEAN FLAT row styling, not the canvas version's bordered-card
-  look: "make them run as clean rows rather than cards in the L2" — no
-  border/background box, just a hover/active fill and a thin
-  `border-bottom` divider between rows, matching `.nav-list-item a`'s own
-  flat treatment elsewhere in this panel. Each row wires its own click
-  handler (`data-inbox-name`) that sets `state.path = [pickerItem.key,
-  name]` directly and re-renders — simpler than the generic
-  `data-path-key` mechanism since there's no expand/collapse state to
-  preserve.
+  the picker's `content.names`/`showSnippet` directly and renders the ROWS
+  AS the L2 panel's actual markup (`.wf-list--inbox`). Went through two
+  corrections before landing on the current shape:
+  - First pass kept `.wf-list__row`'s bordered-card look (border,
+    border-radius, background box) — corrected to a flatter treatment,
+    but STILL sat inset inside `.secondary-panel`'s own 20px/12px padding
+    with a leftover `border-radius: 7px`, and still rendered the real
+    notification title as text.
+  - Caught live via screenshot ("it still looks messy... i dont want cards
+    inset into the panel, i want the cards to fill the panel... i dont
+    want radius corners i want rectilinear.. also i dont want words in
+    ther just skeleton lines") — three specific fixes: (1) `.wf-list--inbox`
+    negative-margins out the panel's own padding (`margin: -20px -12px 0`,
+    `width: calc(100% + 24px)`) so rows span genuinely edge-to-edge, not
+    just visually flatter while still gutter-inset; (2) `border-radius: 0`
+    everywhere, with a `border-top` on the first row so the whole list
+    reads as one bounded rectilinear block; (3) the row's title is now
+    `.wf-list__row-title-skel` — a skeleton bar, NOT real text — matching
+    the canvas detail's own "no words" treatment. `data-inbox-name` still
+    carries the real underlying value for routing; it just never renders.
+  Each row wires its own click handler (`data-inbox-name`) that sets
+  `state.path = [pickerItem.key, name]` directly and re-renders — simpler
+  than the generic `data-path-key` mechanism since there's no
+  expand/collapse state to preserve.
 - **`renderCanvas`** gets a matching special branch: if nothing's picked
   yet (`!chain[0]?.selectedKey`), show a plain placeholder
   (`.records-inbox-empty`, "Select a notification to view it") instead of

@@ -443,13 +443,18 @@ function renderRecordsInboxPanel(data) {
   const pickerItem = data.items[0];
   const content = pickerItem.content;
   const selectedName = state.path[1] ?? null;
+  // NO real title text in the row — "i dont want words in ther just
+  // skeleton lines." `name` is still the real underlying value (needed for
+  // routing/selection via `data-inbox-name`), it just never renders as
+  // visible text — a skeleton bar stands in for the title, same as the
+  // snippet line already does for the preview.
   const html = `<ul class="wf-list${content.showSnippet ? ' wf-list--snippets' : ''} wf-list--inbox">${content.names
     .map((name) => {
       const snippet = content.showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
       return `
         <li>
           <a href="#" class="wf-list__row${name === selectedName ? ' is-active' : ''}" data-inbox-name="${name}">
-            <span class="wf-list__row-title">${name}</span>
+            <div class="wf-list__row-title-skel"></div>
             ${snippet}
           </a>
         </li>

@@ -466,7 +466,12 @@ grid. Don't re-flatten Property's tiles for single-property without picking this
   (`icons.js`'s `operations`) — chosen because "Operations" covers Reservations/Guest
   communications/Payments as the day-to-day running of a property, not payments specifically, so
   a payment-flavored icon no longer fit. The L2 item's own content is unaffected — still
-  Reservations/Guest communications/Payments, same as before this rename.
+  Reservations/Guest communications/Payments, same as before this rename. **Icon redrawn once,
+  live** — the first version used a large near-full-viewBox `<rect>` for the clipboard body,
+  which read visibly heavier/blockier than the other three rail icons' thin, open line-strokes:
+  "the clipboard icon looks a bit roughly rendered compared to the other." Redrawn as a proper
+  open-outline clipboard (body path with a gap at top for the clip, a small separate clip-tab
+  rect, a checkmark) at the same visual density as the chart-line/globe/gear icons alongside it.
 - **Products group's property scope (Direct Booking / Channels Plus / Metasearch) — BLOCKED on
   business logic, not a nav-design question yet.** The premise itself isn't confirmed: it's not
   known whether these products' config (Direct Booking's Selling tools/Setup — Booking rules,

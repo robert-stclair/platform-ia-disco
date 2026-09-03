@@ -1184,16 +1184,23 @@ a.wf-list__row:hover {
 }
 
 /* Records-inbox mode (Notifications' L2 panel — renderRecordsInboxPanel in
-   main.js) — CLEAN FLAT ROWS, not the bordered-card look `.wf-list__row`
-   has everywhere else: "make them run as clean rows rather than cards in
-   the L2." Reuses the title+snippet STRUCTURE (`.wf-list__row-title`,
-   `.wf-list__row-snippet-skel`) but strips the card chrome entirely and
-   restyles to match `.nav-list-item a`'s flat treatment (the normal panel
-   list's own look) — no border, no background box, no border-radius
-   outline; just a hover/active fill and a thin divider between rows. */
+   main.js). Three explicit corrections after the first pass still read as
+   "messy, inset cards": (1) rows must FILL the panel edge-to-edge, not sit
+   inset with visible gutters on all sides — "i want the cards to fill the
+   panel (they have their own internal padding)." Countered here by
+   negative-margining out `.secondary-panel`'s own 20px/12px padding
+   (`.wf-list--inbox`) and moving ALL spacing into each row's own padding
+   instead. (2) NO rounded corners anywhere — "i dont want radius corners i
+   want rectilinear." (3) NO real title text — "i dont want words in ther
+   just skeleton lines": `.wf-list__row-title-skel` stands in for the
+   title, same treatment the snippet line already had. Flat otherwise (no
+   border/background box outside hover/active, a thin divider between
+   rows) — matches `.nav-list-item a`'s own look elsewhere in this panel,
+   just full-bleed instead of inset. */
 .wf-list--inbox {
-  margin: 0;
+  margin: -20px -12px 0;
   gap: 0;
+  width: calc(100% + 24px);
 }
 
 .wf-list--inbox .wf-list__row {
@@ -1201,17 +1208,25 @@ a.wf-list__row:hover {
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: 5px;
-  padding: 10px 10px;
+  gap: 6px;
+  padding: 14px 12px;
   border: none;
-  border-radius: 7px;
+  border-radius: 0;
   border-bottom: 1px solid var(--border);
   background: transparent;
   font-size: 12.5px;
 }
 
-.wf-list--inbox li:last-child .wf-list__row {
-  border-bottom: none;
+.wf-list--inbox li:first-child .wf-list__row {
+  border-top: 1px solid var(--border);
+}
+
+.wf-list__row-title-skel {
+  width: 60%;
+  height: 11px;
+  border-radius: 4px;
+  background: var(--border-strong);
+  opacity: 0.6;
 }
 
 .wf-list--inbox .wf-list__row-snippet-skel {
@@ -1220,16 +1235,15 @@ a.wf-list__row:hover {
 
 .wf-list--inbox a.wf-list__row:hover {
   background: var(--surface-sunken);
-  border-color: transparent;
 }
 
 .wf-list--inbox .wf-list__row.is-active {
   background: var(--surface-sunken);
 }
 
-.wf-list--inbox .wf-list__row.is-active .wf-list__row-title {
-  font-weight: 700;
-  color: var(--text);
+.wf-list--inbox .wf-list__row.is-active .wf-list__row-title-skel {
+  background: var(--text-muted);
+  opacity: 0.9;
 }
 
 /* Canvas empty state before a notification is picked — records-inbox mode

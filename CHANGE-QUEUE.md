@@ -109,6 +109,27 @@ AI chat above that."
      correctly on both the flat rows and the message-view; every other `records` caller
      (Properties, Users, Dashboards, Charts, Yield rules) and every `sections` page confirmed
      unaffected. No console errors.
+   - **Correction 4 — "clean flat rows" (Correction 3) still read as messy inset cards.** Caught
+     live via screenshot: "it still looks messy - can you see what i mean?" Three specific, more
+     precise complaints this time: "i dont want cards inset into the panel, i want the cards to
+     fill the panel (they have their own internal padding). and i dont want radius corners i want
+     rectilinear .. also i dont want words in ther just skeleton lines." Correction 3's rows still
+     (a) sat inside `.secondary-panel`'s own 20px/12px padding, reading as inset cards with
+     visible gutters on every side, (b) kept a stray `border-radius: 7px` (a hover-state leftover
+     from the very first card-styled version), and (c) still rendered the notification's REAL
+     title text, not a skeleton bar — inconsistent with "no words" being applied to the canvas
+     detail but not the L2 list right next to it. Fixed all three: `.wf-list--inbox` now
+     negative-margins out the panel's own padding (`margin: -20px -12px 0`, `width: calc(100% +
+     24px)`) so rows span truly edge-to-edge; `border-radius: 0` everywhere, plus a `border-top`
+     on the first row so the list reads as one bounded rectilinear block top-to-bottom, not just
+     bottom-divided; `renderRecordsInboxPanel` (`main.js`) now renders a `.wf-list__row-title-skel`
+     bar instead of the real name — `data-inbox-name` still carries the real value for routing,
+     it just never renders as visible text. Also considered defaulting to the first notification
+     selected on entry (like most email clients open on the newest message) — explicitly decided
+     AGAINST: "keep empty state... avoids implying a real 'read' action happened on load, which
+     this prototype has no data model for anyway." Verified in browser (light + dark): rows now
+     genuinely fill the panel with no inset gutters, fully rectilinear, no real text anywhere in
+     the L2 list; active/hover states still work correctly. No console errors.
 4. **New AI assistant rail button** (`railAssistant`) — icon is a circled "?" (`.rail-item__icon--
    assistant`), chosen deliberately over both a bare "?" (reads as human support/help, wrong
    signal for an agentic in-product assistant) and a sparkle (avoided as a cliché, and the
