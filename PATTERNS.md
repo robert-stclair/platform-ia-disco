@@ -157,11 +157,24 @@ Not a canvas sketch — a NAVIGATION pattern (part of the content-model shape in
 names should each open the SAME shared detail page.
 
 ```js
-{ type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, showSnippet?: boolean }
+{ type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, showSnippet?: boolean, topWidgets?: SketchContent }
 ```
 
 - `names` — real names, rendered via `renderRecordPicker` (`.wf-list`, real
   text per the breadcrumb-clarity exception above) by default.
+- `topWidgets` (optional) — a decorative `dashboard-cards` widget rendered
+  ABOVE the picker/table (never below, never interleaved) — "we have these
+  contextual insights around the place rather than just lists." Same
+  building block `nav-dashboard`'s `extraSections` already uses (titleless,
+  skeleton-content dashboard-cards — real card COUNT/shape only, no real
+  numbers/charts confirmed), rendered via the same `renderSketch`
+  dispatcher every sketch-only leaf uses. Purely a display composition
+  around the picker, which stays fully routable and unchanged underneath —
+  not a new content type, and never itself navigable. Built instance:
+  Distribution → Rate plans (3 cards, mixed stat+chart, matching Rate
+  plan's own Overview "Performance" section's proportions). Every other
+  `records` caller (Properties, Users, Dashboards, Charts, Yield rules)
+  omits this and keeps the plain picker with nothing above it.
 - `showSnippet` (optional) — an email-inbox-style row instead of the plain
   single-line default: the real name stays the title, plus a second SKELETON
   line underneath standing in for a preview/summary (`.wf-list--snippets`,
@@ -517,6 +530,80 @@ standalone `nav-dashboard` step (no `parentTabsPathIndex`, i.e. not mode b)
 as a detail-node root, same as `records`. Mode (b) tiles (Rate plans) were
 never affected — they don't push a path level at all, so no double crumb
 was possible there.
+
+## Full-page modal / wizard (`state.wizard`)
+
+This prototype's first EDITING surface — everything else in this catalog is
+read/browse NAVIGATION (drill-down, tabs, tiles, nav-dashboard grids).
+A wizard is a bounded TASK: pick some things, configure them, commit, then
+return to exactly where you were. See CONTEXT.md's "Confirmed pattern: the
+full-page modal / wizard" for the framing and CHANGE-QUEUE.md for the
+build/verification narrative.
+
+```js
+openWizard({
+  steps: [
+    { title: string, render: (wizard) => string, onNext?: (wizard) => boolean },
+    // ...more steps
+  ],
+  onComplete: (data) => void,
+});
+```
+
+- **Deliberately separate from `state.path`/`state.section`.** Opening a
+  wizard doesn't push a path level or change section — there is no nav
+  state to unwind on cancel or complete, `render()` just resumes showing
+  whatever was already there underneath. This is the key architectural
+  choice that keeps a wizard from becoming another "place" in the nav
+  model — it's a TASK layered on top, not a destination.
+- **Full takeover, own chrome** — `#wizardOverlay` covers the entire
+  viewport (`position: fixed; inset: 0`, `z-index` above even the mobile
+  shell), no rail/L2 panel/breadcrumb visible underneath. Its own header
+  (a numbered step list, done/current states) and footer (Back — hidden
+  on step 0 — and Next, which relabels to "Done" on the last step).
+  Confirmed over a canvas-only takeover (would have left the rail/L2
+  panel visible) and over a single continuously-scrolling page (no
+  discrete steps) — both explicitly ruled out in favor of the standard
+  numbered-wizard shape.
+- **`step.render(wizard)`** returns that step's own body HTML — freely
+  reuses any existing sketch/pattern renderer (e.g. `renderSectionsSketch`
+  for a mapping-config step), same skeleton-content conventions as
+  everywhere else. **`step.onNext(wizard)`** (optional) validates/commits
+  before advancing — return `false` to block. **`wizard.data`** is a plain
+  object every step reads/writes into as shared scratch state for the
+  whole run (e.g. step 1 records which item was picked, step 2 reads it
+  back) — discarded once the wizard closes.
+- **Picking an option inside a step** uses `data-wizard-select="<data
+  key>" data-wizard-value="<value>"` (wired by `renderWizard` itself, not
+  a separate wire function) — sets `wizard.data[key] = value` and
+  re-renders the wizard body, same page-relative interaction any step can
+  reuse (e.g. a flat picker list). Distinct from `data-path-key` (normal
+  nav) — a wizard selection is scratch data, not a path change.
+- **`onComplete(data)`** runs once, when "Done" is clicked on the last
+  step, then the wizard closes and `render()` resumes the underlying
+  page. In the first instance (Rate plan → Channels' "Add channel"),
+  `onComplete` is a no-op — this prototype has no persistent data layer to
+  mutate the Channels tab's actual list; the open→step→close MECHANISM is
+  what's being demonstrated, not a full simulated backend. A future
+  instance that needs to visibly reflect the wizard's outcome would need
+  to actually update `nav-data.js`'s underlying array and trigger a
+  re-render — not yet built.
+
+**Built instance:** Rate plan → Channels tab's "Add channel" flow — see
+`WIZARD_DEFINITIONS['add-channel']` in `main.js`. Step 1: a flat channel
+picker (`ALL_DISTRIBUTION_CHANNELS` — OTAs and SiteMinder's own products
+deliberately mixed with NO grouping, per explicit direction). Step 2: a
+generic "Configure mapping" page (always shown, not conditionally skipped
+per channel — real per-channel requirements aren't confirmed).
+
+**Gotcha caught live:** `.wizard-overlay { display: flex }` silently
+overrode the browser's native `[hidden]` attribute styling (an author rule
+beats the UA stylesheet's `[hidden] { display: none }` at equal
+specificity) — the overlay showed up empty on page load even with
+`hidden` set and `state.wizard === null`. Any future full-viewport overlay
+toggled via the `hidden` attribute needs its own explicit
+`.my-overlay[hidden] { display: none }` rule if it also sets its own
+`display` value unconditionally.
 
 ## Mobile shell (`@media (max-width: 767px)`)
 

@@ -386,6 +386,41 @@ sparkle) and two new My account items, Communication and Preferences (the latter
 this prototype's first genuinely live control — a moved-in, skeleton-styled theme toggle). See
 CHANGE-QUEUE.md's "Rail utility icons" batch for the full build.
 
+## Confirmed pattern: the full-page modal / wizard — this prototype's first EDITING surface
+
+Everything built before this was read/browse NAVIGATION — drill-down, tabs, tiles, nav-dashboard
+grids. Nothing modeled DOING a bounded task with a start and an end. Named as direction-setting
+for the whole IA, not a one-off page: "we haven't tackled an editing style surface yet but i see
+a role for a full page modal concept - possibly multi-step... rethinking this underpins the IA
+work... it needs to be direction setting." The user first sketched what triggered it via a
+concrete Distribution walkthrough — being inside a rate plan, wanting to distribute it to more
+channels, seeing live rates grouped by channel, clicking "Add channel," picking from a list that
+deliberately mixes OTAs with Direct Booking/Channels Plus, sometimes doing channel-level mapping
+config, then landing back with the new channel's rates showing.
+
+**The pattern itself:** a full takeover (confirmed over a canvas-only takeover — the whole
+viewport, no rail/L2 panel/breadcrumb visible, so it unmistakably reads as "you've left
+navigation and entered a task"), with its own chrome: a numbered step header and a Back/Next
+(→"Done" on the last step) footer — confirmed over a single continuously-scrolling page. State-
+wise, it's deliberately kept SEPARATE from `state.path`/`state.section` — opening a wizard is not
+a navigation event, so closing one (cancel OR complete) needs no nav state unwound; the app just
+resumes showing whatever was already there. See PATTERNS.md's "Full-page modal / wizard" section
+for the full mechanism (`state.wizard`, `openWizard`/`closeWizard`/`renderWizard`, the step
+shape) and CHANGE-QUEUE.md's own batch for the build/verification narrative.
+
+**First instance: Rate plan → Channels' "Add channel" flow**, which ALSO gave the Channels tab
+its first real shape (was a `sketch:'list'` stub) — channel cards each showing a skeleton
+mini-table of rates underneath ("a rate is the combination of a rate plan and a room type," the
+user's own definition), with a leading "Add channel" action row opening the wizard: pick a
+channel from ONE flat list (OTAs + Direct Booking + Channels Plus together, no categorical
+grouping — "crucially that list included direct booking and channels plus as well as otas"),
+then a generic "Configure mapping" step (always shown, not conditionally skipped — real per-
+channel mapping requirements aren't confirmed yet), then Done. The wizard's `onComplete` is
+currently a no-op — there's no persistent data layer to actually add the new channel to the
+Channels tab's list; the MECHANISM (open → step through → close cleanly) is what this instance
+demonstrates, not a full simulated backend. Extending this to actually mutate visible data is a
+legitimate next step, not yet requested.
+
 ## New redesign stream: mobile responsive shell
 
 The originating draft proposal (linked above) already named "mobile web" as one of the pressures
@@ -469,21 +504,19 @@ of Property details' tab strip at all (that part holds); it does NOT decide tile
 that's decided by which surface can carry a contextual tip, and today that's always the card
 grid. Don't re-flatten Property's tiles for single-property without picking this back up.
 
-## Open threads (not yet resolved)
+## Open threads (not yet resolved) — plus a couple now resolved, kept here for history
 
 - **"Connectivities" and "Integrated systems" are the SAME concept, named differently by
-  account type — RESOLVED on Config → Property, still open on Rate plan.** User's own framing:
-  "connectivities and integrated systems are actually the samer thing... MP uses
-  connectivities, I think platform uses integrated systems." On `buildPropertyNode` (Config →
-  Property) the standalone Connectivities stub tile has been REMOVED — Integrated systems
-  (`type: 'systems'`, system-count-aware, General settings/Inventory settings/Reservation
-  delivery failure emails/Reservation mappings/Credit card mappings) is now the only tile for
-  this concept there. Still NOT resolved on `buildRatePlanNode` (Rate plan's own Overview tile
-  and Connectivities tab) — that's a separate, untouched instance of the same best-guess
-  `sketch:'list'` stub, still sitting alongside Rate plan's own tabs as its own thing. Whether
-  Rate plan gets the same treatment (removing its Connectivities in favor of some
-  Integrated-systems equivalent, or an account-type label swap) is not yet worked out — don't
-  implement without picking this back up.
+  account type — FULLY RESOLVED, both instances renamed.** User's own framing: "connectivities
+  and integrated systems are actually the samer thing... MP uses connectivities, I think
+  platform uses integrated systems." First resolved on `buildPropertyNode` (Config → Property) —
+  the standalone Connectivities stub tile was removed, Integrated systems (`type: 'systems'`,
+  system-count-aware) became the only tile for this concept there. `buildRatePlanNode`'s own
+  separate instance (Overview tile + sibling tab, `sketch:'list'` stub) was left open at the
+  time, then picked back up directly: "also anywhere you see 'connectivities' change it to
+  'integrated systems'." Both renamed — tile `connectivities-tile` → `integrated-systems-tile`,
+  tab `connectivities` → `integrated-systems`, both `key`s and `label`s. No separate
+  "Connectivities" concept remains anywhere in this app.
 - **The "Transactions" rail section's name — RESOLVED, renamed to "Operations."** Originally
   surfaced naturally, not as a direct request: mid-conversation the user asked to add "a section
   called Transactions" before realizing the top-level rail item (credit-card icon) was ALREADY

@@ -6,6 +6,7 @@ import {
   SCOPE_PROPERTIES,
   SCOPE_BRANDS,
   SCOPE_CLUSTERS,
+  ALL_DISTRIBUTION_CHANNELS,
 } from './nav-data.js';
 import { RAIL_ICONS } from './icons.js';
 
@@ -40,6 +41,17 @@ const state = {
   // navigation destination the way Configuration/Distribution's Properties
   // picker is.
   scope: { type: 'all', key: null }, // { type: 'all' | 'property' | 'cluster' | 'brand', key: string | null }
+  // Full-page modal / wizard — the first EDITING surface in this
+  // prototype, distinct from everything else (which is all read/browse
+  // navigation). "we haven't tackled an editing style surface yet but i
+  // see a role for a full page modal concept - possibly multi-step."
+  // Deliberately SEPARATE from `path`/`section` — a wizard is a bounded
+  // TASK (do a thing, then return), not a place you navigate to; opening
+  // one does NOT touch section/path, so cancelling or completing it
+  // resumes exactly where the user was, with no nav state to unwind.
+  // `null` when no wizard is open. See `openWizard`/`closeWizard`/
+  // `renderWizard` below for the mechanism.
+  wizard: null, // { steps: WizardStep[], currentStep: number, data: object, onComplete: (data) => void } | null
 };
 
 function resetPath() {
@@ -61,6 +73,12 @@ const mobileDrawerEl = document.getElementById('mobileDrawer');
 const mobileDrawerBackdropEl = document.getElementById('mobileDrawerBackdrop');
 const mobileDrawerCloseEl = document.getElementById('mobileDrawerClose');
 const mobileDrawerListEl = document.getElementById('mobileDrawerList');
+const wizardOverlayEl = document.getElementById('wizardOverlay');
+const wizardStepsEl = document.getElementById('wizardSteps');
+const wizardBodyEl = document.getElementById('wizardBody');
+const wizardCloseEl = document.getElementById('wizardClose');
+const wizardBackEl = document.getElementById('wizardBack');
+const wizardNextEl = document.getElementById('wizardNext');
 
 // Theme override — 'system' (default) removes the attribute entirely so
 // style.css's `prefers-color-scheme` media query decides, matching every
@@ -672,6 +690,7 @@ function renderCanvas(data) {
     wireScopeSwitcher();
     wirePathLinks();
     wireThemeToggle();
+    wireWizardOpenButtons();
     return;
   }
 
@@ -687,6 +706,7 @@ function renderCanvas(data) {
   wirePathLinks();
   wireBreadcrumb();
   wireThemeToggle();
+  wireWizardOpenButtons();
 }
 
 // Render every step in `chain` from `i` onward into nested HTML, plus the
@@ -775,11 +795,22 @@ function renderChainBody(chain, i) {
       // as everywhere else). Every other `records` caller (Properties,
       // Users, Dashboards, Charts, Yield rules) omits this and keeps the
       // plain list — this is additive, not a replacement.
-      const bodyHtml =
+      const pickerHtml =
         content.display === 'table'
           ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3)
           : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet);
-      return { trail: [], bodyHtml };
+      // `content.topWidgets` (optional, e.g. Rate plans): a few dashboard-
+      // cards widgets rendered ABOVE the picker — "contextual insights
+      // around the place rather than just lists." Same building block
+      // `nav-dashboard`'s `extraSections` already uses (titleless
+      // dashboard-cards, skeleton content, real card count/shape only) —
+      // decorative, never navigable, purely a display composition around
+      // the one routable element (the picker itself, unchanged). Every
+      // other `records` caller omits this and keeps the plain picker.
+      const widgetsHtml = content.topWidgets
+        ? `<div class="records-page__widgets">${renderSketch(content.topWidgets)}</div>`
+        : '';
+      return { trail: [], bodyHtml: widgetsHtml + pickerHtml };
     }
     // `content.crossNav` (buildUserNode's Properties tab / buildPropertyNode's
     // Users tile — two `records` pickers that point at EACH OTHER): marks
@@ -1004,7 +1035,7 @@ function renderTileTipBanner(tip) {
 // Wraps a nav-dashboard's tile grid with an optional page title and
 // optional stacked EXTRA sections below it — e.g. Rate plans' Overview:
 // "Configuration" (a titled heading over the existing Rooms/Channels/
-// Connectivities/Properties tiles — user's direction: "top strip we
+// Integrated systems/Properties tiles — user's direction: "top strip we
 // currently have is configuration, can have a title"), then "Performance"
 // (a few dashboard-cards chart widgets) and "Adoption" (a channel-adoption
 // table, skeleton-only for now — "we can keep it to skeleton concepts for
@@ -1045,6 +1076,65 @@ function wirePathLinks() {
     });
   });
 }
+
+// Generic entry point for any canvas element that opens a wizard —
+// `data-wizard-open="<id>"` maps to a lookup table of wizard DEFINITIONS
+// (steps + onComplete), so new wizards register themselves in
+// WIZARD_DEFINITIONS below rather than each needing bespoke wiring here.
+function wireWizardOpenButtons() {
+  canvasEl.querySelectorAll('[data-wizard-open]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const definition = WIZARD_DEFINITIONS[el.dataset.wizardOpen];
+      if (definition) openWizard(definition);
+    });
+  });
+}
+
+// "Add channel" — the wizard's first real instance, direction-setting for
+// this whole IA's not-yet-tackled editing-surface pattern. Two steps,
+// always both shown (no conditional skip yet — "sometimes do some channel
+// level config stuff" simplified to "always show it, for now," since no
+// real per-channel mapping requirements are confirmed): pick a channel
+// from the FULL distribution universe (OTAs + Direct Booking + Channels
+// Plus, one flat list, no grouping), then a generic mapping-config step.
+// `onComplete` is a no-op for now — this prototype has no persistent data
+// layer to actually add the picked channel to RATE_PLAN_CHANNELS and
+// re-render it into the Channels tab; the wizard's OWN mechanism (open →
+// step through → close, resuming exactly where the user was) is the thing
+// being demonstrated, not a full simulated backend.
+const WIZARD_DEFINITIONS = {
+  'add-channel': {
+    steps: [
+      {
+        title: 'Choose channel',
+        render: (wizard) => `
+          <h2 class="wizard-step__title">Choose a channel to add</h2>
+          <ul class="wf-list wizard-channel-picker">${ALL_DISTRIBUTION_CHANNELS.map(
+            (name) => `
+              <li>
+                <a href="#" class="wf-list__row${wizard.data.channel === name ? ' is-active' : ''}" data-wizard-select="channel" data-wizard-value="${name}">
+                  <span class="wf-list__row-title">${name}</span>
+                </a>
+              </li>
+            `
+          ).join('')}</ul>
+        `,
+        onNext: (wizard) => Boolean(wizard.data.channel),
+      },
+      {
+        title: 'Configure mapping',
+        render: () => `
+          <h2 class="wizard-step__title">Configure mapping</h2>
+          ${renderSectionsSketch([
+            { title: 'Room type mapping', shape: 'list' },
+            { title: 'Rate mapping', shape: 'list' },
+          ])}
+        `,
+      },
+    ],
+    onComplete: () => {},
+  },
+};
 
 function breadcrumbHtml(trail) {
   // Slice off everything before the LAST `resetTrail` crumb (see the
@@ -1245,6 +1335,52 @@ function renderSketch(content) {
       </div>
     `;
   }
+  if (content.sketch === 'channel-rates') {
+    // Rate plan → Channels tab's real shape (was a plain sketch:'list'
+    // stub) — "i see a channel and then the channel rates below it, and
+    // then another channel etc." An "Add channel" action row (same visual
+    // language as My account's action rows) leads into the new
+    // full-page wizard (see wireChannelRates/openWizard) — this sketch's
+    // return value gets wired up separately from every other sketch
+    // (which are inert strings) because this ONE needs to open the
+    // wizard, not push a nav path. `content.channels`: real channel names
+    // currently connected to this rate plan (RATE_PLAN_CHANNELS) — each
+    // gets its own card with a skeleton mini-table underneath standing in
+    // for "this channel's rates, one row per room type" (a rate = rate
+    // plan × room type, per the user's own definition) — no real room-type
+    // names/prices confirmed, shape only.
+    const channelCards = content.channels
+      .map(
+        (name) => `
+          <div class="channel-rates__card">
+            <h3 class="channel-rates__channel-name">${name}</h3>
+            <table class="sketch-table channel-rates__table">
+              <tbody>${Array(3)
+                .fill(null)
+                .map(
+                  () => `
+                    <tr>
+                      <td><div class="sketch-table-cell" style="width:40%"></div></td>
+                      <td><div class="sketch-table-cell"></div></td>
+                    </tr>
+                  `
+                )
+                .join('')}</tbody>
+            </table>
+          </div>
+        `
+      )
+      .join('');
+    return `
+      <div class="channel-rates">
+        <button class="channel-rates__add-btn" data-wizard-open="add-channel">
+          <span class="nav-list-item__action-icon" aria-hidden="true">+</span>
+          Add channel
+        </button>
+        ${channelCards}
+      </div>
+    `;
+  }
   return '';
 }
 
@@ -1282,6 +1418,90 @@ function renderGridSketch({ columns, rows, rowCount = 5 }) {
     .join('');
   return `<div class="sketch-grid">${header}<div class="sketch-grid__body" style="${gridStyle}">${body}</div></div>`;
 }
+
+// ---------------------------------------------------------------------------
+// Full-page modal / wizard — the first EDITING surface in this prototype.
+// Everything else here is read/browse navigation (drill-down, tabs, tiles);
+// a wizard is a bounded TASK — pick some things, configure them, commit —
+// that starts and ends without altering where the user was. Deliberately
+// separate from state.path/section: opening one does not push a path level
+// or change section, so cancelling or completing it needs no nav state to
+// unwind, `render()` just resumes showing whatever was already there.
+//
+// A step is `{ title, render: (wizard) => string, onNext?: (wizard) =>
+// boolean }` — `render` returns the step's own body HTML (any existing
+// sketch/pattern can be reused inside it); `onNext` (optional) validates/
+// commits that step's data before advancing, returning `false` to block
+// advancing (not used by the first instance below, but part of the shape
+// so a later step CAN block on incomplete input without a new mechanism).
+// `wizard.data` is a plain object steps read/write into as scratch state
+// for the whole flow (e.g. which channel was picked in step 1, read back
+// in step 2's mapping UI) — cleared once the wizard closes.
+function openWizard({ steps, onComplete }) {
+  state.wizard = { steps, currentStep: 0, data: {}, onComplete };
+  renderWizard();
+}
+
+function closeWizard() {
+  state.wizard = null;
+  wizardOverlayEl.hidden = true;
+}
+
+function renderWizard() {
+  const wizard = state.wizard;
+  if (!wizard) {
+    wizardOverlayEl.hidden = true;
+    return;
+  }
+  wizardOverlayEl.hidden = false;
+  const { steps, currentStep } = wizard;
+  const isLastStep = currentStep === steps.length - 1;
+
+  wizardStepsEl.innerHTML = steps
+    .map((s, i) => {
+      const stepState = i < currentStep ? 'is-done' : i === currentStep ? 'is-current' : '';
+      return `<span class="wizard__step ${stepState}">${i + 1}. ${s.title}</span>`;
+    })
+    .join('<span class="wizard__step-sep" aria-hidden="true"></span>');
+
+  wizardBodyEl.innerHTML = steps[currentStep].render(wizard);
+
+  wizardBackEl.hidden = currentStep === 0;
+  wizardNextEl.textContent = isLastStep ? 'Done' : 'Next';
+
+  wizardBodyEl.querySelectorAll('[data-wizard-select]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      wizard.data[el.dataset.wizardSelect] = el.dataset.wizardValue;
+      renderWizard();
+    });
+  });
+}
+
+wizardCloseEl.addEventListener('click', closeWizard);
+
+wizardBackEl.addEventListener('click', () => {
+  const wizard = state.wizard;
+  if (!wizard || wizard.currentStep === 0) return;
+  wizard.currentStep -= 1;
+  renderWizard();
+});
+
+wizardNextEl.addEventListener('click', () => {
+  const wizard = state.wizard;
+  if (!wizard) return;
+  const step = wizard.steps[wizard.currentStep];
+  if (step.onNext && step.onNext(wizard) === false) return;
+  const isLastStep = wizard.currentStep === wizard.steps.length - 1;
+  if (isLastStep) {
+    wizard.onComplete?.(wizard.data);
+    closeWizard();
+    render();
+    return;
+  }
+  wizard.currentStep += 1;
+  renderWizard();
+});
 
 // ---------------------------------------------------------------------------
 

@@ -171,6 +171,171 @@ a { color: inherit; }
   }
 }
 
+/* ---------- Full-page modal / wizard ----------
+   The first EDITING surface in this prototype — everything else is
+   read/browse navigation. Full takeover: own chrome (numbered step header,
+   Back/Next footer), no rail/L2 panel/breadcrumb visible underneath. Sits
+   above everything, including the mobile shell, via z-index. */
+.wizard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+/* `display: flex` above otherwise wins over the browser's native
+   `[hidden]` UA-stylesheet rule (display: none), since an author rule
+   with equal specificity that comes later in the cascade takes it —
+   caught live: the overlay showed up empty on page load despite
+   `hidden` being set in index.html and state.wizard being null. */
+.wizard-overlay[hidden] {
+  display: none;
+}
+
+.wizard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.wizard__steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wizard__step {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.wizard__step.is-current {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.wizard__step.is-done {
+  color: var(--text-secondary);
+}
+
+.wizard__step-sep {
+  width: 16px;
+  height: 1px;
+  background: var(--border-strong);
+}
+
+.wizard__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.wizard__close:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+}
+
+.wizard__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.wizard__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 32px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.wizard__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.wizard__btn {
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+.wizard__btn--secondary {
+  background: var(--surface);
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.wizard__btn--secondary:hover {
+  background: var(--surface-sunken);
+}
+
+.wizard__btn--secondary[hidden] {
+  display: none;
+}
+
+.wizard__btn--primary {
+  background: var(--text);
+  color: var(--bg);
+}
+
+.wizard__btn--primary:hover {
+  opacity: 0.88;
+}
+
+/* Channel picker (step 1 of Rate plan → Channels' "Add channel" wizard) —
+   a flat list, deliberately no grouping between OTAs/Direct Booking/
+   Channels Plus: "crucially that list included direct booking and
+   channels plus as well as otas" as one unified concept. Reuses the same
+   real-clickable-name treatment `records` pickers use elsewhere
+   (`.wf-list__row`), just wired to `data-wizard-select` instead of
+   `data-path-key` since picking one sets wizard scratch data, not a nav
+   path. */
+.wizard-channel-picker .wf-list__row.is-active {
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+}
+
+.wizard-channel-picker .wf-list__row.is-active::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text);
+  flex-shrink: 0;
+}
+
+.wizard-step__title {
+  margin: 0 0 20px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+}
+
 .settings-sheet__handle {
   width: 36px;
   height: 4px;
@@ -900,6 +1065,14 @@ a { color: inherit; }
   gap: 12px;
 }
 
+/* Contextual insight widgets above a `records` picker (e.g. Rate plans) —
+   "we have these contextual insights around the place rather than just
+   lists." Purely decorative spacing wrapper; the widgets themselves reuse
+   .sketch-dashboard-cards as-is. */
+.records-page__widgets {
+  margin-bottom: 28px;
+}
+
 .nav-dashboard-page__section-title {
   margin: 0;
   font-size: 15px;
@@ -1031,6 +1204,57 @@ a { color: inherit; }
 
 .sketch-table__name-link:hover {
   text-decoration: underline;
+}
+
+/* Rate plan → Channels tab's real shape (was sketch:'list') — "i see a
+   channel and then the channel rates below it, and then another channel
+   etc." A leading "Add channel" action row (same visual language as an
+   action row elsewhere, e.g. My account's) opens the new full-page wizard;
+   each connected channel gets its own card with a skeleton mini-table
+   underneath (real channel name, skeleton rate cells — a rate = rate plan
+   × room type, no real room-type names/prices confirmed). */
+.channel-rates {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.channel-rates__add-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.channel-rates__add-btn:hover {
+  background: var(--surface-sunken);
+}
+
+.channel-rates__card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--surface);
+}
+
+.channel-rates__channel-name {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.channel-rates__table td {
+  padding: 8px 12px;
 }
 
 /* Generic grid pattern (Distribution batch item 4) — 5th canonical

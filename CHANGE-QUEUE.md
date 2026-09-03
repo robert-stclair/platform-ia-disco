@@ -13,12 +13,111 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: every batch through "Fix Notifications L2 rows... and redraw Operations icon" was
-committed and deployed (both GitHub remotes + Heroku) on 2026-09-02/03.** The mobile shell batch
-below is NOT YET committed — confirm before assuming it's live. The only unfinished thread is the
-foundational property/cluster/brand scope switcher (its own section below) — Distribution's shape
-is explicitly unsolved there, not a queue item to implement yet. Add new requests to a fresh
-numbered list below this status block as they come in.
+**Status: every batch through "Remove mobile top bar brand mark" was committed and deployed (both
+GitHub remotes + Heroku) on 2026-09-03.** The Rate plans topWidgets/Connectivities rename batch
+AND the full-page wizard batch below are NOT YET committed — confirm before assuming either is
+live. The only unfinished thread is the foundational property/cluster/brand scope switcher (its
+own section below) — Distribution's shape is explicitly unsolved there, not a queue item to
+implement yet. Add new requests to a fresh numbered list below this status block as they come in.
+
+## Full-page modal / wizard — the first EDITING surface, plus its first instance (Add channel)
+
+This is a genuinely new category of pattern for this prototype, not a page tweak — everything
+built before this was read/browse NAVIGATION (drill-down, tabs, tiles); nothing modeled DOING a
+bounded task. Explicitly named as direction-setting for the whole IA, not just this one flow:
+"we haven't tackled an editing style surface yet but i see a role for a full page modal concept -
+possibly multi-step... rethinking this underpins the IA work... it needs to be direction
+setting." Grew out of a concrete walkthrough of how Distribution's "add a rate plan to more
+channels" flow should work: "i am in a rate plan, i want to distribute it to more channels... i
+see all the live rates listed there (a rate is the combination of a rate plan and a room type),
+i see a channel and then the channel rates below it... i click 'add channel' and i choose from a
+list - crucially that list included direct booking and channels plus as well as otas... then i
+have to sometimes do some channel level config stuff (mapping)... and then done and then my new
+rates are shown."
+
+1. **New `state.wizard` + `openWizard`/`closeWizard`/`renderWizard` mechanism** (`main.js`) —
+   deliberately SEPARATE from `state.path`/`state.section`: a wizard is a bounded TASK (pick
+   things, configure them, commit), not a nav destination. Opening one touches no nav state, so
+   cancelling or completing it resumes exactly where the user was — `render()` just shows
+   whatever was already there, no path/section to unwind. A step is `{ title, render, onNext? }`
+   — `render(wizard)` returns the step's own body HTML (reusing existing sketch/pattern
+   renderers freely), `onNext(wizard)` optionally validates before advancing (returns `false` to
+   block). `wizard.data` is scratch state shared across all steps for one wizard run (e.g. which
+   channel was picked in step 1, read back by step 2), cleared once the wizard closes.
+2. **Full takeover, own chrome** — confirmed over a canvas-only takeover: the wizard overlay
+   (`#wizardOverlay`) covers the ENTIRE viewport (`position: fixed; inset: 0`, above even the
+   mobile shell) with no rail/L2 panel/breadcrumb visible underneath — reads as "you've left the
+   nav shell and entered a task," not just another page. Own header (numbered step list, e.g.
+   "1. Choose channel — 2. Configure mapping", with done/current states) and footer (Back/Next,
+   Next becomes "Done" on the last step) — confirmed as the standard wizard shape over a single
+   continuously-scrolling page.
+3. **First instance: Rate plan → Channels tab's "Add channel" wizard.** Two steps, both always
+   shown (no conditional skip yet — "sometimes do some channel level config stuff" simplified to
+   always showing the mapping step, since no real per-channel mapping requirements are
+   confirmed): step 1 is a flat channel picker — deliberately NO grouping between OTAs and
+   SiteMinder's own products (`ALL_DISTRIBUTION_CHANNELS`: Direct Booking, Channels Plus,
+   Booking.com, Expedia, Agoda, Airbnb, all as one list) — "crucially that list included direct
+   booking and channels plus as well as otas," reusing the same real-clickable-row treatment
+   `records` pickers use elsewhere (`.wf-list__row`, wired via `data-wizard-select` instead of
+   `data-path-key`). Step 2 is a generic "Configure mapping" page (Room type mapping / Rate
+   mapping, skeleton `sections`). `onComplete` is a no-op — this prototype has no persistent data
+   layer to actually add the picked channel into the Channels tab's list; the WIZARD MECHANISM
+   itself (open → step through → close, resuming cleanly) is what's being demonstrated here, not
+   a full simulated backend.
+4. **Rate plan's Channels tab given its real shape** (was `sketch:'list'` stub) — "i see a
+   channel and then the channel rates below it, and then another channel etc." New
+   `sketch: 'channel-rates'` value: a leading "Add channel" action row (opens the wizard above),
+   then one card per currently-connected channel (`RATE_PLAN_CHANNELS`: Direct Booking,
+   Booking.com, Expedia) with a skeleton mini rates-table underneath standing in for "this
+   channel's rates, one row per room type" (a rate = rate plan × room type, per the user's own
+   definition) — no real room-type names/prices confirmed, shape only.
+5. **Bug caught and fixed live:** the overlay showed up empty on initial page load despite
+   `hidden` being set in `index.html` and `state.wizard` being `null` — `.wizard-overlay {
+   display: flex }` was overriding the browser's native `[hidden]` UA-stylesheet rule (an author
+   rule at equal-or-higher specificity beats it). Fixed with an explicit `.wizard-overlay[hidden]
+   { display: none }` override. Also fixed a stray `#` appended to the address bar when picking a
+   channel — the channel-picker row's `e.preventDefault()` was missing from its click handler
+   (every other `href="#"` link in this app already has it via `wirePathLinks`; this new handler
+   was added separately and missed it).
+6. Verified in browser (light + dark): "Add channel" opens the full-page wizard correctly;
+   picking a channel shows the selected state; Next advances to step 2 with Back now visible and
+   Next relabeled "Done"; Done closes the wizard and returns to the unchanged Channels tab; the X
+   (cancel) button also closes cleanly from either step; normal navigation elsewhere
+   (Configuration, Insights) confirmed unaffected. No console errors.
+
+## Rate plans list gains contextual insight widgets; Rate plan's own "Connectivities" renamed
+
+## Rate plans list gains contextual insight widgets; Rate plan's own "Connectivities" renamed
+
+Two small, related changes to Distribution.
+
+1. **`topWidgets` (new, on `records` content)** — "lets add some graph widgets above the rate
+   plans list - the idea being we have these contextual insights around the place rather than
+   just lists." A new optional field, parallel to `nav-dashboard`'s existing `extraSections`
+   mechanism: `content.topWidgets` renders a decorative `dashboard-cards` widget ABOVE the
+   picker/table, using the exact same `renderSketch` dispatcher and titleless-skeleton
+   convention as every other dashboard-cards instance (Insights' Dashboard, Rate plan's own
+   Overview "Performance" section). Wired into `renderChainBody`'s `records` branch
+   (`main.js`) — purely additive to the unselected-picker case, no changes to the selected/
+   detail-node path. Applied to Distribution → Rate plans specifically: 3 cards, mixed
+   stat+chart, matching the Overview "Performance" section's own proportions. Every other
+   `records` caller (Properties, Users, Dashboards, Charts, Yield rules) omits this field and is
+   unaffected — verified Yield rules still shows a plain list with no widgets.
+2. **Rate plan's own "Connectivities" tile/tab renamed to "Integrated systems"** — resolves the
+   open thread CONTEXT.md logged and queued for later: "Connectivities" and "Integrated systems"
+   are the same concept, named differently by account type (MP: Connectivities / Platform:
+   Integrated systems). Config → Property's own instance was already consolidated in an earlier
+   batch; this is Rate plan's Overview tile + sibling tab, the last remaining separate instance —
+   "also anywhere you see 'connectivities' change it to 'integrated systems'." Both the tile's
+   and tab's `label` AND their internal `key`s were renamed together (`connectivities-tile` →
+   `integrated-systems-tile`, `connectivities` → `integrated-systems`), same standard applied to
+   the Transactions→Operations rename — an internal key that no longer matches its visible label
+   would be its own confusion later.
+3. Verified in browser (SM + MP account types): Rate plans' list shows 3 widget cards above the
+   table, real clickable names still work; a rate plan's own Overview tile grid shows "Integrated
+   systems" (not "Connectivities"), and clicking it correctly activates the renamed sibling tab
+   (confirmed via the tab's own `.is-active` state, since the narrow test window couldn't show
+   the full tab strip). No console errors.
 
 ## Mobile shell — a hamburger + drill-down responsive demo (new redesign stream)
 

@@ -719,6 +719,21 @@ const SAMPLE_CHARTS = ['ADR by channel', 'Length of stay', 'Cancellation rate'];
 const SAMPLE_RATE_PLANS = ['Standard Rate', 'Non-Refundable', 'Advance Purchase', 'Long Stay'];
 const SAMPLE_YIELD_RULES = ['Weekend surcharge', 'Last-minute discount', 'Length-of-stay discount'];
 
+// Distribution's actual channel universe — deliberately ONE list, no
+// categorical split between OTAs and SiteMinder's own products: "crucially
+// that list included direct booking and channels plus as well as otas."
+// Used both as a rate plan's currently-CONNECTED channels (a subset, see
+// `RATE_PLAN_CHANNELS` below) and as the full picker list the "Add channel"
+// wizard offers (anything not already connected). Generic realistic OTA
+// names, not real confirmed partner names.
+export const ALL_DISTRIBUTION_CHANNELS = ['Direct Booking', 'Channels Plus', 'Booking.com', 'Expedia', 'Agoda', 'Airbnb'];
+
+// A rate plan's CURRENTLY connected channels — a subset of
+// ALL_DISTRIBUTION_CHANNELS, confirmed real for the Channels tab's default
+// state (so "Add channel" has somewhere to add TO, and something to show
+// underneath each one — see buildRatePlanNode's Channels tab).
+const RATE_PLAN_CHANNELS = ['Direct Booking', 'Booking.com', 'Expedia'];
+
 // Shared detail node every rate plan opens — a normal `tabs` node (NOT a
 // standalone nav-dashboard — Rate plans doesn't need the extra nav LEVEL
 // after all, per the user's own reversal: "rate plans don't need the extra
@@ -755,7 +770,16 @@ function buildRatePlanNode(showProperties) {
             tiles: [
               { key: 'rooms-tile', label: 'Rooms', linksToTab: 'rooms' },
               { key: 'channels-tile', label: 'Channels', linksToTab: 'channels' },
-              { key: 'connectivities-tile', label: 'Connectivities', linksToTab: 'connectivities' },
+              // Renamed from "Connectivities" — same concept as Config →
+              // Property's "Integrated systems," just named differently by
+              // account type (MP: Connectivities / Platform: Integrated
+              // systems) — CONTEXT.md logged this consolidation and applied
+              // it to Config → Property already; this is Rate plan's own
+              // instance of the same concept, picked up now. `key`/tab key
+              // renamed to match (`integrated-systems`, not
+              // `connectivities`) rather than leaving an internal key that
+              // no longer matches its visible label.
+              { key: 'integrated-systems-tile', label: 'Integrated systems', linksToTab: 'integrated-systems' },
               ...(showProperties ? [{ key: 'properties-tile', label: 'Properties', linksToTab: 'properties' }] : []),
             ],
             // Two purely decorative sections stacked below the tile grid —
@@ -788,8 +812,16 @@ function buildRatePlanNode(showProperties) {
           },
         },
         { key: 'rooms', label: 'Rooms', content: { type: 'sketch', sketch: 'list' } },
-        { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'list' } },
-        { key: 'connectivities', label: 'Connectivities', content: { type: 'sketch', sketch: 'list' } },
+        // `sketch: 'channel-rates'` (new) — real shape for what used to be
+        // a plain list stub: "i see all the live rates listed there (a
+        // rate is the combination of a rate plan and a room type), i see a
+        // channel and then the channel rates below it, and then another
+        // channel etc." An "Add channel" action row leads into the new
+        // full-page wizard (see renderChannelRatesSketch/openWizard in
+        // main.js) — its first real instance, direction-setting for the
+        // whole IA's not-yet-tackled editing-surface pattern.
+        { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'channel-rates', channels: RATE_PLAN_CHANNELS } },
+        { key: 'integrated-systems', label: 'Integrated systems', content: { type: 'sketch', sketch: 'list' } },
         ...(showProperties ? [{ key: 'properties', label: 'Properties', content: { type: 'sketch', sketch: 'list' } }] : []),
       ],
     },
@@ -1158,6 +1190,12 @@ function buildSmContentTree(showProperties) {
         // list." `detailNode` is now a nav-dashboard (see
         // buildRatePlanNode) — the first case this new page type was built
         // against.
+        // `topWidgets` (new) — "contextual insights around the place
+        // rather than just lists": a few dashboard-cards widgets above the
+        // table, same building block `nav-dashboard`'s `extraSections`
+        // already uses for Rate plan's own Overview "Performance" section.
+        // 3 cards, mixed stat+chart, matching that section's proportions —
+        // titleless/skeleton, no real numbers/charts confirmed yet.
         {
           key: 'rate-plans',
           label: 'Rate plans',
@@ -1166,6 +1204,11 @@ function buildSmContentTree(showProperties) {
             names: SAMPLE_RATE_PLANS,
             display: 'table',
             detailNode: buildRatePlanNode(showProperties),
+            topWidgets: {
+              type: 'sketch',
+              sketch: 'dashboard-cards',
+              cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
+            },
           },
         },
         // Same pattern (item 2), own shared detail node.

@@ -57,6 +57,27 @@
 
   </div>
 
+  <!-- Full-page modal / wizard — the first EDITING surface in this
+       prototype (everything else is read/browse navigation). A bounded
+       TASK overlay, not a nav destination: full takeover, own chrome (no
+       rail, no L2 panel, no breadcrumb), a numbered step header, and a
+       Back/Next (or Cancel/Done) footer. Populated by renderWizard in
+       main.js whenever state.wizard is set; hidden entirely otherwise.
+       First instance: Rate plan → Channels tab's "Add channel" flow. -->
+  <div class="wizard-overlay" id="wizardOverlay" role="dialog" aria-modal="true" aria-labelledby="wizardTitle" hidden>
+    <header class="wizard__header">
+      <div class="wizard__steps" id="wizardSteps"></div>
+      <button class="wizard__close" id="wizardClose" aria-label="Cancel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="wizard__body" id="wizardBody"></div>
+    <footer class="wizard__footer">
+      <button class="wizard__btn wizard__btn--secondary" id="wizardBack">Back</button>
+      <button class="wizard__btn wizard__btn--primary" id="wizardNext">Next</button>
+    </footer>
+  </div>
+
   <!-- Mobile-only rail drawer — a full overlay listing every rail section
        PLUS the 3 utility destinations (assistant/notifications/my account) as
        one unified list, since a bottom tab bar was ruled out as less
