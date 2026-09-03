@@ -414,8 +414,14 @@ mini-table of rates underneath ("a rate is the combination of a rate plan and a 
 user's own definition), with a leading "Add channel" action row opening the wizard: pick a
 channel from ONE flat list (OTAs + Direct Booking + Channels Plus together, no categorical
 grouping — "crucially that list included direct booking and channels plus as well as otas"),
-then a generic "Configure mapping" step (always shown, not conditionally skipped — real per-
-channel mapping requirements aren't confirmed yet), then Done. The wizard's `onComplete` is
+then a "Configure mapping" step (always shown, not conditionally skipped — real per-channel
+mapping requirements aren't confirmed yet) whose shape depends on the channel picked: Direct
+Booking (no remote system to reconcile — it IS the SM side) gets a plain checkbox list of rates
+to publish; every other channel (OTAs + Channels Plus) gets a real two-system mapping — SM rate
+in one column, that channel's own rate selection in the other, paired row by row — "we have the
+SM rate on one side and the remote rate selection on the other side - so 2 columns should convey
+it enough." One mapping section either way, not split "room type" vs "rate" (a rate IS a rate
+plan × room type combination). Then Done. The wizard's `onComplete` is
 currently a no-op — there's no persistent data layer to actually add the new channel to the
 Channels tab's list; the MECHANISM (open → step through → close cleanly) is what this instance
 demonstrates, not a full simulated backend. Extending this to actually mutate visible data is a

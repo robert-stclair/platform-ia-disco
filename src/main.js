@@ -1122,14 +1122,21 @@ const WIZARD_DEFINITIONS = {
         onNext: (wizard) => Boolean(wizard.data.channel),
       },
       {
+        // Mapping shape depends on the channel picked in step 1 — "we do
+        // actually need to tackle this now" turned into two distinct real
+        // shapes rather than one generic stand-in:
+        // - Direct Booking has no remote system to reconcile against (it IS
+        //   the SM side), so mapping is just "which rates go live" — a
+        //   checkbox list, one row per rate.
+        // - Every other channel (OTAs + Channels Plus) is a real two-system
+        //   reconciliation: SM rate on one side, the remote channel's rate
+        //   selection on the other — "2 columns should convey it enough."
+        //   One mapping section (not split "room type" + "rate") since a
+        //   rate IS a rate plan × room type combination.
         title: 'Configure mapping',
-        render: () => `
-          <h2 class="wizard-step__title">Configure mapping</h2>
-          ${renderSectionsSketch([
-            { title: 'Room type mapping', shape: 'list' },
-            { title: 'Rate mapping', shape: 'list' },
-          ])}
-        `,
+        render: (wizard) =>
+          `<h2 class="wizard-step__title">Configure mapping</h2>` +
+          (wizard.data.channel === 'Direct Booking' ? renderDirectBookingMappingSketch() : renderRemoteMappingSketch(wizard.data.channel)),
       },
     ],
     onComplete: () => {},
@@ -1220,6 +1227,30 @@ function renderThemeToggle() {
         `<button class="theme-toggle-skel__bar${choice === current ? ' is-active' : ''}" data-theme-choice="${choice}" aria-label="${choice}"></button>`
     )
     .join('')}</div>`;
+}
+
+// Remote-channel mapping — SM rate on the left, that channel's own rate
+// selection on the right, paired row by row. Two columns is enough to
+// convey "reconciling two systems" without needing real field labels.
+function renderRemoteMappingSketch(channelName) {
+  const row = () => `<div class="mapping-row"><div class="sketch-skel-value"></div><div class="mapping-row__arrow">&rarr;</div><div class="sketch-skel-value"></div></div>`;
+  return `
+    <div class="sketch-section mapping-cols">
+      <div class="mapping-cols__headings">
+        <h3 class="sketch-section__title">SM rate</h3>
+        <span></span>
+        <h3 class="sketch-section__title">${channelName || 'Channel'} rate</h3>
+      </div>
+      ${Array(4).fill(row()).join('')}
+    </div>
+  `;
+}
+
+// Direct Booking has no remote system to reconcile — it's just "which rates
+// go live," so a checkbox list rather than a two-system mapping.
+function renderDirectBookingMappingSketch() {
+  const row = () => `<label class="mapping-check-row"><input type="checkbox" checked /><div class="sketch-skel-value"></div></label>`;
+  return `<div class="sketch-section"><h3 class="sketch-section__title">Rates to publish</h3>${Array(4).fill(row()).join('')}</div>`;
 }
 
 function renderSectionsSketch(sections) {

@@ -592,9 +592,18 @@ openWizard({
 **Built instance:** Rate plan → Channels tab's "Add channel" flow — see
 `WIZARD_DEFINITIONS['add-channel']` in `main.js`. Step 1: a flat channel
 picker (`ALL_DISTRIBUTION_CHANNELS` — OTAs and SiteMinder's own products
-deliberately mixed with NO grouping, per explicit direction). Step 2: a
-generic "Configure mapping" page (always shown, not conditionally skipped
-per channel — real per-channel requirements aren't confirmed).
+deliberately mixed with NO grouping, per explicit direction). Step 2:
+"Configure mapping" — always shown (not conditionally skipped per channel
+— real per-channel requirements aren't confirmed), but its CONTENT branches
+on `wizard.data.channel` (`renderRemoteMappingSketch` /
+`renderDirectBookingMappingSketch`): Direct Booking has no remote system to
+reconcile against (it IS the SM side), so it's a plain checkbox list, one
+row per rate; every other channel (OTAs + Channels Plus) is a real
+two-system reconciliation, rendered as two columns — SM rate on the left,
+that channel's own rate selection on the right, paired row by row with an
+arrow between. One mapping section either way, never split into "room
+type mapping" + "rate mapping" — a rate IS a rate plan × room type
+combination, so splitting them implied two concerns that don't exist.
 
 **Gotcha caught live:** `.wizard-overlay { display: flex }` silently
 overrode the browser's native `[hidden]` attribute styling (an author rule

@@ -59,11 +59,19 @@ rates are shown."
    Booking.com, Expedia, Agoda, Airbnb, all as one list) — "crucially that list included direct
    booking and channels plus as well as otas," reusing the same real-clickable-row treatment
    `records` pickers use elsewhere (`.wf-list__row`, wired via `data-wizard-select` instead of
-   `data-path-key`). Step 2 is a generic "Configure mapping" page (Room type mapping / Rate
-   mapping, skeleton `sections`). `onComplete` is a no-op — this prototype has no persistent data
-   layer to actually add the picked channel into the Channels tab's list; the WIZARD MECHANISM
-   itself (open → step through → close, resuming cleanly) is what's being demonstrated here, not
-   a full simulated backend.
+   `data-path-key`). Step 2's "Configure mapping" shape depends on the channel picked in step 1
+   (`renderRemoteMappingSketch`/`renderDirectBookingMappingSketch`, chosen by
+   `wizard.data.channel`): for Direct Booking — no remote system to reconcile against, since it
+   IS the SM side — it's just a checkbox list, one row per rate ("Rates to publish"); for every
+   other channel (OTAs + Channels Plus) it's a real two-system reconciliation, SM rate in one
+   column and that channel's own rate selection in the other, paired row by row with an arrow —
+   "we have the SM rate on one side and the remote rate selection on the other side - so 2
+   columns should convey it enough." One mapping section either way, not split "room type
+   mapping" + "rate mapping," since a rate IS a rate plan × room type combination — splitting
+   them implied two concerns that don't actually exist. `onComplete` is a no-op — this prototype
+   has no persistent data layer to actually add the picked channel into the Channels tab's list;
+   the WIZARD MECHANISM itself (open → step through → close, resuming cleanly) is what's being
+   demonstrated here, not a full simulated backend.
 4. **Rate plan's Channels tab given its real shape** (was `sketch:'list'` stub) — "i see a
    channel and then the channel rates below it, and then another channel etc." New
    `sketch: 'channel-rates'` value: a leading "Add channel" action row (opens the wizard above),

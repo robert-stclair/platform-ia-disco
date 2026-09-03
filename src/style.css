@@ -1648,6 +1648,49 @@ a.wf-list__row:hover {
   border: 1px solid var(--border);
 }
 
+/* Remote-channel mapping — SM rate column vs the channel's own rate column,
+   paired row by row with an arrow between. See renderRemoteMappingSketch. */
+.mapping-cols {
+  gap: 10px;
+}
+
+.mapping-cols__headings {
+  display: grid;
+  grid-template-columns: 1fr 24px 1fr;
+  align-items: center;
+}
+
+.mapping-row {
+  display: grid;
+  grid-template-columns: 1fr 24px 1fr;
+  align-items: center;
+  gap: 0;
+}
+
+.mapping-row__arrow {
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Direct Booking mapping — no remote system, just which rates go live. */
+.mapping-check-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.mapping-check-row input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.mapping-check-row .sketch-skel-value {
+  width: 60%;
+}
+
 ::selection { background: var(--surface-sunken); }
 
 /* ===========================================================================
