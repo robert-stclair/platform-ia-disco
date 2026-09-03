@@ -85,13 +85,15 @@ canvas to sit inside, which a narrow viewport gives them for free once the shell
    `showBack` flag and toggles `hidden` on BOTH `mobileBackEl`/`mobileMenuEl` from it, instead of
    only ever touching the back arrow's own visibility. `noPanel` sections (Front desk) keep the
    hamburger even while "drilled in," since there's no L2 to go back to there — verified directly
-   in LH account type. Also added a persistent brand mark (`.mobile-topbar__brand-mark`, same
-   dashed-placeholder treatment as the desktop rail's own `.rail__brand-mark` and the drawer
-   header's) next to the leading icon, staying visible whether the hamburger or back arrow is
-   showing — "maybe you can keep the brand present as well? i want to align with standard
-   patterns as much as possible." Verified in browser (light + dark, SM + LH account types):
-   exactly one of hamburger/back shows at any time, brand mark stays constant throughout. No
-   console errors.
+   in LH account type. Verified in browser (light + dark, SM + LH account types): exactly one of
+   hamburger/back shows at any time. No console errors.
+7. **Brand mark added, then dropped.** Also tried adding a persistent brand mark
+   (`.mobile-topbar__brand-mark`, same dashed-placeholder treatment as the desktop rail's own
+   `.rail__brand-mark`) next to the leading icon, per "maybe you can keep the brand present as
+   well? i want to align with standard patterns as much as possible." Removed again almost
+   immediately, live: "the brand mark feels like its getting in the way - lets lose it for now."
+   The top bar is back to just the leading icon (hamburger/back) + section title, no brand
+   element — don't re-add one without picking this back up.
 
 ## "Transactions" rail section renamed to "Operations"
 

@@ -1488,26 +1488,11 @@ a.wf-list__row:hover {
     display: none;
   }
 
-  /* Constant "still the same app" anchor, distinct from the section title
-     next to it — same placeholder treatment as the desktop rail's own
-     brand square (.rail__brand-mark) and the drawer header's
-     (.mobile-drawer__brand-mark), just sized for the compact top bar.
-     Stays present whether the hamburger or the back arrow is showing. */
-  .mobile-topbar__brand-mark {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    background: var(--surface-sunken);
-    border: 1px dashed var(--border-strong);
-    flex-shrink: 0;
-    margin-left: 2px;
-  }
-
   .mobile-topbar__title {
     font-size: 15px;
     font-weight: 700;
     color: var(--text);
-    margin-left: 8px;
+    margin-left: 4px;
   }
 
   /* Desktop's rail disappears entirely — replaced by the hamburger +

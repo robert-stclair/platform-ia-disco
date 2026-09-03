@@ -540,13 +540,11 @@ onto this app's existing `state.path`/breadcrumb model).
   in) — NEVER both at once, a correction after the first version showed
   both simultaneously: "the back arrow + hamburger together isn't really
   a standard pattern... showing both permanently reads as cluttered." A
-  persistent brand mark (`.mobile-topbar__brand-mark`, same
-  dashed-placeholder treatment as the desktop rail's own
-  `.rail__brand-mark`) sits next to the leading icon regardless of which
-  one is showing — "i want to align with standard patterns as much as
-  possible," matching how a real product's brand identity stays constant
-  while only the leading control/title change. Then the current section's
-  title. `renderMobileChrome(data)` (`main.js`, called once at the end of
+  persistent brand mark next to the leading icon was tried and dropped
+  again almost immediately ("the brand mark feels like its getting in the
+  way - lets lose it for now") — the top bar is just the leading icon +
+  section title, no brand element; don't re-add one without picking this
+  back up. `renderMobileChrome(data)` (`main.js`, called once at the end of
   every `render()`) computes a single `showBack` flag
   (`showingCanvas && !data.noPanel`) and toggles `hidden` on BOTH the back
   button and the hamburger from it — `noPanel` sections (Front desk) keep
