@@ -54,6 +54,13 @@ const railAssistantEl = document.getElementById('railAssistant');
 const railNotificationsEl = document.getElementById('railNotifications');
 const panelEl = document.getElementById('secondaryPanel');
 const canvasEl = document.getElementById('canvas');
+const mobileTopbarTitleEl = document.getElementById('mobileTopbarTitle');
+const mobileBackEl = document.getElementById('mobileBack');
+const mobileMenuEl = document.getElementById('mobileMenu');
+const mobileDrawerEl = document.getElementById('mobileDrawer');
+const mobileDrawerBackdropEl = document.getElementById('mobileDrawerBackdrop');
+const mobileDrawerCloseEl = document.getElementById('mobileDrawerClose');
+const mobileDrawerListEl = document.getElementById('mobileDrawerList');
 
 // Theme override — 'system' (default) removes the attribute entirely so
 // style.css's `prefers-color-scheme` media query decides, matching every
@@ -338,10 +345,13 @@ function renderRail() {
   railNotificationsEl.classList.toggle('is-active', state.section === 'notifications');
 }
 
-// Switches to a section that isn't one of getRailItems' own rail buttons
-// (My account, Notifications, AI assistant) — same underlying mechanism
-// a normal rail-item click uses (state.section + resetPath + render), just
-// triggered from a separate utility button instead of the main icon list.
+// Switches to any section by key — state.section + resetPath + render, the
+// same underlying mechanism a normal desktop rail-item click uses. Named
+// for its original purpose (My account/Notifications/AI assistant, which
+// aren't in getRailItems' own list, unlike a normal rail-item click's
+// handler), but reused generically by the mobile drawer for ALL sections
+// (both getRailItems' own items AND the 3 utility ones) since it's exactly
+// the same mechanism either way.
 function switchToUtilitySection(key) {
   if (state.section === key) return;
   state.section = key;
@@ -1298,6 +1308,109 @@ function render() {
     panelEl.innerHTML = '';
   }
   renderCanvas(data);
+  renderMobileChrome(data);
+}
+
+// ---------------------------------------------------------------------------
+// Mobile shell — additive only, zero changes to the desktop render path
+// above. Desktop keeps showing rail + L2 panel + canvas side by side at all
+// times (CSS handles that); below the mobile breakpoint, CSS instead shows
+// exactly ONE of {L2 panel, canvas} at a time, driven by `.is-mobile-canvas`
+// on `.app-body` — no separate "which screen" state needed, this is derived
+// straight from `state.path.length` each render: an empty path means nothing
+// has been drilled into yet (show the L2 list), any non-empty path means the
+// canvas has something to show (show it, with a back arrow to return to the
+// list). This single derivation covers every existing content shape for
+// free, including the records-inbox custom panel (Notifications) — its own
+// "list stays put, canvas shows the detail" behavior already matches "path
+// empty = panel, path non-empty = canvas" exactly, no special-casing needed.
+// `noPanel` sections (Front desk) have no panel to fall back to at all, so
+// they always show canvas on mobile too — same reasoning as desktop's own
+// `.secondary-panel.is-hidden` handling.
+const appBodyEl = document.querySelector('.app-body');
+
+// Labels for the 3 utility destinations (My account/Notifications/AI
+// assistant) — these aren't in getRailItems' own list (they're reached via
+// separate rail buttons, not a rail section), so the mobile topbar title
+// needs its own small lookup for them alongside getRailItems' sections.
+const UTILITY_SECTION_LABELS = {
+  'my-account': 'My account',
+  notifications: 'Notifications',
+  assistant: 'AI assistant',
+};
+
+function renderMobileChrome(data) {
+  const showingCanvas = Boolean(data.noPanel) || state.path.length > 0;
+  appBodyEl.classList.toggle('is-mobile-canvas', showingCanvas);
+  mobileBackEl.hidden = !showingCanvas || Boolean(data.noPanel);
+
+  const items = getRailItems(state.accountType);
+  const currentItem = items.find((i) => i.key === state.section);
+  mobileTopbarTitleEl.textContent = currentItem?.label ?? UTILITY_SECTION_LABELS[state.section] ?? '';
+}
+
+mobileBackEl.addEventListener('click', () => {
+  collapse(0);
+  render();
+});
+
+function openMobileDrawer() {
+  renderMobileDrawer();
+  mobileDrawerEl.classList.add('is-open');
+  mobileDrawerBackdropEl.classList.add('is-open');
+}
+
+function closeMobileDrawer() {
+  mobileDrawerEl.classList.remove('is-open');
+  mobileDrawerBackdropEl.classList.remove('is-open');
+}
+
+mobileMenuEl.addEventListener('click', openMobileDrawer);
+mobileDrawerCloseEl.addEventListener('click', closeMobileDrawer);
+mobileDrawerBackdropEl.addEventListener('click', closeMobileDrawer);
+
+// The drawer lists every rail section PLUS the 3 utility destinations
+// (assistant/notifications/my account) as ONE flat list — reuses
+// getRailItems' own data for the sections rather than hand-maintaining a
+// second copy; the 3 utility rows are appended with the exact same
+// section-switch mechanism `switchToUtilitySection` already uses for their
+// desktop rail buttons.
+function renderMobileDrawer() {
+  const items = getRailItems(state.accountType);
+  const sectionRows = items
+    .map(
+      (item) => `
+        <li>
+          <button class="mobile-drawer__item${item.key === state.section ? ' is-active' : ''}" data-drawer-section="${item.key}">
+            <span class="mobile-drawer__item-icon" aria-hidden="true">${RAIL_ICONS[item.icon] ?? ''}</span>
+            ${item.label}
+          </button>
+        </li>
+      `
+    )
+    .join('');
+  const utilityRows = [
+    { key: 'assistant', label: 'AI assistant' },
+    { key: 'notifications', label: 'Notifications' },
+    { key: 'my-account', label: 'My account' },
+  ]
+    .map(
+      (u) => `
+        <li>
+          <button class="mobile-drawer__item${u.key === state.section ? ' is-active' : ''}" data-drawer-section="${u.key}">
+            ${u.label}
+          </button>
+        </li>
+      `
+    )
+    .join('');
+  mobileDrawerListEl.innerHTML = sectionRows + `<li class="mobile-drawer__divider"></li>` + utilityRows;
+  mobileDrawerListEl.querySelectorAll('[data-drawer-section]').forEach((el) => {
+    el.addEventListener('click', () => {
+      switchToUtilitySection(el.dataset.drawerSection);
+      closeMobileDrawer();
+    });
+  });
 }
 
 document.querySelectorAll('[data-account-type]').forEach((el) => {

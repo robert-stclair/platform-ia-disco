@@ -1425,3 +1425,232 @@ a.wf-list__row:hover {
 }
 
 ::selection { background: var(--surface-sunken); }
+
+/* ===========================================================================
+   Mobile shell — a standard mobile-web nav pattern demo, one of the streams
+   of the Platform 2.0 redesign, not a per-page responsive retrofit. Applies
+   ONLY below the breakpoint; desktop's rail + L2 panel + canvas 3-column
+   layout is completely untouched above it. Chosen pattern: hamburger drawer
+   (not a bottom tab bar — ruled out as less extensible once utility icons
+   are counted: 4 sections + assistant/notifications/my account = 7
+   destinations, past what a tab bar comfortably holds) + a drill-down stack
+   for L2 → canvas (one screen visible at a time, back arrow returns to the
+   list) — the standard iOS/Android navigation shape, and a direct fit for
+   this app's existing path/breadcrumb model (see renderMobileChrome in
+   main.js: mobile screen state is DERIVED from state.path.length, not a
+   separate flag). Every existing content type underneath (tabs, tiles,
+   sections, tables, grids) needed NO changes — none of them are shell-aware,
+   they just needed a single-column canvas to sit inside, which they already
+   get for free once the outer shell reflows.
+   =========================================================================== */
+
+.mobile-topbar,
+.mobile-drawer-backdrop,
+.mobile-drawer {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 52px;
+    flex-shrink: 0;
+    padding: 0 8px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobile-topbar__icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+  }
+
+  .mobile-topbar__icon-btn:hover {
+    background: var(--surface-sunken);
+  }
+
+  .mobile-topbar__icon-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .mobile-topbar__icon-btn[hidden] {
+    display: none;
+  }
+
+  .mobile-topbar__title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    margin-left: 4px;
+  }
+
+  /* Desktop's rail disappears entirely — replaced by the hamburger +
+     drawer. `.app-frame` drops from column (topbar above app-body) to just
+     stacking the topbar above whatever app-body shows. */
+  .app-frame {
+    min-height: 100vh;
+    height: auto;
+  }
+
+  .rail {
+    display: none;
+  }
+
+  .app-body {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Drill-down stack: exactly ONE of {L2 panel, canvas} is visible at a
+     time, controlled by `.is-mobile-canvas` on `.app-body` (toggled in
+     renderMobileChrome, derived from state.path.length — see the section
+     comment above). Both still occupy the full viewport width/height
+     stacked, same as if there were only one column on mobile. */
+  .secondary-panel {
+    width: 100%;
+    height: auto;
+    flex: 1;
+    min-height: 0;
+    border-right: none;
+  }
+
+  .app-body.is-mobile-canvas .secondary-panel {
+    display: none;
+  }
+
+  .app-body:not(.is-mobile-canvas) .canvas {
+    display: none;
+  }
+
+  /* `noPanel` sections (Front desk) hide the panel on desktop too — no
+     conflicting rule needed here, `.secondary-panel.is-hidden` already
+     wins regardless of viewport width. */
+}
+
+/* ---------- Mobile rail drawer ---------- */
+@media (max-width: 767px) {
+  .mobile-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 40;
+  }
+
+  .mobile-drawer-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .mobile-drawer {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 280px;
+    max-width: 82vw;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    transform: translateX(-100%);
+    transition: transform 0.18s ease;
+    z-index: 41;
+    overflow-y: auto;
+  }
+
+  .mobile-drawer.is-open {
+    transform: translateX(0);
+  }
+
+  .mobile-drawer__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 12px;
+    flex-shrink: 0;
+  }
+
+  .mobile-drawer__brand-mark {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--surface-sunken);
+    border: 1px dashed var(--border-strong);
+  }
+
+  .mobile-drawer__list {
+    list-style: none;
+    margin: 0;
+    padding: 4px 8px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .mobile-drawer__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 11px 10px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .mobile-drawer__item:hover {
+    background: var(--surface-sunken);
+    color: var(--text);
+  }
+
+  .mobile-drawer__item.is-active {
+    background: var(--surface-sunken);
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .mobile-drawer__item-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+  }
+
+  .mobile-drawer__item-icon svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.7;
+  }
+
+  .mobile-drawer__divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 2px;
+  }
+}

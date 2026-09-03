@@ -386,6 +386,36 @@ sparkle) and two new My account items, Communication and Preferences (the latter
 this prototype's first genuinely live control — a moved-in, skeleton-styled theme toggle). See
 CHANGE-QUEUE.md's "Rail utility icons" batch for the full build.
 
+## New redesign stream: mobile responsive shell
+
+The originating draft proposal (linked above) already named "mobile web" as one of the pressures
+motivating this whole redesign effort — this is where that stream actually started getting built,
+not just referenced. The user's framing: "i want to simple demo how this whole thing could be
+mobile responsive .. thats one of the streams of a redesign." Scoped in two steps: first offered
+to demo just one representative flow, but the user pushed back and confirmed the real ask is
+broader — "i think we should be able to do it all actually - we need to implement some kind of
+standard mobile navigation pattern - thats the main one, all the other stuff is just wireframes
+pages right?" That framing is what made the scope tractable: this app's whole content layer
+(tabs, nav-dashboard tiles, sections, tables, grids) is just wireframe pages sitting inside a
+shell — none of it is shell-aware, so solving the SHELL's responsive behavior once, universally,
+makes every existing page work at mobile width for free, without touching any of them.
+
+**Pattern chosen: hamburger drawer + drill-down stack**, the standard iOS/Android mobile-web
+navigation shape — not a bottom tab bar (ruled out as less extensible once utility icons are
+counted: 4 rail sections + AI assistant/Notifications/My account = 7 destinations, past what a
+tab bar comfortably holds) and not a slide-over L2 (a drill-down maps directly onto this app's
+EXISTING `state.path`/breadcrumb model, needing no new state to track "which screen is showing" —
+it's derived straight from `state.path.length`). Built as a purely additive layer in `main.js`/
+`style.css`/`index.html` — zero changes to any existing render function; see CHANGE-QUEUE.md's
+"Mobile shell" batch for the full build and verification, including how desktop's continued
+correctness was confirmed (a scratch test that neutralized the mobile media query directly,
+proving the exact same page reverts to the untouched 3-column desktop shell).
+
+This is the first of several possible "redesign stream" demos this repo might build (per the
+original proposal's list of pressures: distribution model, IA overload, multi-property, nav UX,
+design system, agentic workflows, mobile web, global elements) — mobile web is now built; the
+others remain conceptual, not addressed here, unless picked up explicitly.
+
 ## Confirmed principle: what promotes a Config tile to the property's top level
 
 `buildPropertyNode`'s tile grid (Config → Property) has now had several items move between

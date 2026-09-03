@@ -13,12 +13,69 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: every batch through "Bug fix: rail highlight didn't follow cross-navigation" was
-committed and deployed (both GitHub remotes + Heroku) on 2026-09-02.** The Notifications/AI
-assistant/Communication+Preferences batch below is NOT YET committed — confirm before assuming
-it's live. The only unfinished thread is the foundational property/cluster/brand scope switcher
-(its own section below) — Distribution's shape is explicitly unsolved there, not a queue item to
-implement yet. Add new requests to a fresh numbered list below this status block as they come in.
+**Status: every batch through "Fix Notifications L2 rows... and redraw Operations icon" was
+committed and deployed (both GitHub remotes + Heroku) on 2026-09-02/03.** The mobile shell batch
+below is NOT YET committed — confirm before assuming it's live. The only unfinished thread is the
+foundational property/cluster/brand scope switcher (its own section below) — Distribution's shape
+is explicitly unsolved there, not a queue item to implement yet. Add new requests to a fresh
+numbered list below this status block as they come in.
+
+## Mobile shell — a hamburger + drill-down responsive demo (new redesign stream)
+
+"I want to simple demo how this whole thing could be mobile responsive .. thats one of the
+streams of a redesign." This app had ZERO responsive behavior before this batch — the rail + L2
+panel + canvas 3-column shell was fixed-width, desktop-only. Scoped deliberately as ONE standard
+mobile-web navigation pattern applied to the outer shell, not a per-page responsive retrofit: "i
+think we should be able to do it all actually - we need to implement some kind of standard mobile
+navigation pattern - thats the main one, all the other stuff is just wireframes pages right?" —
+confirmed true in testing: every existing content type (tabs, nav-dashboard tile grids, sections,
+tables, grids, the records-inbox panel) needed ZERO changes; they just needed a single-column
+canvas to sit inside, which a narrow viewport gives them for free once the shell itself reflows.
+
+1. **Pattern chosen: hamburger drawer (not a bottom tab bar) + drill-down stack (not a
+   slide-over).** Bottom tab bar was ruled out as less extensible — this app already has 4 rail
+   sections + 3 utility destinations (AI assistant/Notifications/My account) = 7 total, past what
+   a tab bar comfortably holds without its own overflow problem; user's own reasoning: "well we
+   are going for mobile web - not sure what best out of those two i had assumed burger so its
+   more extensible?" Drill-down (one screen visible at a time, back arrow returns to the list) is
+   the standard iOS/Android navigation shape, and maps directly onto this app's EXISTING
+   `state.path`/breadcrumb model rather than requiring new state.
+2. **Architecture: purely additive, zero changes to existing render logic.** `renderPanel`/
+   `renderCanvas`/`resolveChain`/`renderChainBody` are completely untouched — both panel and
+   canvas still render into the DOM exactly as before on every `render()` call. A new
+   `renderMobileChrome(data)` function (called once, at the end of `render()`) derives which
+   screen to show from `state.path.length` — empty path means nothing's been drilled into yet
+   (show the L2 panel), any non-empty path means the canvas has something to show (show it, with
+   a back arrow). This single derivation covers every existing content shape for free, INCLUDING
+   the records-inbox custom panel (Notifications) — its own "list stays put, canvas shows detail"
+   desktop behavior naturally becomes "drill down to the detail, back returns to the list" on
+   mobile, no special-casing needed, since `state.path[1]` being set is exactly the same
+   condition either way. `noPanel` sections (Front desk) always show canvas on mobile too, same
+   reasoning as `.secondary-panel.is-hidden` on desktop.
+3. **New mobile-only chrome, hidden by default (`display: none`), shown only inside
+   `@media (max-width: 767px)`:** a top bar (`#mobileTopbar` — back arrow, hamburger, current
+   section's title) and a rail drawer (`#mobileDrawer` + backdrop) listing every `getRailItems()`
+   section PLUS the 3 utility destinations as one unified list — reuses `getRailItems`'s own data
+   for the sections rather than hand-maintaining a second copy, and the exact same
+   `switchToUtilitySection(key)` mechanism the desktop utility-icon buttons already used (now
+   generalized to work for any section key, not just the 3 it was originally built for).
+4. **CSS is purely additive** — 229 new lines, zero changes to any existing rule. Every new rule
+   either defaults to `display: none` (mobile-only elements) or lives inside the media query.
+   Verified this directly: with the mobile media query's `media` condition temporarily
+   neutralized via `document.styleSheets` in a scratch test, the exact same page reverted to the
+   full 3-column desktop shell at the same viewport width, pixel-identical to before this batch —
+   confirming the mobile CSS can't have regressed desktop, independent of being able to resize
+   the actual test browser window wide enough (the sandboxed browser's window manager wouldn't
+   honor a resize request past ~627px in this session).
+5. Verified in browser (mobile width): hamburger opens/closes the drawer with correct active-
+   section highlighting; tapping a section or utility destination switches and closes the
+   drawer; L2 lists render full-width for Insights/Operations/Configuration; drilling into a tile
+   (Config → Property → Property details, 3 levels deep: tile grid → tabs → sections) correctly
+   shows canvas-only with a working back arrow at every level; Notifications' email-inbox list
+   drills down to the wordless message-view detail correctly (rather than desktop's permanent
+   list-stays-visible split, which doesn't fit a single-column screen); AI assistant's chat-start
+   screen drills in from its own New chat/History L2 the same way every other section does; dark
+   mode renders correctly throughout the drawer/topbar/backdrop. No console errors at any point.
 
 ## "Transactions" rail section renamed to "Operations"
 

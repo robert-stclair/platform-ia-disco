@@ -518,6 +518,60 @@ as a detail-node root, same as `records`. Mode (b) tiles (Rate plans) were
 never affected — they don't push a path level at all, so no double crumb
 was possible there.
 
+## Mobile shell (`@media (max-width: 767px)`)
+
+A standard mobile-web navigation pattern demo, one of the "redesign
+streams" the originating proposal named (mobile web, alongside distribution
+model, IA overload, multi-property, nav UX, design system, agentic
+workflows, global elements) — see CONTEXT.md's "New redesign stream:
+mobile responsive shell" for the framing. Applies ONLY below the
+breakpoint; the desktop rail + L2 panel + canvas 3-column shell is
+completely untouched above it — every rule here either defaults to
+`display: none` or lives inside the media query, so nothing here can
+regress desktop.
+
+**Pattern: hamburger drawer + drill-down stack**, not a bottom tab bar
+(ruled out — 4 rail sections + 3 utility destinations = 7, past what a tab
+bar handles cleanly) and not a slide-over L2 (a drill-down maps directly
+onto this app's existing `state.path`/breadcrumb model).
+
+- **Top bar** (`#mobileTopbar` in `index.html`) — back arrow (hidden
+  unless something's been drilled into), hamburger, current section's
+  title. Rendered by `renderMobileChrome(data)` in `main.js`, called once
+  at the end of every `render()`.
+- **Rail drawer** (`#mobileDrawer` + `#mobileDrawerBackdrop`) — a full
+  overlay listing every `getRailItems()` section PLUS the 3 utility
+  destinations (AI assistant/Notifications/My account) as one unified
+  list. Populated by `renderMobileDrawer()`, reusing `getRailItems`'s own
+  data rather than a hand-maintained second copy. Every row (section or
+  utility) routes through the same `switchToUtilitySection(key)` helper —
+  originally built just for the 3 utility rail buttons, now generalized
+  since it's the identical mechanism (`state.section = key; resetPath();
+  render();`) either way.
+- **Screen state is DERIVED, not tracked separately**: `renderMobileChrome`
+  computes `showingCanvas = Boolean(data.noPanel) || state.path.length > 0`
+  and toggles `.is-mobile-canvas` on `.app-body` — CSS then shows exactly
+  ONE of {L2 panel, canvas} at a time. No new state field was added for
+  "which mobile screen is showing" — an empty path means nothing's been
+  drilled into (show the list), any non-empty path means the canvas has
+  something to show (show it, with the back arrow). This single rule
+  covers every existing content shape for free, INCLUDING the
+  records-inbox custom panel (Notifications) — its desktop "list stays
+  put, canvas shows detail" split naturally becomes "drill down to detail,
+  back returns to the list" on mobile, no special-casing needed.
+- **Back button** = `collapse(0)` + `render()` — the exact same function
+  the breadcrumb's own "jump to root" click already uses, just wired to a
+  dedicated top-bar button instead of a crumb segment.
+
+**Every existing content type underneath needed NO changes** — tabs,
+nav-dashboard tile grids (their `grid-template-columns:
+repeat(auto-fill, minmax(220px, 1fr))` already collapses to one column
+naturally at narrow widths), sections, tables, grids all just needed a
+single-column canvas to sit inside, which they get for free once the
+outer shell reflows. Confirmed in testing: a 3-level-deep drill-down
+(Config → Property → Property details' own tab strip → sections) renders
+correctly with zero page-specific mobile CSS anywhere.
+
 ## Not yet built
 
 - **Card list** — a list where each row is a card-shaped block (bigger than
