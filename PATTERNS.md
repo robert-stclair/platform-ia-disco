@@ -27,6 +27,7 @@ These render as the whole content of a `sketch`-type node (a tab, a leaf item).
 | `'calendar'` | A month-calendar PRESET of `'grid'` (see below) — 7 weekday columns, 5 rows, no row labels | Calendar/scheduling views needing maximum canvas space (Front desk) |
 | `'grid'` | A `.sketch-grid` — real column headers, OPTIONAL real row labels down the left, skeleton fill per cell | Any grid/matrix-shaped page — a room-type × date inventory matrix, or anything calendar-like that isn't specifically a month view |
 | `'chat-start'` | `.chat-start` — a centered skeleton greeting bar, 3 skeleton "suggested prompt" chips, and a skeleton input bar pinned near the bottom | The AI assistant's fresh-chat landing screen — a wireframe of a chat START state, not any specific conversation's transcript |
+| `'message-view'` | `.message-view` — a subject-line skeleton bar, a shorter meta-line bar, then 5 body-paragraph skeleton lines at varied widths | Notifications' detail page — deliberately NO real text anywhere, not even a card title (unlike `sections`' own "real titles" exception) — "make the main view totally skeleton with no words" |
 
 These are the project's canonical page-skeleton types (list / table / stacked cards / card
 grid / calendar+grid — see "Dashboard card grid" below for the 4th, and "Navigation dashboard"
@@ -581,19 +582,24 @@ identical click handlers.
   Communication/Preferences/Support code/Logout). See "Live theme toggle"
   above for Preferences' one live control.
 - **Notifications** (`tree['notifications']`, `NOTIFICATIONS_ITEMS` in
-  `nav-data.js`) — L2 IS the notification list itself: a real `records`
-  picker (`SAMPLE_NOTIFICATIONS` → `NOTIFICATION_DETAIL_NODE`, same generic
-  mechanism as Dashboards/Charts/Properties/Users, not a special case), with
-  `showSnippet: true` (see the Records pattern section for what that adds) —
-  an email-inbox-style layout: each row shows the real title plus a skeleton
-  preview line stacked underneath, "just like an email browser might have
-  it." Picking one opens a real (if generic) skeleton detail page —
-  deliberately NOT a dead end, even though no real notification
-  data/taxonomy exists yet: "we could wireframe a detail view even though we
-  dont currently have it." This is the user-account-focused "Notifications"
-  concept from CONTEXT.md's three-way/four-way notification-model writeup —
-  distinct from Recommendations/Health check/contextual recommendations,
-  which are all property/portfolio-focused, not account-focused.
+  `nav-data.js`) — a genuine EMAIL-CLIENT split, not the usual "L2 = page
+  list, canvas = whatever's selected" shape every other section uses. The
+  notification rows (title + skeleton preview line, `showSnippet: true` —
+  see the Records pattern section) render PERMANENTLY in the L2 panel,
+  never disappearing once one is picked; the canvas shows ONLY the selected
+  notification's own detail (a real, if generic, skeleton page —
+  deliberately not a dead end: "we could wireframe a detail view even
+  though we dont currently have it"). This is the user-account-focused
+  "Notifications" concept from CONTEXT.md's three-way/four-way
+  notification-model writeup — distinct from Recommendations/Health
+  check/contextual recommendations, which are all property/portfolio-
+  focused, not account-focused. See "Records-inbox panel mode" below for
+  the mechanism — a first version (L2 as a normal picker, canvas replacing
+  the list with the detail, same as Properties/Users) was built and
+  corrected once live: "i want the summary list in the L2 panel, and the
+  current message full view wireframed in the main view" — an email
+  client's message list stays visible while the reading pane shows the
+  open message; the list disappearing was the actual bug.
 - **AI assistant** (`tree['assistant']`, `ASSISTANT_ITEMS` in `nav-data.js`)
   — L2 is "chat history and controls": a "+ New chat" action row (active by
   default) above a flat "History" skeleton list. Canvas shows the
@@ -603,6 +609,58 @@ identical click handlers.
   undecided what re-opening one should show (a full transcript? the same
   start screen scrolled down?) — don't wire them as a `records` picker until
   that's confirmed.
+
+## Records-inbox panel mode (`data.customPanel: 'records-inbox'`)
+
+A one-off, deliberately NOT generalized panel shape — an email-client
+three-pane split (message list always visible + a reading pane), built
+specifically for Notifications after a first attempt (L2 as a normal
+`records` picker, canvas replacing the list with the detail — same
+mechanism Properties/Users/Dashboards all use) was caught live as wrong:
+"i want the summary list in the L2 panel, and the current message full
+view wireframed in the main view."
+
+```js
+{ items: Node[], customPanel: 'records-inbox' }
+```
+
+Assumes exactly the shape `NOTIFICATIONS_ITEMS` has: `items` contains ONE
+panel item whose own `content` is a `records` picker sitting directly on
+it (no wrapping `tabs`) — same "pathIndex 1" case `resolveChain`'s comment
+on the records branch already documents for a bare `records` section like
+Users. When `data.customPanel === 'records-inbox'`:
+
+- **`renderPanel`** (`main.js`) skips its normal nav-item-list rendering
+  entirely and calls `renderRecordsInboxPanel(data)` instead — this reads
+  the picker's `content.names`/`showSnippet` directly and renders them AS
+  the L2 panel's actual markup (`.wf-list--inbox`). Reuses the same
+  title+snippet STRUCTURE `showSnippet` produces in the canvas, but with
+  its own CLEAN FLAT row styling, not the canvas version's bordered-card
+  look: "make them run as clean rows rather than cards in the L2" — no
+  border/background box, just a hover/active fill and a thin
+  `border-bottom` divider between rows, matching `.nav-list-item a`'s own
+  flat treatment elsewhere in this panel. Each row wires its own click
+  handler (`data-inbox-name`) that sets `state.path = [pickerItem.key,
+  name]` directly and re-renders — simpler than the generic
+  `data-path-key` mechanism since there's no expand/collapse state to
+  preserve.
+- **`renderCanvas`** gets a matching special branch: if nothing's picked
+  yet (`!chain[0]?.selectedKey`), show a plain placeholder
+  (`.records-inbox-empty`, "Select a notification to view it") instead of
+  ever rendering the picker itself (it already lives in the panel — canvas
+  rendering it too would duplicate it). Once something IS picked, skip
+  straight to the detail node's own content
+  (`renderChainBody(chain, 1)`) — no breadcrumb is built at all, since
+  there's nothing to crumb back to (the list never left the panel, unlike
+  every other `records` caller where picking one crumbs "Properties /
+  Harbourview Hotel").
+
+**Don't reach for this by default.** Every other section's L2 panel is a
+list of PAGES (clicking an item navigates to different canvas content,
+but the panel itself always re-renders as "what pages exist here"). This
+mode makes the panel BE live data (notification rows), which only makes
+sense for an inbox-shaped concept. Introduce a second instance only with
+the same explicit kind of request this one got.
 
 **Icon choices were deliberate, not just "whatever fits at rail size":**
 the AI assistant's circled "?" (`.rail-item__icon--assistant`) was chosen

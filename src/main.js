@@ -428,7 +428,49 @@ function findCrossNavHomeItemKey(rootItem) {
   return homeItemKey;
 }
 
+// The one section that needs an email-client-style L2 (Notifications, via
+// `data.customPanel: 'records-inbox'`) — the notification rows themselves
+// (title + snippet) render PERMANENTLY in the L2 panel instead of a normal
+// nav-item list, and never disappear once one is picked; the canvas (see
+// renderCanvas's matching branch) shows ONLY the selected notification's
+// detail. Assumes exactly the shape NOTIFICATIONS_ITEMS has: one panel item
+// whose own content is a `records` picker sitting directly on it (pathIndex
+// 1, same as any records picker with no wrapping tabs — see resolveChain's
+// comment on why pathIndex starts at 1). Not a generalizable mechanism —
+// built for this one case; extend deliberately, not by default, if another
+// section ever wants the same split.
+function renderRecordsInboxPanel(data) {
+  const pickerItem = data.items[0];
+  const content = pickerItem.content;
+  const selectedName = state.path[1] ?? null;
+  const html = `<ul class="wf-list${content.showSnippet ? ' wf-list--snippets' : ''} wf-list--inbox">${content.names
+    .map((name) => {
+      const snippet = content.showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
+      return `
+        <li>
+          <a href="#" class="wf-list__row${name === selectedName ? ' is-active' : ''}" data-inbox-name="${name}">
+            <span class="wf-list__row-title">${name}</span>
+            ${snippet}
+          </a>
+        </li>
+      `;
+    })
+    .join('')}</ul>`;
+  panelEl.innerHTML = html;
+  panelEl.querySelectorAll('[data-inbox-name]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      state.path = [pickerItem.key, el.dataset.inboxName];
+      render();
+    });
+  });
+}
+
 function renderPanel(data) {
+  if (data.customPanel === 'records-inbox') {
+    renderRecordsInboxPanel(data);
+    return;
+  }
   const items = data.items;
   // Grouping headings (e.g. "Products" — a plain label clustering already-
   // visible sibling items, never itself clickable/routable — see
@@ -597,6 +639,27 @@ function renderCanvas(data) {
   }
 
   const chain = resolveChain(rootItem);
+
+  // Records-inbox mode (Notifications): the picker itself already rendered
+  // PERMANENTLY in the L2 panel (renderRecordsInboxPanel) — the canvas must
+  // NOT also render it. Show an empty "select one" state until a
+  // notification is actually picked; once picked, skip straight to the
+  // detail node's own content (chain[1]), no breadcrumb — there's nothing
+  // to crumb back to, the list never left the panel.
+  if (data.customPanel === 'records-inbox') {
+    if (!chain[0]?.selectedKey) {
+      canvasEl.innerHTML = `${switcherHtml}<div class="sketch"><div class="records-inbox-empty">Select a notification to view it</div></div>`;
+      wireScopeSwitcher();
+      return;
+    }
+    const detail = renderChainBody(chain, 1);
+    canvasEl.innerHTML = `${switcherHtml}<div class="sketch">${detail.bodyHtml}</div>`;
+    wireScopeSwitcher();
+    wirePathLinks();
+    wireThemeToggle();
+    return;
+  }
+
   const { trail, bodyHtml } = renderChainBody(chain, 0);
   // Standard content-area margin (PATTERNS.md) applied ONCE here, always —
   // not per-branch inside renderChainBody. A prior version only wrapped
@@ -1145,6 +1208,25 @@ function renderSketch(content) {
         <div class="chat-start__greeting-skel"></div>
         <div class="chat-start__prompts">${Array(3).fill('<div class="chat-start__prompt-skel"></div>').join('')}</div>
         <div class="chat-start__input-skel"></div>
+      </div>
+    `;
+  }
+  if (content.sketch === 'message-view') {
+    // Notifications' detail page — deliberately NO real text anywhere, not
+    // even a card title ("make the main view totally skeleton with no
+    // words"), unlike `sections`' standing "real titles, skeleton content"
+    // rule. Reads as an open email/message: a subject-line skeleton bar, a
+    // shorter meta-line bar underneath it, then a handful of body-paragraph
+    // skeleton lines of varying width (not all 100%, so it reads as text
+    // rather than a stack of identical bars).
+    const bodyWidths = [92, 78, 88, 60, 84];
+    return `
+      <div class="message-view">
+        <div class="message-view__subject-skel"></div>
+        <div class="message-view__meta-skel"></div>
+        <div class="message-view__body">${bodyWidths
+          .map((w) => `<div class="message-view__line-skel" style="width:${w}%"></div>`)
+          .join('')}</div>
       </div>
     `;
   }

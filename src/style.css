@@ -1183,6 +1183,101 @@ a.wf-list__row:hover {
   background: var(--border);
 }
 
+/* Records-inbox mode (Notifications' L2 panel — renderRecordsInboxPanel in
+   main.js) — CLEAN FLAT ROWS, not the bordered-card look `.wf-list__row`
+   has everywhere else: "make them run as clean rows rather than cards in
+   the L2." Reuses the title+snippet STRUCTURE (`.wf-list__row-title`,
+   `.wf-list__row-snippet-skel`) but strips the card chrome entirely and
+   restyles to match `.nav-list-item a`'s flat treatment (the normal panel
+   list's own look) — no border, no background box, no border-radius
+   outline; just a hover/active fill and a thin divider between rows. */
+.wf-list--inbox {
+  margin: 0;
+  gap: 0;
+}
+
+.wf-list--inbox .wf-list__row {
+  height: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 10px;
+  border: none;
+  border-radius: 7px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  font-size: 12.5px;
+}
+
+.wf-list--inbox li:last-child .wf-list__row {
+  border-bottom: none;
+}
+
+.wf-list--inbox .wf-list__row-snippet-skel {
+  width: 85%;
+}
+
+.wf-list--inbox a.wf-list__row:hover {
+  background: var(--surface-sunken);
+  border-color: transparent;
+}
+
+.wf-list--inbox .wf-list__row.is-active {
+  background: var(--surface-sunken);
+}
+
+.wf-list--inbox .wf-list__row.is-active .wf-list__row-title {
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Canvas empty state before a notification is picked — records-inbox mode
+   only; every other section's canvas either shows the picker itself or a
+   detail, never a bare placeholder sentence, so this is scoped narrowly. */
+.records-inbox-empty {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  padding: 8px 0;
+}
+
+/* Notification detail page (sketch: 'message-view') — deliberately NO
+   real text anywhere, not even a card title, unlike every `sections` page
+   elsewhere: "make the main view totally skeleton with no words." Reads
+   as an open email/message purely through skeleton-bar shape. */
+.message-view {
+  max-width: 640px;
+}
+
+.message-view__subject-skel {
+  width: 55%;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--border-strong);
+  opacity: 0.6;
+  margin-bottom: 10px;
+}
+
+.message-view__meta-skel {
+  width: 30%;
+  height: 11px;
+  border-radius: 4px;
+  background: var(--border);
+  margin-bottom: 28px;
+}
+
+.message-view__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message-view__line-skel {
+  height: 11px;
+  border-radius: 4px;
+  background: var(--border);
+}
+
 /* EXPLORATORY, non-functional — illustrative star for "My insights"
    (CHANGE-QUEUE.md item 8). Greyscale (weight/fill only, no color) per the
    project's strict-greyscale rule — same as every other "selected" state. */

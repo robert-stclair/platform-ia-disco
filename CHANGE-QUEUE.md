@@ -57,23 +57,58 @@ AI chat above that."
    help or is this the assistant" confusion being avoided there. Plain label carries it fine.
 3. **New "Notifications" rail button** (bell + red dot, `.rail-item__badge` reused, index.html's
    `railNotifications`) — switches to a new `notifications` section, same mechanism as My
-   account's avatar. L2 becomes the notification list itself (a real `records` picker,
-   `SAMPLE_NOTIFICATIONS` → `NOTIFICATION_DETAIL_NODE`, same generic pattern as
-   Dashboards/Charts/Properties/Users); canvas shows a real (if generic) detail page once one is
-   picked — "we could wireframe a detail view even though we dont currently have it." This is the
-   user-account-focused "Notifications" concept CONTEXT.md logged as a separate, lower-priority
-   fourth thread months ago, alongside the Recommendations/Health check/contextual-
-   recommendations three-way split — "it has become a bit of a gap this would solve for."
-   Follow-up correction: rows were initially plain single-line, same as every other `records`
-   picker — the user wanted an EMAIL-INBOX layout instead: "have the summaries stacked in the L2
-   panel and the detail in the main panel - just like an email browser might have it." Added a
-   new optional `content.showSnippet: true` flag to the generic `records` mechanism
-   (`renderRecordPicker` in `main.js`) — when set, each row shows the real title PLUS a second
-   skeleton preview line stacked underneath (`.wf-list--snippets`/`.wf-list__row-snippet-skel` in
-   `style.css`), not real preview text (no real notification body copy exists — same "real
-   titles, skeleton content" rule as everywhere else). Only Notifications sets this flag; every
-   other `records` caller (Properties, Users, Dashboards, Charts, Yield rules) is unaffected and
-   keeps the plain single-line row — verified unchanged in browser.
+   account's avatar. This is the user-account-focused "Notifications" concept CONTEXT.md logged
+   as a separate, lower-priority fourth thread months ago, alongside the Recommendations/Health
+   check/contextual-recommendations three-way split — "it has become a bit of a gap this would
+   solve for."
+   - **First pass (SUPERSEDED):** L2 was a normal panel-item list with ONE item whose content was
+     a `records` picker — clicking a notification replaced the picker with its detail in the
+     canvas, same as every other `records` caller (Properties, Users, Dashboards). Rows were
+     plain single-line text.
+   - **Correction 1 — email-inbox row style:** the user wanted each row to show a preview line
+     too: "have the summaries stacked in the L2 panel and the detail in the main panel - just
+     like an email browser might have it." Added `content.showSnippet: true` to the generic
+     `records` mechanism (`renderRecordPicker` in `main.js`) — real title plus a second skeleton
+     preview line stacked underneath (`.wf-list--snippets`/`.wf-list__row-snippet-skel`).
+   - **Correction 2 — real email-client SPLIT, not "detail replaces list":** caught live —
+     "you didn't fix notifications... i want the summary list in the L2 panel, and the current
+     message full view wireframed in the main view." The first pass's canvas-replaces-list
+     behavior wasn't what "just like an email browser" meant — an email client's message list
+     stays visible permanently while the reading pane shows the open message. Built a genuinely
+     new panel mode for this: `NOTIFICATIONS_ITEMS.customPanel: 'records-inbox'`. When set,
+     `renderPanel` skips the normal nav-item-list rendering entirely and calls a new
+     `renderRecordsInboxPanel` instead — the notification rows (title + snippet,
+     `.wf-list--inbox`) render AS the L2 panel's actual content, permanently, with their own
+     `data-inbox-name` click wiring (`state.path = [pickerItem.key, name]`, then re-render).
+     `renderCanvas` gets a matching special branch: before anything's picked it shows a plain
+     "Select a notification to view it" placeholder (`.records-inbox-empty`); once picked, it
+     skips the picker's own chain step entirely (`renderChainBody(chain, 1)`, no breadcrumb —
+     there's nothing to crumb back to, the list never left the panel) and shows only the
+     detail node's content. This is a genuinely one-off panel shape, not a generalizable
+     mechanism — deliberately scoped to Notifications only via the `customPanel` flag; every
+     other section keeps the normal L2-is-a-page-list behavior untouched.
+   - **Correction 3 — clean flat rows in L2, fully wordless detail view:** two final polish
+     requests: "just make them run as clean rows rather than cards in the L2... and make the
+     main view totally skeleton with no words." (a) `.wf-list--inbox`'s rows were still
+     inheriting `.wf-list__row`'s bordered-card look (border, border-radius, background box) —
+     restyled to a flat treatment matching `.nav-list-item a`'s own look elsewhere in the panel
+     (no border/box, hover/active fill only, a thin `border-bottom` divider between rows instead
+     of card gaps). (b) The detail page was `sketch: 'sections'` with two real titled cards
+     ("Summary"/"Related") — every `sections` page relies on real titles as its one standing
+     exception to "skeleton content," which is wrong for a page that should have NO real text at
+     all. Gave it its own dedicated sketch value instead of special-casing `sections`:
+     `sketch: 'message-view'` (`NOTIFICATION_DETAIL_NODE` in `nav-data.js`) — a subject-line
+     skeleton bar, a shorter meta-line bar, then 5 body-paragraph skeleton lines at varied widths
+     (`.message-view`/`__subject-skel`/`__meta-skel`/`__body`/`__line-skel` in `style.css`),
+     reading as an open email/message purely through skeleton shape.
+   - Verified in browser: L2 permanently shows all 5 notifications as clean flat rows (no card
+     borders, thin dividers between them, correct hover/active fill); clicking one highlights it
+     and shows the fully wordless message-view detail (subject/meta/body skeleton lines) in the
+     canvas without the list disappearing; switching away to another section and back correctly
+     resets to the empty "select one" canvas state while the list stays intact; dark mode renders
+     correctly on both the flat rows and the message-view; every other `records` caller
+     (Properties, Users, Dashboards, Charts, Yield rules) and every `sections` page confirmed
+     unaffected. No console errors.
 4. **New AI assistant rail button** (`railAssistant`) — icon is a circled "?" (`.rail-item__icon--
    assistant`), chosen deliberately over both a bare "?" (reads as human support/help, wrong
    signal for an agentic in-product assistant) and a sparkle (avoided as a cliché, and the

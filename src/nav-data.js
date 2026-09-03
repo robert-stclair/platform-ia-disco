@@ -598,17 +598,19 @@ const MY_ACCOUNT_ITEMS = [
 // currently have it." Plain sections skeleton: a summary plus whatever
 // else a real notification might link to (kept generic, not notification-
 // type-specific, since no real notification taxonomy is confirmed yet).
+// `sketch: 'message-view'` (not 'sections') — the user's explicit call:
+// "make the main view totally skeleton with no words." `sections` always
+// renders a real title per card (the standing "real titles, skeleton
+// content" convention every other section-based page relies on) — this
+// is the one canvas page that shouldn't have ANY real text on it at all,
+// so it gets its own dedicated sketch value instead of special-casing
+// `sections` to sometimes hide its titles. Reads as an open
+// email/message: a subject+meta skeleton line, then a few body-paragraph
+// skeleton lines.
 export const NOTIFICATION_DETAIL_NODE = {
   key: 'notification-detail',
   label: 'Notification',
-  content: {
-    type: 'sketch',
-    sketch: 'sections',
-    sections: [
-      { title: 'Summary', shape: 'field' },
-      { title: 'Related', shape: 'field' },
-    ],
-  },
+  content: { type: 'sketch', sketch: 'message-view' },
 };
 
 // EXPLORATORY — sample notification labels, same generic-realistic-names
@@ -626,6 +628,18 @@ const SAMPLE_NOTIFICATIONS = [
 ];
 
 const NOTIFICATIONS_ITEMS = {
+  // `customPanel: 'records-inbox'` — a genuinely different L2 shape from
+  // every other section: an EMAIL-CLIENT split, not the usual "L2 = list of
+  // pages, canvas = whatever's currently selected." The notification rows
+  // themselves (title + snippet) live PERMANENTLY in the L2 panel — they
+  // never disappear when one is picked — and the canvas shows ONLY the
+  // selected notification's own detail. "I want the summary list in the L2
+  // panel, and the current message full view wireframed in the main view."
+  // See renderPanel/renderCanvas in main.js for the two special-cased
+  // branches this flag triggers. Not a generalizable mechanism yet — this
+  // is the one section that needs it; don't reach for it elsewhere without
+  // a fresh decision.
+  customPanel: 'records-inbox',
   items: [
     {
       key: 'notifications-list',
