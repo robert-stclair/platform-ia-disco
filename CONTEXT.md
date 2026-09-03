@@ -801,6 +801,37 @@ unaffected** — this only applies to the deployed build served via `npm start`.
   request — fine over HTTPS for a low-stakes internal wireframe, not appropriate for anything
   actually sensitive).
 
+## Pending: publish product-types IA diagram to Confluence
+
+**Not yet done — blocked on MCP connectivity, not on content.** Robert asked (2026-08-31 session):
+"also can you pump out an ia diagram for the different product types into confluence? you can
+publish under this page https://claude.ai/code/artifact/a3579c1e-d9c3-4de5-82cd-d781d025db95" —
+i.e. a diagram of the different SiteMinder product types (as reflected in this IA: Property
+Platform / Channel Manager side, Little Hotelier, Channels Plus, Direct Booking, Demand Plus,
+etc. — the product-type distinctions this repo's nav models) published as a child page under that
+Confluence page (reached via the Artifact URL above, which is a wrapper — the actual Confluence
+destination should be confirmed from that page's own links/breadcrumb, not guessed).
+
+**Status:** the `plugin:product:atlassian` MCP server (the one with real Confluence
+read/write/create-page tools — `getConfluencePage`, `searchConfluenceUsingCql`, etc.) has been
+failing to connect across multiple sessions with `getaddrinfo ENOTFOUND mcp.atlassian.com` — a
+DNS/network-level failure at session start, not an auth problem and not a missing capability. A
+separate OAuth-based server, `claude_ai_Atlassian`, connects fine but only ever exposed
+`authenticate`/`complete_authentication` — no page tools were found on it via ToolSearch, so
+completing its OAuth flow alone will likely NOT unblock this (untested — worth trying early in a
+fresh session in case that assumption is wrong). Robert has confirmed (2026-09-03) he personally
+can log into Confluence fine — the failure is specific to this MCP server resolving from within
+the session, not a credentials/access issue on his account.
+
+**On restart:** check with `ToolSearch("plugin_product_atlassian")` (or similar) whether the
+server connects this time. If it does, resume this task: read the artifact at the URL above to
+confirm the exact parent page, draft the product-types diagram (Mermaid works natively in
+Confluence via the MCP tools, per past sessions' patterns — check `knowledge:search-knowledge`'s
+"Confluence MCP Behaviour" hivemind note for gotchas, e.g. live-page blockquote / large-page ADF
+issues), and publish as a child page. If it still fails to connect, tell Robert plainly rather
+than silently retrying, and offer the Artifact-based fallback again (previously declined once, in
+favor of waiting for Confluence — check if that preference still holds before assuming it).
+
 ## Keeping this in sync
 
 When a new decision is made (in conversation, in Confluence, or by editing the whiteboard),

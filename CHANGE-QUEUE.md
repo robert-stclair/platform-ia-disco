@@ -13,12 +13,18 @@
 Running list of requested changes to batch and implement together, instead of one at a time.
 Add to this as you type out requests; nothing here gets implemented until you say go.
 
-**Status: every batch through "Remove mobile top bar brand mark" was committed and deployed (both
-GitHub remotes + Heroku) on 2026-09-03.** The Rate plans topWidgets/Connectivities rename batch
-AND the full-page wizard batch below are NOT YET committed — confirm before assuming either is
-live. The only unfinished thread is the foundational property/cluster/brand scope switcher (its
-own section below) — Distribution's shape is explicitly unsolved there, not a queue item to
-implement yet. Add new requests to a fresh numbered list below this status block as they come in.
+**Status: every batch below, including the full-page wizard batch and its later mapping-step
+split (Direct Booking checkbox list vs. two-column SM/remote mapping for every other channel),
+was committed and deployed (both GitHub remotes + Heroku) as of 2026-09-03.** The only
+unfinished thread is the foundational property/cluster/brand scope switcher (its own section
+below) — Distribution's shape is explicitly unsolved there, not a queue item to implement yet.
+Add new requests to a fresh numbered list below this status block as they come in.
+
+**Also pending, blocked (not a queue item — see CONTEXT.md's "Pending: publish product-types IA
+diagram to Confluence" section for the full writeup):** publishing a product-types IA diagram to
+Confluence is blocked on the `plugin:product:atlassian` MCP server failing to connect
+(`getaddrinfo ENOTFOUND mcp.atlassian.com`) — a connectivity issue, not missing access (Robert has
+confirmed he can log into Confluence fine himself). Check on session restart whether it connects.
 
 ## Full-page modal / wizard — the first EDITING surface, plus its first instance (Add channel)
 
