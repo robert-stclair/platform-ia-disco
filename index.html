@@ -12,10 +12,15 @@
 <body>
   <div class="app-frame">
 
-    <!-- Mobile-only top bar (hidden on desktop via CSS breakpoint) — hamburger
-         opens the rail drawer; back arrow returns from canvas to the L2 list
-         (only shown once something's been drilled into); title is the current
-         rail section's own label, kept in sync by renderMobileChrome in main.js. -->
+    <!-- Mobile-only top bar (hidden on desktop via CSS breakpoint). Back
+         arrow and hamburger share ONE slot — never both at once, matching
+         standard mobile nav (showing both is redundant: back already leads
+         toward the drawer, one step at a time). Brand mark stays present
+         either way, same as the desktop rail's own brand square — a
+         constant "still the same app" anchor, distinct from the section
+         title next to it, which changes per screen. Title is the current
+         rail section's own label, kept in sync by renderMobileChrome in
+         main.js. -->
     <header class="mobile-topbar" id="mobileTopbar">
       <button class="mobile-topbar__icon-btn" id="mobileBack" aria-label="Back" hidden>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
@@ -23,6 +28,7 @@
       <button class="mobile-topbar__icon-btn" id="mobileMenu" aria-label="Open menu">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
+      <span class="mobile-topbar__brand-mark" aria-hidden="true"></span>
       <span class="mobile-topbar__title" id="mobileTopbarTitle"></span>
     </header>
 

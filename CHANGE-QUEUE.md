@@ -76,6 +76,22 @@ canvas to sit inside, which a narrow viewport gives them for free once the shell
    list-stays-visible split, which doesn't fit a single-column screen); AI assistant's chat-start
    screen drills in from its own New chat/History L2 the same way every other section does; dark
    mode renders correctly throughout the drawer/topbar/backdrop. No console errors at any point.
+6. **Correction: back arrow + hamburger were both showing at once, and the mobile top bar had no
+   brand mark.** Asked directly whether that combo was standard — it isn't: "the back arrow +
+   hamburger together isn't really a standard pattern... showing both permanently reads as
+   cluttered rather than considered." Fixed to the actual standard: ONE leading icon that swaps
+   between hamburger (at the L2 root) and back arrow (once drilled in) — never both — same
+   pattern persistent-hamburger apps like Gmail use. `renderMobileChrome` now computes a single
+   `showBack` flag and toggles `hidden` on BOTH `mobileBackEl`/`mobileMenuEl` from it, instead of
+   only ever touching the back arrow's own visibility. `noPanel` sections (Front desk) keep the
+   hamburger even while "drilled in," since there's no L2 to go back to there — verified directly
+   in LH account type. Also added a persistent brand mark (`.mobile-topbar__brand-mark`, same
+   dashed-placeholder treatment as the desktop rail's own `.rail__brand-mark` and the drawer
+   header's) next to the leading icon, staying visible whether the hamburger or back arrow is
+   showing — "maybe you can keep the brand present as well? i want to align with standard
+   patterns as much as possible." Verified in browser (light + dark, SM + LH account types):
+   exactly one of hamburger/back shows at any time, brand mark stays constant throughout. No
+   console errors.
 
 ## "Transactions" rail section renamed to "Operations"
 

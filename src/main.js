@@ -1342,7 +1342,15 @@ const UTILITY_SECTION_LABELS = {
 function renderMobileChrome(data) {
   const showingCanvas = Boolean(data.noPanel) || state.path.length > 0;
   appBodyEl.classList.toggle('is-mobile-canvas', showingCanvas);
-  mobileBackEl.hidden = !showingCanvas || Boolean(data.noPanel);
+  // Back arrow and hamburger occupy the SAME slot — never both at once (not
+  // a standard pattern; showing both is redundant since back already leads
+  // toward the drawer eventually, just one step at a time). Back only makes
+  // sense when there's an L2 to return to, so `noPanel` sections (Front
+  // desk) keep the hamburger even while "drilled in" — there's nothing to
+  // go back to at the L2 level, the hamburger is the only way to leave.
+  const showBack = showingCanvas && !data.noPanel;
+  mobileBackEl.hidden = !showBack;
+  mobileMenuEl.hidden = showBack;
 
   const items = getRailItems(state.accountType);
   const currentItem = items.find((i) => i.key === state.section);

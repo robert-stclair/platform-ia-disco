@@ -535,10 +535,23 @@ regress desktop.
 bar handles cleanly) and not a slide-over L2 (a drill-down maps directly
 onto this app's existing `state.path`/breadcrumb model).
 
-- **Top bar** (`#mobileTopbar` in `index.html`) — back arrow (hidden
-  unless something's been drilled into), hamburger, current section's
-  title. Rendered by `renderMobileChrome(data)` in `main.js`, called once
-  at the end of every `render()`.
+- **Top bar** (`#mobileTopbar` in `index.html`) — ONE leading icon that
+  swaps between hamburger (at the L2 root) and back arrow (once drilled
+  in) — NEVER both at once, a correction after the first version showed
+  both simultaneously: "the back arrow + hamburger together isn't really
+  a standard pattern... showing both permanently reads as cluttered." A
+  persistent brand mark (`.mobile-topbar__brand-mark`, same
+  dashed-placeholder treatment as the desktop rail's own
+  `.rail__brand-mark`) sits next to the leading icon regardless of which
+  one is showing — "i want to align with standard patterns as much as
+  possible," matching how a real product's brand identity stays constant
+  while only the leading control/title change. Then the current section's
+  title. `renderMobileChrome(data)` (`main.js`, called once at the end of
+  every `render()`) computes a single `showBack` flag
+  (`showingCanvas && !data.noPanel`) and toggles `hidden` on BOTH the back
+  button and the hamburger from it — `noPanel` sections (Front desk) keep
+  the hamburger even while "drilled in," since there's no L2 to go back to
+  there.
 - **Rail drawer** (`#mobileDrawer` + `#mobileDrawerBackdrop`) — a full
   overlay listing every `getRailItems()` section PLUS the 3 utility
   destinations (AI assistant/Notifications/My account) as one unified
