@@ -153,7 +153,7 @@ a { color: inherit; }
   border-top: 1px solid var(--border);
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -8px 24px rgba(15, 20, 26, 0.18);
-  padding: 10px 24px 28px;
+  padding: 8px 20px 18px;
   max-width: 480px;
   margin: 0 auto;
   /* Closed state deliberately leaves the handle + "Prototype settings" title
@@ -161,7 +161,7 @@ a { color: inherit; }
      stakeholder should notice this exists and is separate from the design,
      not stumble on it only via the `~` shortcut. Cursor/click on the peeking
      header opens the sheet the rest of the way, same as any other reveal. */
-  transform: translateY(calc(100% - 47px));
+  transform: translateY(calc(100% - 42px));
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   cursor: pointer;
 }
@@ -344,18 +344,18 @@ a { color: inherit; }
 }
 
 .settings-sheet__handle {
-  width: 36px;
+  width: 32px;
   height: 4px;
   border-radius: 2px;
   background: var(--border-strong);
-  margin: 0 auto 14px;
+  margin: 0 auto 10px;
 }
 
 .settings-sheet__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .settings-sheet__title {
@@ -368,9 +368,9 @@ a { color: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   border: none;
   background: transparent;
   color: var(--text-muted);
@@ -388,22 +388,22 @@ a { color: inherit; }
 }
 
 .settings-sheet__group + .settings-sheet__group {
-  margin-top: 20px;
+  margin-top: 12px;
 }
 
 .settings-sheet__label {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--text-secondary);
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .settings-sheet__hint {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--text-muted);
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .settings-sheet__hint a {
