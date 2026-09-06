@@ -914,6 +914,15 @@ const BOOKING_ENGINE_LIST = {
     },
     { key: 'branding', label: 'Branding', content: null },
     { key: 'website', label: 'Website', content: null },
+    // MP-only additions — "API" (programmatic access to Direct Booking) and
+    // "Group landing page" (a shared landing page across the group/chain,
+    // as distinct from each property's own Website above) only make sense
+    // once there's a group of properties to speak of. Uses the same
+    // `mpOnly` gate Config → Properties' Brands/Clusters tabs already use —
+    // `renderPanel`'s `list`-item filtering (main.js) applies it generically
+    // to any list, so no new gating code was needed, just these two items.
+    { key: 'api', label: 'API', content: null, mpOnly: true },
+    { key: 'group-landing-page', label: 'Group landing page', content: null, mpOnly: true },
   ],
 };
 

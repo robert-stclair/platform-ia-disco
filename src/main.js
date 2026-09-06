@@ -33,6 +33,11 @@ const state = {
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: false, // hidden-settings toggle: does every property have >1 connected system?
+  // Prototype-panel toggle: 'EN' | 'DE'. State only for now — no German
+  // translations exist yet, so this doesn't change any rendered label. Its
+  // purpose right now is just to establish the control's presence (same as
+  // how other prototype toggles started before their effects existed).
+  language: 'EN',
   // EXPLORATORY — property/cluster/brand scope switcher sketch (Insights,
   // Health check once built). See CHANGE-QUEUE.md "Foundational, unsolved"
   // section: this whole mechanism is still being worked through, expected
@@ -1717,6 +1722,17 @@ document.querySelectorAll('[data-system-count]').forEach((el) => {
       b.classList.toggle('is-active', b === el);
     });
     render();
+  });
+});
+
+document.querySelectorAll('[data-language]').forEach((el) => {
+  el.addEventListener('click', () => {
+    state.language = el.dataset.language;
+    document.querySelectorAll('[data-language]').forEach((b) => {
+      b.classList.toggle('is-active', b === el);
+    });
+    // No render() call — nothing reads state.language yet, see its own
+    // comment on the state object.
   });
 });
 
