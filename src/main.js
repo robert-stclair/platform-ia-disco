@@ -1741,49 +1741,41 @@ function wireThemeToggle() {
   });
 }
 
-// ---------- Hidden prototype settings sheet ----------
-// Not part of the product surface being wireframed — deliberately kept off the
-// visible UI. Toggle with the ~ key so it never appears in a screenshot/demo
-// unless summoned on purpose.
-const sheet = document.getElementById('settingsSheet');
-const backdrop = document.getElementById('sheetBackdrop');
-const closeBtn = document.getElementById('settingsClose');
+// ---------- Debug/prototype overlay layer ----------
+// Not part of the product surface being wireframed. Unlike the earlier
+// bottom-sheet version, this is deliberately ALWAYS visible (a small dark
+// corner tab, `#debugTab`) rather than hidden-by-default — "I want it
+// discoverable but distinct from the design." Distinctness comes from the
+// inverted dark chrome (see .debug-tab/.debug-panel CSS), not from hiding
+// it. The `~` key still toggles it too, as a secondary path.
+const debugTab = document.getElementById('debugTab');
+const debugPanel = document.getElementById('debugPanel');
+const debugClose = document.getElementById('debugClose');
 
-function openSheet() {
-  sheet.classList.add('is-open');
-  backdrop.classList.add('is-open');
+function openDebugPanel() {
+  debugPanel.hidden = false;
+  debugTab.setAttribute('aria-expanded', 'true');
 }
 
-function closeSheet() {
-  sheet.classList.remove('is-open');
-  backdrop.classList.remove('is-open');
+function closeDebugPanel() {
+  debugPanel.hidden = true;
+  debugTab.setAttribute('aria-expanded', 'false');
 }
 
-function toggleSheet() {
-  sheet.classList.contains('is-open') ? closeSheet() : openSheet();
+function toggleDebugPanel() {
+  debugPanel.hidden ? openDebugPanel() : closeDebugPanel();
 }
 
 window.addEventListener('keydown', (e) => {
   if (e.key === '`' || e.key === '~') {
     e.preventDefault();
-    toggleSheet();
+    toggleDebugPanel();
   } else if (e.key === 'Escape') {
-    closeSheet();
+    closeDebugPanel();
   }
 });
 
-backdrop.addEventListener('click', closeSheet);
-closeBtn.addEventListener('click', closeSheet);
-
-// The sheet now always peeks its handle+title above the fold (see
-// .settings-sheet's CSS comment) — clicking that peeking strip opens it,
-// same as the `~` shortcut. Only wire this while CLOSED and stop it from
-// also firing the close button's own click (which is inside the sheet too,
-// and would otherwise immediately re-close what this just opened).
-sheet.addEventListener('click', (e) => {
-  if (sheet.classList.contains('is-open')) return;
-  if (e.target.closest('#settingsClose')) return;
-  openSheet();
-});
+debugTab.addEventListener('click', toggleDebugPanel);
+debugClose.addEventListener('click', closeDebugPanel);
 
 render();

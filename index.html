@@ -95,46 +95,55 @@
     <ul class="mobile-drawer__list" id="mobileDrawerList"></ul>
   </nav>
 
-  <div class="sheet-backdrop" id="sheetBackdrop"></div>
-  <div class="settings-sheet" id="settingsSheet" role="dialog" aria-modal="true" aria-labelledby="settingsSheetTitle">
-    <div class="settings-sheet__header">
-      <h2 class="settings-sheet__title" id="settingsSheetTitle">Prototype settings</h2>
-      <button class="settings-sheet__close" id="settingsClose" aria-label="Close settings">
+  <!-- Debug/prototype overlay layer — deliberately dark-chrome and pinned to
+       a fixed corner, the visual opposite of the light product surface, so
+       it reads unmistakably as tooling rather than a product feature. Always
+       visible as a small pill (no peek-height mechanic to tune); expands
+       into a panel anchored to the same corner. -->
+  <button class="debug-tab" id="debugTab" aria-expanded="false" aria-controls="debugPanel">
+    <span class="debug-tab__dot"></span>
+    Debug
+  </button>
+
+  <div class="debug-panel" id="debugPanel" role="dialog" aria-modal="false" aria-labelledby="debugPanelTitle" hidden>
+    <div class="debug-panel__header">
+      <h2 class="debug-panel__title" id="debugPanelTitle">Prototype settings</h2>
+      <button class="debug-panel__close" id="debugClose" aria-label="Close settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 6l12 12M18 6L6 18"/></svg>
       </button>
     </div>
 
-    <div class="settings-sheet__group">
-      <div class="settings-sheet__label">Account type</div>
-      <div class="settings-sheet__hint">MP is a product some accounts have, independent of property count</div>
-      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Account type">
+    <div class="debug-panel__group">
+      <div class="debug-panel__label">Account type</div>
+      <div class="debug-panel__hint">MP is a product some accounts have, independent of property count</div>
+      <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="Account type">
         <button class="is-active" data-account-type="SM">SM</button>
         <button data-account-type="LH">LH</button>
         <button data-account-type="MP">MP</button>
       </div>
     </div>
 
-    <div class="settings-sheet__group">
-      <div class="settings-sheet__label">Number of properties</div>
-      <div class="settings-sheet__hint">Independent of account type</div>
-      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Property count">
+    <div class="debug-panel__group">
+      <div class="debug-panel__label">Number of properties</div>
+      <div class="debug-panel__hint">Independent of account type</div>
+      <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="Property count">
         <button class="is-active" data-property-count="single">Single</button>
         <button data-property-count="multiple">Multiple</button>
       </div>
     </div>
 
-    <div class="settings-sheet__group">
-      <div class="settings-sheet__label">Integrated systems</div>
-      <div class="settings-sheet__hint">Simulates how many systems a property has connected</div>
-      <div class="scope-toggle scope-toggle--sheet" role="tablist" aria-label="Integrated systems count">
+    <div class="debug-panel__group">
+      <div class="debug-panel__label">Integrated systems</div>
+      <div class="debug-panel__hint">Simulates how many systems a property has connected</div>
+      <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="Integrated systems count">
         <button class="is-active" data-system-count="single">Single system</button>
         <button data-system-count="multiple">Multiple systems</button>
       </div>
     </div>
 
-    <div class="settings-sheet__group">
-      <div class="settings-sheet__label">Live link</div>
-      <div class="settings-sheet__hint">
+    <div class="debug-panel__group">
+      <div class="debug-panel__label">Live link</div>
+      <div class="debug-panel__hint">
         <a href="https://platform-ia-disco-rsc-6b3452000036.herokuapp.com/" target="_blank" rel="noopener">platform-ia-disco-rsc-6b3452000036.herokuapp.com</a>
         &mdash; auth: <code>platform-ia</code> / <code>futurestate</code>
       </div>
