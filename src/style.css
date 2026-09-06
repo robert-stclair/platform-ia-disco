@@ -171,7 +171,7 @@ a { color: inherit; }
      a couple px of radius is enough, not the 16px a real bottom sheet gets. */
   border-radius: 2px 2px 0 0;
   box-shadow: 0 -8px 24px rgba(15, 20, 26, 0.18);
-  padding: 6px 20px 18px;
+  padding: 4px 20px 18px;
   max-width: 480px;
   margin: 0 auto;
   /* Closed state deliberately leaves just the small all-caps "PROTOTYPE
@@ -180,7 +180,7 @@ a { color: inherit; }
      from the design, not stumble on it only via the `~` shortcut. No handle
      bar — the heading itself IS the peek, capped at ~20px visible. Click
      anywhere on the peeking strip to open the sheet the rest of the way. */
-  transform: translateY(calc(100% - 20px));
+  transform: translateY(calc(100% - 24px));
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   cursor: pointer;
 }
