@@ -161,7 +161,7 @@ a { color: inherit; }
      stakeholder should notice this exists and is separate from the design,
      not stumble on it only via the `~` shortcut. Cursor/click on the peeking
      header opens the sheet the rest of the way, same as any other reveal. */
-  transform: translateY(calc(100% - 60px));
+  transform: translateY(calc(100% - 47px));
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   cursor: pointer;
 }
