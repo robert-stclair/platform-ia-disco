@@ -156,12 +156,19 @@ a { color: inherit; }
   padding: 10px 24px 28px;
   max-width: 480px;
   margin: 0 auto;
-  transform: translateY(100%);
+  /* Closed state deliberately leaves the handle + "Prototype settings" title
+     peeking above the fold (not translateY(100%), fully off-screen) — a
+     stakeholder should notice this exists and is separate from the design,
+     not stumble on it only via the `~` shortcut. Cursor/click on the peeking
+     header opens the sheet the rest of the way, same as any other reveal. */
+  transform: translateY(calc(100% - 60px));
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  cursor: pointer;
 }
 
 .settings-sheet.is-open {
   transform: translateY(0);
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {

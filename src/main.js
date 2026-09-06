@@ -1775,4 +1775,15 @@ window.addEventListener('keydown', (e) => {
 backdrop.addEventListener('click', closeSheet);
 closeBtn.addEventListener('click', closeSheet);
 
+// The sheet now always peeks its handle+title above the fold (see
+// .settings-sheet's CSS comment) — clicking that peeking strip opens it,
+// same as the `~` shortcut. Only wire this while CLOSED and stop it from
+// also firing the close button's own click (which is inside the sheet too,
+// and would otherwise immediately re-close what this just opened).
+sheet.addEventListener('click', (e) => {
+  if (sheet.classList.contains('is-open')) return;
+  if (e.target.closest('#settingsClose')) return;
+  openSheet();
+});
+
 render();
