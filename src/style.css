@@ -97,6 +97,22 @@ a { color: inherit; }
   transition: background 0.12s ease, color 0.12s ease;
 }
 
+/* Settings sheet's toggles (Account type / Number of properties / Integrated
+   systems) span the sheet's full width but previously packed buttons flush
+   left, leaving uneven trailing whitespace — each button now shares the
+   pill's width equally instead of sizing to its own label. Radius also
+   flattened here specifically (not on the shared .scope-toggle rule, which
+   the real Preferences theme toggle also uses) — this is a debug panel. */
+.scope-toggle--sheet {
+  border-radius: 2px;
+}
+
+.scope-toggle--sheet button {
+  flex: 1;
+  text-align: center;
+  border-radius: 1px;
+}
+
 .scope-toggle button.is-active {
   background: var(--surface);
   color: var(--text);
@@ -151,17 +167,20 @@ a { color: inherit; }
   z-index: 50;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  border-radius: 16px 16px 0 0;
+  /* This is a debug/prototype panel, not a polished product surface —
+     a couple px of radius is enough, not the 16px a real bottom sheet gets. */
+  border-radius: 2px 2px 0 0;
   box-shadow: 0 -8px 24px rgba(15, 20, 26, 0.18);
-  padding: 8px 20px 18px;
+  padding: 6px 20px 18px;
   max-width: 480px;
   margin: 0 auto;
-  /* Closed state deliberately leaves the handle + "Prototype settings" title
-     peeking above the fold (not translateY(100%), fully off-screen) — a
-     stakeholder should notice this exists and is separate from the design,
-     not stumble on it only via the `~` shortcut. Cursor/click on the peeking
-     header opens the sheet the rest of the way, same as any other reveal. */
-  transform: translateY(calc(100% - 42px));
+  /* Closed state deliberately leaves just the small all-caps "PROTOTYPE
+     SETTINGS" heading peeking above the fold (not translateY(100%), fully
+     off-screen) — a stakeholder should notice this exists and is separate
+     from the design, not stumble on it only via the `~` shortcut. No handle
+     bar — the heading itself IS the peek, capped at ~20px visible. Click
+     anywhere on the peeking strip to open the sheet the rest of the way. */
+  transform: translateY(calc(100% - 20px));
   transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
   cursor: pointer;
 }
@@ -343,14 +362,6 @@ a { color: inherit; }
   color: var(--text);
 }
 
-.settings-sheet__handle {
-  width: 32px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border-strong);
-  margin: 0 auto 10px;
-}
-
 .settings-sheet__header {
   display: flex;
   align-items: center;
@@ -359,8 +370,11 @@ a { color: inherit; }
 }
 
 .settings-sheet__title {
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -370,7 +384,7 @@ a { color: inherit; }
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 6px;
+  border-radius: 2px;
   border: none;
   background: transparent;
   color: var(--text-muted);
