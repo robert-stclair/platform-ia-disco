@@ -11,6 +11,127 @@ import {
 import { RAIL_ICONS } from './icons.js';
 
 // ---------------------------------------------------------------------------
+// German label lookup — used ONLY to stress-test the layout against longer
+// real-world strings (German UI copy tends to run noticeably longer than
+// English), NOT a real i18n feature: no pluralization/interpolation/locale
+// logic, just a flat swap of nav labels via `tr()` below. Deliberately does
+// NOT cover the prototype debug panel's own labels (Account type, Language,
+// etc.) — that panel is tooling, not part of the design being tested, so it
+// stays English-only regardless of this toggle. Covers every `label` value
+// in nav-data.js as of this writing; a label with no entry here just passes
+// through unchanged (harmless, not an error) if a new one is added later.
+const DE_LABELS = {
+  'AI assistant': 'KI-Assistent',
+  'My account': 'Mein Konto',
+  'Add channel': 'Kanal hinzufügen',
+  '6 sections complete': '6 Abschnitte vollständig',
+  '4 room types': '4 Zimmertypen',
+  '7 photos uploaded': '7 Fotos hochgeladen',
+  '5 channels connected, 2 awaiting setup': '5 Kanäle verbunden, 2 Einrichtungen ausstehend',
+  '0 systems connected': '0 Systeme verbunden',
+  'users': 'Benutzer',
+  'Back': 'Zurück',
+  'Next': 'Weiter',
+  'Done': 'Fertig',
+  'Choose channel': 'Kanal auswählen',
+  'Choose a channel to add': 'Kanal zum Hinzufügen auswählen',
+  'Configure mapping': 'Zuordnung konfigurieren',
+  'SM rate': 'SM-Rate',
+  'Channel': 'Kanal',
+  'rate': 'Rate',
+  'Rates to publish': 'Zu veröffentlichende Raten',
+  'Performance': 'Leistung',
+  'Adoption': 'Akzeptanz',
+  'About page': 'Info-Seite',
+  'Accepted payments': 'Akzeptierte Zahlungsarten',
+  'Add products': 'Produkte hinzufügen',
+  'API': 'API',
+  'Automated payments': 'Automatisierte Zahlungen',
+  'Booking rules': 'Buchungsregeln',
+  'Branding': 'Markengestaltung',
+  'Brands': 'Marken',
+  'Calendar': 'Kalender',
+  'Channel comparison': 'Kanalvergleich',
+  'Channels': 'Kanäle',
+  'Channels Plus': 'Channels Plus',
+  'Charts': 'Diagramme',
+  'Clusters': 'Cluster',
+  'Communication': 'Kommunikation',
+  'Configuration': 'Konfiguration',
+  'Contact page': 'Kontaktseite',
+  'Dashboard': 'Übersicht',
+  'Dashboards': 'Übersichten',
+  'Direct Booking': 'Direktbuchung',
+  'Distribution': 'Vertrieb',
+  'Dynamic pricing': 'Dynamische Preisgestaltung',
+  'Email settings': 'E-Mail-Einstellungen',
+  'Extras': 'Zusatzleistungen',
+  'Front desk': 'Rezeption',
+  'General information': 'Allgemeine Informationen',
+  'Group landing page': 'Gruppen-Landingpage',
+  'Guest communications': 'Gästekommunikation',
+  'Guest details': 'Gästedetails',
+  'Health check': 'Zustandsprüfung',
+  'History': 'Verlauf',
+  'Insights': 'Einblicke',
+  'Integrated systems': 'Integrierte Systeme',
+  'Inventory': 'Bestand',
+  'Invoices': 'Rechnungen',
+  'Logout': 'Abmelden',
+  'Media library': 'Medienbibliothek',
+  'Metasearch': 'Metasuche',
+  'My insights': 'Meine Einblicke',
+  'New chat': 'Neuer Chat',
+  'Notification': 'Benachrichtigung',
+  'Notifications': 'Benachrichtigungen',
+  'Operations': 'Betrieb',
+  'Overview': 'Übersicht',
+  'Pay': 'Zahlungsabwicklung',
+  'Payment requests': 'Zahlungsanforderungen',
+  'Payments': 'Zahlungen',
+  'Payouts': 'Auszahlungen',
+  'Policies': 'Richtlinien',
+  'Policies page': 'Richtlinienseite',
+  'Portfolio health': 'Portfolio-Zustand',
+  'Preferences': 'Einstellungen',
+  'Products': 'Produkte',
+  'Profile': 'Profil',
+  'Promotions': 'Aktionen',
+  'Properties': 'Unterkünfte',
+  'Property': 'Unterkunft',
+  'Property details': 'Unterkunftsdetails',
+  'Property settings': 'Unterkunftseinstellungen',
+  'Rate plan': 'Ratenplan',
+  'Rate plans': 'Ratenpläne',
+  'Recommendations': 'Empfehlungen',
+  'Reservations': 'Reservierungen',
+  'Room types': 'Zimmertypen',
+  'Rooms': 'Zimmer',
+  'Security': 'Sicherheit',
+  'Selling tools': 'Verkaufstools',
+  'Service charges': 'Servicegebühren',
+  'Services': 'Leistungen',
+  'Setup': 'Einrichtung',
+  'Support code': 'Support-Code',
+  'Taxes': 'Steuern',
+  'Transactions': 'Transaktionen',
+  'Translations': 'Übersetzungen',
+  'User': 'Benutzer',
+  'User details': 'Benutzerdetails',
+  'Users': 'Benutzer',
+  'Virtual terminal': 'Virtuelles Terminal',
+  'Website': 'Webseite',
+  'Weekly performance': 'Wöchentliche Leistung',
+  'Yield rule': 'Ertragsregel',
+  'Yield rules': 'Ertragsregeln',
+};
+
+function tr(label) {
+  if (state.language !== 'DE') return label;
+  return DE_LABELS[label] || label;
+}
+
+// ---------------------------------------------------------------------------
 // Navigation state is a PATH: an array of selected keys, one per depth level,
 // starting from the current section's top-level panel item. Depth 0 = which
 // top-level item is routed/showing in the canvas; depth 1 = which item
@@ -33,10 +154,13 @@ const state = {
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: false, // hidden-settings toggle: does every property have >1 connected system?
-  // Prototype-panel toggle: 'EN' | 'DE'. State only for now — no German
-  // translations exist yet, so this doesn't change any rendered label. Its
-  // purpose right now is just to establish the control's presence (same as
-  // how other prototype toggles started before their effects existed).
+  // Prototype-panel toggle: 'EN' | 'DE'. Swaps nav labels via `tr()` (see its
+  // definition near the top of this file, alongside DE_LABELS) — a LAYOUT
+  // stress test, not real i18n: no pluralization/interpolation, and the
+  // prototype panel's own labels are deliberately excluded (that panel is
+  // tooling, not part of the design being tested). Purpose is checking
+  // whether rail tooltips, panel list items, tabs, breadcrumbs, tile titles,
+  // etc. accommodate German's typically longer strings without breaking.
   language: 'EN',
   // EXPLORATORY — property/cluster/brand scope switcher sketch (Insights,
   // Health check once built). See CHANGE-QUEUE.md "Foundational, unsolved"
@@ -348,7 +472,7 @@ function renderRail() {
   const items = getRailItems(state.accountType);
   railEl.innerHTML = items.map(
     (item) => `
-      <button class="rail-item${item.key === state.section ? ' is-active' : ''}" data-section="${item.key}" title="${item.label}" aria-label="${item.label}">
+      <button class="rail-item${item.key === state.section ? ' is-active' : ''}" data-section="${item.key}" title="${tr(item.label)}" aria-label="${tr(item.label)}">
         <span class="rail-item__icon">${RAIL_ICONS[item.icon] ?? ''}</span>
       </button>
     `
@@ -541,7 +665,7 @@ function renderPanel(data) {
     if (item.heading) {
       // Grouping heading — plain label, never clickable/routable/expandable.
       // See PATTERNS.md's folder-vs-heading rule.
-      html += `<li class="nav-list-heading">${item.label}</li>`;
+      html += `<li class="nav-list-heading">${tr(item.label)}</li>`;
       return;
     }
     const hasList = item.content?.type === 'list';
@@ -579,7 +703,7 @@ function renderPanel(data) {
     // actionIcon + label grouped in their own span so the flex row's
     // justify-content: space-between still only splits "label side" from
     // "star/chevron side" into two groups, not three separate items.
-    const labelGroup = actionIcon ? `<span class="nav-list-item__label-group">${actionIcon}${item.label}</span>` : item.label;
+    const labelGroup = actionIcon ? `<span class="nav-list-item__label-group">${actionIcon}${tr(item.label)}</span>` : tr(item.label);
     html += `
       <li class="nav-list-item${isRouted ? ' is-active' : ''}${isOpen ? ' is-open' : ''}">
         <a href="#" data-item-key="${item.key}">${labelGroup}${star}${badge}${chevron}</a>
@@ -599,7 +723,7 @@ function renderPanel(data) {
       html += `<ul class="nav-sublist">${children
         .map(
           (s) =>
-            `<li><a href="#" data-path-key="${childPathIndex}:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${s.label}</a></li>`
+            `<li><a href="#" data-path-key="${childPathIndex}:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${tr(s.label)}</a></li>`
         )
         .join('')}</ul>`;
     }
@@ -766,7 +890,7 @@ function renderChainBody(chain, i) {
         ? ''
         : `<div class="tab-strip">` +
           step.options
-            .map((t) => `<button class="tab${t.key === selectedKey ? ' is-active' : ''}" data-path-key="${pathIndex}:${t.key}">${t.label}</button>`)
+            .map((t) => `<button class="tab${t.key === selectedKey ? ' is-active' : ''}" data-path-key="${pathIndex}:${t.key}">${tr(t.label)}</button>`)
             .join('') +
           `</div>`;
     const inner = renderChainBody(chain, i + 1);
@@ -1002,8 +1126,14 @@ function renderNavDashboard(tiles, depth) {
   return `<div class="nav-dashboard">${tiles
     .map((t) => {
       const routeKey = t.linksToTab ?? t.key;
-      const stat = t.stat
-        ? `<span class="nav-dashboard__tile-stat">${t.stat}</span>`
+      // `t.stat` is a literal, translatable via `tr()` directly.
+      // `t.statCount`/`t.statUnitKey` (e.g. the Users tile's "N users") is
+      // for stats with a real interpolated number baked in, where `tr()`'s
+      // exact-match lookup can't work on the templated string as a whole —
+      // only the unit word gets translated, the count stays as-is either way.
+      const statText = t.stat ?? (t.statCount !== undefined ? `${t.statCount} ${tr(t.statUnitKey)}` : null);
+      const stat = statText
+        ? `<span class="nav-dashboard__tile-stat">${tr(statText)}</span>`
         : `<div class="nav-dashboard__tile-stat-skel"></div>`;
       // `t.tip`'s actual text does NOT render here — three-plus red chips
       // sitting on one dashboard read as alarm, not "optimize" (the user's
@@ -1018,7 +1148,7 @@ function renderNavDashboard(tiles, depth) {
         <a href="#" class="nav-dashboard__tile" data-path-key="${depth}:${routeKey}">
           <div class="nav-dashboard__tile-metric-skel"></div>
           <span class="nav-dashboard__tile-body">
-            <span class="nav-dashboard__tile-title">${t.label}${tipDot}</span>
+            <span class="nav-dashboard__tile-title">${tr(t.label)}${tipDot}</span>
             ${stat}
           </span>
           <svg class="nav-dashboard__tile-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
@@ -1056,13 +1186,13 @@ function renderTileTipBanner(tip) {
 // `content.extraSections` (optional): [{ title, content: { type:'sketch', ... } }],
 // rendered below the tile grid, each with its own `.nav-dashboard-page__section-title`.
 function renderNavDashboardPage(content, tiles, depth) {
-  const titleHtml = content.title ? `<h2 class="nav-dashboard-page__title">${content.title}</h2>` : '';
+  const titleHtml = content.title ? `<h2 class="nav-dashboard-page__title">${tr(content.title)}</h2>` : '';
   const tileGrid = renderNavDashboard(tiles, depth);
   const extraSections = (content.extraSections ?? [])
     .map(
       (s) => `
         <div class="nav-dashboard-page__section">
-          <h3 class="nav-dashboard-page__section-title">${s.title}</h3>
+          <h3 class="nav-dashboard-page__section-title">${tr(s.title)}</h3>
           ${renderSketch(s.content)}
         </div>
       `
@@ -1113,7 +1243,7 @@ const WIZARD_DEFINITIONS = {
       {
         title: 'Choose channel',
         render: (wizard) => `
-          <h2 class="wizard-step__title">Choose a channel to add</h2>
+          <h2 class="wizard-step__title">${tr('Choose a channel to add')}</h2>
           <ul class="wf-list wizard-channel-picker">${ALL_DISTRIBUTION_CHANNELS.map(
             (name) => `
               <li>
@@ -1140,7 +1270,7 @@ const WIZARD_DEFINITIONS = {
         //   rate IS a rate plan × room type combination.
         title: 'Configure mapping',
         render: (wizard) =>
-          `<h2 class="wizard-step__title">Configure mapping</h2>` +
+          `<h2 class="wizard-step__title">${tr('Configure mapping')}</h2>` +
           (wizard.data.channel === 'Direct Booking' ? renderDirectBookingMappingSketch() : renderRemoteMappingSketch(wizard.data.channel)),
       },
     ],
@@ -1168,8 +1298,8 @@ function breadcrumbHtml(trail) {
       .map((t, i) => {
         const isLast = i === visibleTrail.length - 1;
         const piece = isLast
-          ? `<span class="breadcrumb__current">${t.label}</span>`
-          : `<a href="#" data-crumb-truncate="${t.truncateTo}">${t.label}</a>`;
+          ? `<span class="breadcrumb__current">${tr(t.label)}</span>`
+          : `<a href="#" data-crumb-truncate="${t.truncateTo}">${tr(t.label)}</a>`;
         return i === 0 ? piece : `<span class="breadcrumb__sep">/</span>${piece}`;
       })
       .join('') +
@@ -1242,9 +1372,9 @@ function renderRemoteMappingSketch(channelName) {
   return `
     <div class="sketch-section mapping-cols">
       <div class="mapping-cols__headings">
-        <h3 class="sketch-section__title">SM rate</h3>
+        <h3 class="sketch-section__title">${tr('SM rate')}</h3>
         <span></span>
-        <h3 class="sketch-section__title">${channelName || 'Channel'} rate</h3>
+        <h3 class="sketch-section__title">${channelName || tr('Channel')} ${tr('rate')}</h3>
       </div>
       ${Array(4).fill(row()).join('')}
     </div>
@@ -1255,12 +1385,12 @@ function renderRemoteMappingSketch(channelName) {
 // go live," so a checkbox list rather than a two-system mapping.
 function renderDirectBookingMappingSketch() {
   const row = () => `<label class="mapping-check-row"><input type="checkbox" checked /><div class="sketch-skel-value"></div></label>`;
-  return `<div class="sketch-section"><h3 class="sketch-section__title">Rates to publish</h3>${Array(4).fill(row()).join('')}</div>`;
+  return `<div class="sketch-section"><h3 class="sketch-section__title">${tr('Rates to publish')}</h3>${Array(4).fill(row()).join('')}</div>`;
 }
 
 function renderSectionsSketch(sections) {
   return `<div class="sketch-sections">${sections
-    .map((s) => `<div class="sketch-section"><h3 class="sketch-section__title">${s.title}</h3>${renderSectionShape(s.shape)}</div>`)
+    .map((s) => `<div class="sketch-section"><h3 class="sketch-section__title">${tr(s.title)}</h3>${renderSectionShape(s.shape)}</div>`)
     .join('')}</div>`;
 }
 
@@ -1282,7 +1412,7 @@ function renderSketch(content) {
     return `<div class="sketch-dashboard-cards">${content.cards
       .map((c) => {
         const title = c.title
-          ? `<h3 class="sketch-dashboard-card__title">${c.title}</h3>`
+          ? `<h3 class="sketch-dashboard-card__title">${tr(c.title)}</h3>`
           : `<div class="sketch-dashboard-card__title-skel"></div>`;
         return `<div class="sketch-dashboard-card">${title}<div class="sketch-dashboard-card__${c.shape === 'stat' ? 'stat' : 'chart'}"></div></div>`;
       })
@@ -1411,7 +1541,7 @@ function renderSketch(content) {
       <div class="channel-rates">
         <button class="channel-rates__add-btn" data-wizard-open="add-channel">
           <span class="nav-list-item__action-icon" aria-hidden="true">+</span>
-          Add channel
+          ${tr('Add channel')}
         </button>
         ${channelCards}
       </div>
@@ -1496,14 +1626,15 @@ function renderWizard() {
   wizardStepsEl.innerHTML = steps
     .map((s, i) => {
       const stepState = i < currentStep ? 'is-done' : i === currentStep ? 'is-current' : '';
-      return `<span class="wizard__step ${stepState}">${i + 1}. ${s.title}</span>`;
+      return `<span class="wizard__step ${stepState}">${i + 1}. ${tr(s.title)}</span>`;
     })
     .join('<span class="wizard__step-sep" aria-hidden="true"></span>');
 
   wizardBodyEl.innerHTML = steps[currentStep].render(wizard);
 
   wizardBackEl.hidden = currentStep === 0;
-  wizardNextEl.textContent = isLastStep ? 'Done' : 'Next';
+  wizardBackEl.textContent = tr('Back');
+  wizardNextEl.textContent = isLastStep ? tr('Done') : tr('Next');
 
   wizardBodyEl.querySelectorAll('[data-wizard-select]').forEach((el) => {
     el.addEventListener('click', (e) => {
@@ -1610,7 +1741,7 @@ function renderMobileChrome(data) {
 
   const items = getRailItems(state.accountType);
   const currentItem = items.find((i) => i.key === state.section);
-  mobileTopbarTitleEl.textContent = currentItem?.label ?? UTILITY_SECTION_LABELS[state.section] ?? '';
+  mobileTopbarTitleEl.textContent = tr(currentItem?.label ?? UTILITY_SECTION_LABELS[state.section] ?? '');
 }
 
 mobileBackEl.addEventListener('click', () => {
@@ -1647,7 +1778,7 @@ function renderMobileDrawer() {
         <li>
           <button class="mobile-drawer__item${item.key === state.section ? ' is-active' : ''}" data-drawer-section="${item.key}">
             <span class="mobile-drawer__item-icon" aria-hidden="true">${RAIL_ICONS[item.icon] ?? ''}</span>
-            ${item.label}
+            ${tr(item.label)}
           </button>
         </li>
       `
@@ -1662,7 +1793,7 @@ function renderMobileDrawer() {
       (u) => `
         <li>
           <button class="mobile-drawer__item${u.key === state.section ? ' is-active' : ''}" data-drawer-section="${u.key}">
-            ${u.label}
+            ${tr(u.label)}
           </button>
         </li>
       `
@@ -1731,8 +1862,7 @@ document.querySelectorAll('[data-language]').forEach((el) => {
     document.querySelectorAll('[data-language]').forEach((b) => {
       b.classList.toggle('is-active', b === el);
     });
-    // No render() call — nothing reads state.language yet, see its own
-    // comment on the state object.
+    render();
   });
 });
 

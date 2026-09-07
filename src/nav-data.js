@@ -477,7 +477,8 @@ function buildPropertyNode(showProperties) {
                   // varies the way Property's key does.
                   homeItemKey: 'users',
                 },
-                stat: `${SAMPLE_USERS.length} users`,
+                statCount: SAMPLE_USERS.length,
+                statUnitKey: 'users',
               },
             ]
           : []),

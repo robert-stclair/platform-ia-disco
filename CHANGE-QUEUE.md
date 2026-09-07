@@ -16,12 +16,12 @@ Add to this as you type out requests; nothing here gets implemented until you sa
 **Status: every batch below, including the full-page wizard batch, its later mapping-step split
 (Direct Booking checkbox list vs. two-column SM/remote mapping for every other channel), the
 prototype debug-panel rebuild (always-visible dark corner tab, replacing the earlier peeking
-light sheet), its Language (EN/DE, state-only) toggle, and Direct Booking's MP-only "API"/"Group
-landing page" items, was committed and deployed (both GitHub remotes + Heroku) as of
-2026-09-07.** The only unfinished thread is the foundational property/cluster/brand scope
-switcher (its own section below) — Distribution's shape is explicitly unsolved there, not a
-queue item to implement yet. Add new requests to a fresh numbered list below this status block
-as they come in.
+light sheet), its Language (EN/DE) toggle — now backed by real German copy via `tr()`/`DE_LABELS`
+— and Direct Booking's MP-only "API"/"Group landing page" items, was committed and deployed (both
+GitHub remotes + Heroku) as of 2026-09-07.** The only unfinished thread is the foundational
+property/cluster/brand scope switcher (its own section below) — Distribution's shape is
+explicitly unsolved there, not a queue item to implement yet. Add new requests to a fresh
+numbered list below this status block as they come in.
 
 ## Prototype debug panel rebuilt; Language toggle; Direct Booking MP-only items
 
@@ -34,10 +34,19 @@ as they come in.
    corner — no backdrop, since this is a floating tool layer, not a modal blocking the product.
    Colors are hardcoded hex, independent of the app's own light/dark theme, so the panel stays
    visually distinct in either mode. `~` key still toggles it; Escape closes it.
-2. **Language toggle (EN/DE) added to the panel** — `state.language`, state-only for now: no
-   German translations exist for any nav label, so DE doesn't change anything rendered yet. Its
-   purpose right now is just to establish the control's presence, same as how other prototype
-   toggles (account type, property count) started before their effects existed.
+2. **Language toggle (EN/DE) added to the panel, backed by real German copy** — `state.language`
+   plus a `tr(label)` helper and `DE_LABELS` lookup (`main.js`), covering rail tooltips, panel
+   list items/headings, tabs, breadcrumbs, nav-dashboard tile titles AND their stat lines (e.g.
+   "6 sections complete" → "6 Abschnitte vollständig"), sketch-section titles, the mobile drawer,
+   and the Add-channel wizard's step titles/headings/Back-Next-Done buttons. Deliberately a LAYOUT
+   STRESS TEST, not real i18n — "dont translate the settings panel though - this is just to see
+   if the surfaces accommodate longer strings" (German UI copy tends to run noticeably longer than
+   English): no pluralization/interpolation logic, the debug panel's own labels are excluded on
+   purpose (it's tooling, not the design under test), and real product/brand/record names (channel
+   names, sample property/rate-plan names) are never touched — only structural nav-data `label`/
+   `title`/`stat` strings. Caught live and fixed: "Dynamische Preisgestaltung" (Dynamic pricing)
+   wraps to two lines in the L2 panel — exactly the kind of accommodation issue this exists to
+   surface, left as-is rather than "fixed," since surfacing it IS the point.
 3. **Direct Booking gains "API" and "Group landing page," MP-only** — two new flat items appended
    to `BOOKING_ENGINE_LIST` (`nav-data.js`) with `mpOnly: true`, reusing the exact same gate
    Config → Properties' Brands/Clusters tabs already use (`renderPanel`'s list-item filtering in
