@@ -13,7 +13,8 @@ Parent proposal: [Platform 2.0 — draft proposal](https://siteminder-jira.atlas
 IA diagram (v2, current): [Platform 2.0 — IA node tree v2](https://siteminder-jira.atlassian.net/wiki/spaces/SMD/pages/1245609992/Platform+2.0+IA+node+tree+v2)
 
 Local: http://localhost:5173/ (after `npm run dev`)
-Deployed: [platform-ia-disco-rsc-6b3452000036.herokuapp.com](https://platform-ia-disco-rsc-6b3452000036.herokuapp.com/) — auth: `platform-ia` / `futurestate`
+Deployed (v2): [platform-ia-disco-v2-1496341690fb.herokuapp.com](https://platform-ia-disco-v2-1496341690fb.herokuapp.com/) — auth: `platform-ia` / `futurestate`
+Deployed (v1, for comparison): [platform-ia-disco-rsc-6b3452000036.herokuapp.com](https://platform-ia-disco-rsc-6b3452000036.herokuapp.com/) — auth: `platform-ia` / `futurestate`
 
 ## Dev
 
