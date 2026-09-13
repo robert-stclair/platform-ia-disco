@@ -10,6 +10,10 @@ threads, and links back to Confluence.
 
 Working log / decisions: [IA schemes — prototyping](https://siteminder-jira.atlassian.net/wiki/spaces/SMD/pages/1197277194/IA+schemes+prototyping)
 Parent proposal: [Platform 2.0 — draft proposal](https://siteminder-jira.atlassian.net/wiki/spaces/SMD/pages/1185284102/Platform+2.0+draft+proposal)
+IA diagram (v2, current): [Platform 2.0 — IA node tree v2](https://siteminder-jira.atlassian.net/wiki/spaces/SMD/pages/1245609992/Platform+2.0+IA+node+tree+v2)
+
+Local: http://localhost:5173/ (after `npm run dev`)
+Deployed: [platform-ia-disco-rsc-6b3452000036.herokuapp.com](https://platform-ia-disco-rsc-6b3452000036.herokuapp.com/) — auth: `platform-ia` / `futurestate`
 
 ## Dev
 
