@@ -970,6 +970,89 @@ const YIELD_RULE_NODE = {
   content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Yield rule', shape: 'field' }] },
 };
 
+// Operations' real row content (Confluence "IA node tree v2" — Reservations
+// as a Table, Guest communications as a List, Payments' 4 tabs each as a
+// Table, Automated payments as a List). All of these were previously
+// unbuilt stubs (sketch:'list' with no real rows, or content: null) per
+// the "we can work through the details later" caveat when the scope
+// switcher was first added — now built out with the same generic
+// `records` + shared-detail-node pattern as Rate plans/Yield rules/
+// Properties/Users, using exactly the illustrative row names Confluence's
+// tree gives for each ("Reservation 4021, 4022, 4023…", etc.), and the
+// same "start simple" shared detail node YIELD_RULE_NODE uses (one
+// titled field-shaped section, not invented structure).
+const SAMPLE_RESERVATIONS = ['Reservation 4021', 'Reservation 4022', 'Reservation 4023', 'Reservation 4024'];
+const RESERVATION_NODE = {
+  key: 'reservation',
+  label: 'Reservation',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Reservation', shape: 'field' }] },
+};
+
+const SAMPLE_GUEST_COMMS = ['Pre-arrival', 'Confirmation', 'Post-stay'];
+const GUEST_COMM_NODE = {
+  key: 'guest-communication',
+  label: 'Guest communication',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Guest communication', shape: 'field' }] },
+};
+
+const SAMPLE_TRANSACTIONS = ['Transaction 1', 'Transaction 2', 'Transaction 3', 'Transaction 4'];
+const TRANSACTION_NODE = {
+  key: 'transaction',
+  label: 'Transaction',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Transaction', shape: 'field' }] },
+};
+
+const SAMPLE_PAYOUTS = ['Payout 1', 'Payout 2', 'Payout 3'];
+const PAYOUT_NODE = {
+  key: 'payout',
+  label: 'Payout',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Payout', shape: 'field' }] },
+};
+
+const SAMPLE_INVOICES = ['Invoice 1', 'Invoice 2', 'Invoice 3'];
+const INVOICE_NODE = {
+  key: 'invoice',
+  label: 'Invoice',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Invoice', shape: 'field' }] },
+};
+
+const SAMPLE_PAYMENT_REQUESTS = ['Request 1', 'Request 2', 'Request 3'];
+const PAYMENT_REQUEST_NODE = {
+  key: 'payment-request',
+  label: 'Payment request',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Payment request', shape: 'field' }] },
+};
+
+// Shared by BOTH Automated payments homes (Operations > Payments'
+// "Automated payments" tab, AND Configuration > Pay's own "Automated
+// payments" item) — same rows, same rule detail, since Confluence's tree
+// shows identical "Rule 1, Rule 2, Rule 3…" content in both places.
+const SAMPLE_AUTOMATED_PAYMENT_RULES = ['Rule 1', 'Rule 2', 'Rule 3'];
+const AUTOMATED_PAYMENT_RULE_NODE = {
+  key: 'automated-payment-rule',
+  label: 'Automated payment rule',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Automated payment rule', shape: 'field' }] },
+};
+
+// Configuration > Pay's own Taxes/Service charges (real confirmed names
+// from Confluence's tree, not illustrative placeholders — "City Tax, VAT,
+// Tourist Tax…" / "Resort Fee, Cleaning Fee, Booking Fee…"). Virtual
+// terminal/Accepted payments stay content:null — Confluence's tree shows
+// no sub-list under either.
+const SAMPLE_TAXES = ['City Tax', 'VAT', 'Tourist Tax'];
+const TAX_NODE = {
+  key: 'tax',
+  label: 'Tax',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Tax', shape: 'field' }] },
+};
+
+const SAMPLE_SERVICE_CHARGES = ['Resort Fee', 'Cleaning Fee', 'Booking Fee'];
+const SERVICE_CHARGE_NODE = {
+  key: 'service-charge',
+  label: 'Service charge',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Service charge', shape: 'field' }] },
+};
+
 // Default: one connected system — 'systems' content collapses straight to
 // its sections, no system list.
 export const DEFAULT_SYSTEMS = ['Opera ADS'];
@@ -1080,9 +1163,12 @@ const BOOKING_ENGINE_LIST = {
 // enablement page itself was DROPPED entirely (not just moved) — "it's just
 // a stub to hold an upsell page in the current state," not a real settings
 // destination worth modeling as a peer alongside these. Folder sublist
-// (same pattern as BOOKING_ENGINE_LIST above) — none of these 4 have
-// confirmed internal sub-structure yet, so all stay simple leaf stubs for
-// now.
+// (same pattern as BOOKING_ENGINE_LIST above). Virtual terminal/Accepted
+// payments stay simple leaf stubs — Confluence's tree shows no sub-list
+// under either. Automated payments/Taxes/Service charges built out
+// (Confluence: real Lists) — Automated payments shares its rows/detail
+// with Operations > Payments' own "Automated payments" tab (same rule
+// activity, same object, just two homes in the IA).
 const PAY_LIST = {
   type: 'list',
   items: [
@@ -1090,11 +1176,20 @@ const PAY_LIST = {
     // enabled", bullet points, external doc links) REMOVED — user: "it's
     // just a stub to hold an upsell page in the current state," not a real
     // settings destination worth modeling as a peer alongside these.
-    { key: 'automated-payments', label: 'Automated payments', active: true, content: null },
+    {
+      key: 'automated-payments',
+      label: 'Automated payments',
+      active: true,
+      content: { type: 'records', names: SAMPLE_AUTOMATED_PAYMENT_RULES, detailNode: AUTOMATED_PAYMENT_RULE_NODE },
+    },
     { key: 'virtual-terminal-config', label: 'Virtual terminal', content: null },
     { key: 'accepted-payments', label: 'Accepted payments', content: null },
-    { key: 'taxes', label: 'Taxes', content: null },
-    { key: 'service-charges', label: 'Service charges', content: null },
+    { key: 'taxes', label: 'Taxes', content: { type: 'records', names: SAMPLE_TAXES, detailNode: TAX_NODE } },
+    {
+      key: 'service-charges',
+      label: 'Service charges',
+      content: { type: 'records', names: SAMPLE_SERVICE_CHARGES, detailNode: SERVICE_CHARGE_NODE },
+    },
   ],
 };
 
@@ -1528,10 +1623,27 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
       // Transactions vs. Payouts vs. Invoices, etc.) are worked through —
       // don't treat this as confirmed.
       items: [
-        // sketch:'list' (CHANGE-QUEUE.md item 7) — a plain list, NOT the
-        // clickable `records` pattern (unlike Rate plans/Yield rules).
-        { key: 'reservations', label: 'Reservations', active: true, content: { type: 'sketch', sketch: 'list' }, scopeSwitcher: 'multi-select' },
-        { key: 'guest-communications', label: 'Guest communications', content: null, scopeSwitcher: 'multi-select' },
+        // Built out (Confluence "IA node tree v2" — Reservations is a real
+        // Table: "Reservation 4021, Reservation 4022, Reservation 4023…" ->
+        // Detail), replacing the earlier sketch:'list' stub. Same generic
+        // `records` + `display: 'table'` pattern as Rate plans/Yield
+        // rules, shared RESERVATION_NODE detail ("start simple," same
+        // convention as YIELD_RULE_NODE).
+        {
+          key: 'reservations',
+          label: 'Reservations',
+          active: true,
+          content: { type: 'records', names: SAMPLE_RESERVATIONS, display: 'table', detailNode: RESERVATION_NODE },
+          scopeSwitcher: 'multi-select',
+        },
+        // Built out — Confluence: real List ("Pre-arrival, Confirmation,
+        // Post-stay…" -> Detail), replacing the content:null stub.
+        {
+          key: 'guest-communications',
+          label: 'Guest communications',
+          content: { type: 'records', names: SAMPLE_GUEST_COMMS, detailNode: GUEST_COMM_NODE },
+          scopeSwitcher: 'multi-select',
+        },
         // "Payments" — the TRANSACTIONAL half of Pay's IA split (the other
         // half, low-touch setup, lives under Config → Pay, see PAY_LIST).
         // REVISED from an earlier version that flattened these into 4
@@ -1559,10 +1671,30 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
           content: {
             type: 'tabs',
             tabs: [
-              { key: 'transactions-tab', label: 'Transactions', active: true, content: { type: 'sketch', sketch: 'list' } },
-              { key: 'payouts', label: 'Payouts', content: { type: 'sketch', sketch: 'list' } },
-              { key: 'invoices', label: 'Invoices', content: { type: 'sketch', sketch: 'list' } },
-              { key: 'payment-requests', label: 'Payment requests', content: { type: 'sketch', sketch: 'list' } },
+              // All 4 built out (Confluence: each a real Table -> Detail),
+              // replacing sketch:'list' stubs. Same records+table pattern
+              // as Reservations above.
+              {
+                key: 'transactions-tab',
+                label: 'Transactions',
+                active: true,
+                content: { type: 'records', names: SAMPLE_TRANSACTIONS, display: 'table', detailNode: TRANSACTION_NODE },
+              },
+              {
+                key: 'payouts',
+                label: 'Payouts',
+                content: { type: 'records', names: SAMPLE_PAYOUTS, display: 'table', detailNode: PAYOUT_NODE },
+              },
+              {
+                key: 'invoices',
+                label: 'Invoices',
+                content: { type: 'records', names: SAMPLE_INVOICES, display: 'table', detailNode: INVOICE_NODE },
+              },
+              {
+                key: 'payment-requests',
+                label: 'Payment requests',
+                content: { type: 'records', names: SAMPLE_PAYMENT_REQUESTS, display: 'table', detailNode: PAYMENT_REQUEST_NODE },
+              },
               // Home for "scheduled and failed automated payments" — user's
               // own framing, a real gap noticed after Automated payments'
               // RULES were placed under Config → Pay (PAY_LIST) but the
@@ -1571,8 +1703,15 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
               // config-adjacent — belongs here, not nested under Config →
               // Pay → Automated payments. One combined tab (not separate
               // Scheduled/Failed tabs) — status would be a column in this
-              // list, not a page split.
-              { key: 'automated-payments-tab', label: 'Automated payments', content: { type: 'sketch', sketch: 'list' } },
+              // list, not a page split. Built out — Confluence: real List
+              // ("Rule 1, Rule 2, Rule 3…" -> Detail), shared with
+              // Configuration > Pay's own "Automated payments" item (same
+              // rows, same rule detail).
+              {
+                key: 'automated-payments-tab',
+                label: 'Automated payments',
+                content: { type: 'records', names: SAMPLE_AUTOMATED_PAYMENT_RULES, detailNode: AUTOMATED_PAYMENT_RULE_NODE },
+              },
             ],
           },
         },
