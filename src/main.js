@@ -7,6 +7,7 @@ import {
   SCOPE_BRANDS,
   SCOPE_CLUSTERS,
   ALL_DISTRIBUTION_CHANNELS,
+  PRODUCT_KEYS,
 } from './nav-data.js';
 import { RAIL_ICONS, BRAND_MARKS } from './icons.js';
 
@@ -177,6 +178,7 @@ function savePrototypeSettings() {
         propertyCount: state.propertyCount,
         multipleSystems: state.multipleSystems,
         language: state.language,
+        enabledProducts: state.enabledProducts,
       })
     );
   } catch {
@@ -194,6 +196,13 @@ const state = {
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: savedPrototypeSettings.multipleSystems ?? false, // hidden-settings toggle: does every property have >1 connected system?
+  // Which "Add-on" products (Confluence "IA node tree v2") this account
+  // has signed up for — gates Direct Booking/Channels Plus/Metasearch/Pay
+  // in Configuration. Defaults to ALL enabled so existing behavior is
+  // unchanged unless someone actively deselects one in the debug panel —
+  // there was previously no entitlement concept here at all, so every
+  // account saw all 4 unconditionally.
+  enabledProducts: savedPrototypeSettings.enabledProducts ?? [...PRODUCT_KEYS],
   // Prototype-panel toggle: 'EN' | 'DE'. Swaps nav labels via `tr()` (see its
   // definition near the top of this file, alongside DE_LABELS) — a LAYOUT
   // stress test, not real i18n: no pluralization/interpolation, and the
@@ -1879,7 +1888,7 @@ function render() {
   // Falls through to an honest empty panel/canvas for any section with no
   // data for the current state (e.g. an undefined rail item for a given
   // account type) — no placeholders, just nothing rendered.
-  const content = getContent(state.accountType, state.propertyCount, state.scope);
+  const content = getContent(state.accountType, state.propertyCount, state.scope, state.enabledProducts);
   const data = content?.[state.section];
   if (!data) {
     panelEl.innerHTML = '';
@@ -2088,6 +2097,22 @@ document.querySelectorAll('[data-language]').forEach((el) => {
   });
 });
 
+// Products — genuinely a TOGGLE, not select-one: clicking a button flips
+// just that product in/out of state.enabledProducts, any number can be
+// active at once (unlike every other debug-panel group above, which
+// selects exactly one of a fixed set).
+document.querySelectorAll('[data-product]').forEach((el) => {
+  el.addEventListener('click', () => {
+    const key = el.dataset.product;
+    state.enabledProducts = state.enabledProducts.includes(key)
+      ? state.enabledProducts.filter((k) => k !== key)
+      : [...state.enabledProducts, key];
+    el.classList.toggle('is-active', state.enabledProducts.includes(key));
+    savePrototypeSettings();
+    render();
+  });
+});
+
 // Sync the debug panel's own button highlighting to whatever was loaded
 // from localStorage (see savedPrototypeSettings above) — otherwise a
 // returning user would see e.g. "MP" applied to the actual prototype but
@@ -2104,6 +2129,9 @@ document.querySelectorAll('[data-system-count]').forEach((b) => {
 });
 document.querySelectorAll('[data-language]').forEach((b) => {
   b.classList.toggle('is-active', b.dataset.language === state.language);
+});
+document.querySelectorAll('[data-product]').forEach((b) => {
+  b.classList.toggle('is-active', state.enabledProducts.includes(b.dataset.product));
 });
 
 // Wires the theme-toggle skeleton's buttons — called per-render (from

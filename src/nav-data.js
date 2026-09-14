@@ -188,6 +188,13 @@ const BASE_RAIL_ITEMS = [
   { key: 'configuration', label: 'Configuration', icon: 'configuration' },
 ];
 
+// The 4 "Add-on" products (Confluence "IA node tree v2" — Direct Booking/
+// Channels Plus/Metasearch/Pay are tagged Add-on: "a section that only
+// exists in the IA for accounts that have signed up for that product").
+// Keys match Configuration's own product item keys exactly — see
+// buildSmContentTree's configuration.items below.
+export const PRODUCT_KEYS = ['direct-booking', 'channels-plus', 'metasearch', 'pay'];
+
 // The rail was constant across every account type until LH's "Front desk"
 // item (CHANGE-QUEUE.md item 5) — the first case of the rail itself
 // varying by account type, not just what's inside L2/L3. LH gets Front
@@ -1207,7 +1214,10 @@ function buildConfigurationPropertiesItem(showProperties) {
 // v2"), NOT the same as `showProperties` (which is also true for a plain
 // SM account with propertyCount: 'multiple', and Group rate plans should
 // NOT show for that case — only true MP accounts get it).
-function buildSmContentTree(showProperties, scope, accountType) {
+//
+// `enabledProducts` (new) gates Configuration's 4 "Add-on" product items
+// (Direct Booking/Channels Plus/Metasearch/Pay) — see PRODUCT_KEYS.
+function buildSmContentTree(showProperties, scope, accountType, enabledProducts) {
   return {
     insights: {
       // "My insights" (CHANGE-QUEUE.md item 8) REPLACES the old informal
@@ -1586,11 +1596,18 @@ function buildSmContentTree(showProperties, scope, accountType) {
         // heading rule), not a folder: always-expanded, no chevron, purely
         // clusters the already-visible items below it under one label.
         { heading: true, label: 'Products' },
-        { key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST },
-        { key: 'channels-plus', label: 'Channels Plus', content: null },
-        { key: 'metasearch', label: 'Metasearch', content: null },
+        // Each gated on `enabledProducts` (Confluence "IA node tree v2" —
+        // all 4 tagged Add-on: "a section that only exists in the IA for
+        // accounts that have signed up for that product"). Defaults to all
+        // 4 enabled (see state.enabledProducts in main.js), so this is a
+        // no-op unless the debug panel is used to deselect one.
+        ...(enabledProducts.includes('direct-booking')
+          ? [{ key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST }]
+          : []),
+        ...(enabledProducts.includes('channels-plus') ? [{ key: 'channels-plus', label: 'Channels Plus', content: null }] : []),
+        ...(enabledProducts.includes('metasearch') ? [{ key: 'metasearch', label: 'Metasearch', content: null }] : []),
         // NEW — stub for now (content: null), no shape decided yet.
-        { key: 'pay', label: 'Pay', content: PAY_LIST },
+        ...(enabledProducts.includes('pay') ? [{ key: 'pay', label: 'Pay', content: PAY_LIST }] : []),
         // Renamed from "Manage products" (CHANGE-QUEUE.md item 6) — "Add
         // products" more precisely signals its action (add a NEW product
         // to the account) vs. the settings-page items above it. `actionIcon`
@@ -1619,9 +1636,15 @@ function buildSmContentTree(showProperties, scope, accountType) {
 //     state.scope in main.js) — threaded through so scope-aware row sets
 //     (Rate plans' expansion, once other items need it) can react live.
 //     Optional; content that doesn't care about scope just ignores it.
-export function getContent(accountType, propertyCount, scope) {
+//   - enabledProducts: which "Add-on" products (Confluence "IA node tree
+//     v2") this account has signed up for — gates Configuration's Direct
+//     Booking/Channels Plus/Metasearch/Pay items. Optional; defaults to
+//     every product enabled (main.js's own state default already does
+//     this, but keep the fallback here too so a caller that omits it
+//     entirely doesn't accidentally hide every product).
+export function getContent(accountType, propertyCount, scope, enabledProducts = PRODUCT_KEYS) {
   const showProperties = accountType === 'MP' || propertyCount === 'multiple';
-  const tree = buildSmContentTree(showProperties, scope, accountType);
+  const tree = buildSmContentTree(showProperties, scope, accountType, enabledProducts);
   // My account — not a rail section (getRailItems is unaffected), reached
   // via the rail's user avatar instead. Same regardless of account type/
   // property count, so it's added here rather than inside

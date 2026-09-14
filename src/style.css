@@ -106,6 +106,19 @@ a { color: inherit; }
   text-align: center;
 }
 
+/* Multi-select variant (Products) — genuinely independent toggles (any
+   number can be active at once, not mutually exclusive like every other
+   debug-panel toggle group), and 4 longer labels don't fit one
+   equal-width row at this panel's width, so this wraps instead of
+   forcing `flex: 1`. */
+.scope-toggle--multi {
+  flex-wrap: wrap;
+}
+
+.scope-toggle--multi button {
+  flex: none;
+}
+
 .scope-toggle button.is-active {
   background: var(--surface);
   color: var(--text);
