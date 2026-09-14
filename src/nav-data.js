@@ -1154,14 +1154,27 @@ function buildSmContentTree(showProperties, scope) {
         // direction) — same titleless dashboard-cards grid, not a
         // Dashboards-list drill-down (these are standalone top-level
         // items, not literally the same node reached two ways).
-        { key: 'starred-dashboard-1', label: 'Weekly performance', content: CUSTOM_DASHBOARD_NODE.content, starred: true },
-        { key: 'starred-dashboard-2', label: 'Channel comparison', content: CUSTOM_DASHBOARD_NODE.content, starred: true },
+        //
+        // `scopeSwitcher: 'multi-select'` on every one of these (user:
+        // "keep property selector for all the insights dashboards") — every
+        // dashboard-shaped page in this section carries the switcher
+        // consistently, not just Dashboard/Recommendations.
+        { key: 'starred-dashboard-1', label: 'Weekly performance', content: CUSTOM_DASHBOARD_NODE.content, starred: true, scopeSwitcher: 'multi-select' },
+        { key: 'starred-dashboard-2', label: 'Channel comparison', content: CUSTOM_DASHBOARD_NODE.content, starred: true, scopeSwitcher: 'multi-select' },
         ...(showProperties
-          ? [{ key: 'starred-dashboard-3', label: 'Portfolio health', content: CUSTOM_DASHBOARD_NODE.content, starred: true }]
+          ? [{ key: 'starred-dashboard-3', label: 'Portfolio health', content: CUSTOM_DASHBOARD_NODE.content, starred: true, scopeSwitcher: 'multi-select' }]
           : []),
         {
           key: 'my-insights',
           label: 'My insights',
+          // scopeSwitcher lives on the TOP-LEVEL routed item (renderCanvas
+          // reads rootItem.scopeSwitcher off data.items, not off whatever
+          // 'records' detail is drilled into) — so this one flag covers
+          // "My insights" itself AND everything reached underneath it
+          // (Dashboards list, Charts list, and every individual dashboard/
+          // chart opened via CUSTOM_DASHBOARD_NODE), not just the folder's
+          // own top level.
+          scopeSwitcher: 'multi-select',
           content: {
             type: 'list',
             items: [
@@ -1224,10 +1237,11 @@ function buildSmContentTree(showProperties, scope) {
         },
       ],
       // Section-level `scopeSwitcher` REMOVED (Confluence "IA node tree
-      // v2") — same per-item change as Distribution. Dashboard and
-      // Recommendations each carry their own `scopeSwitcher: 'multi-select'`
-      // above; My insights/starred items don't (first-pass — unconfirmed in
-      // the Confluence tree, revisit once that's settled).
+      // v2") — same per-item change as Distribution. Every dashboard-shaped
+      // item in this section now carries its own `scopeSwitcher:
+      // 'multi-select'` (Dashboard, Recommendations, the starred/promoted
+      // items, and My insights) — user: "keep property selector for all the
+      // insights dashboards."
     },
     distribution: {
       items: [
