@@ -8,7 +8,7 @@ import {
   SCOPE_CLUSTERS,
   ALL_DISTRIBUTION_CHANNELS,
 } from './nav-data.js';
-import { RAIL_ICONS } from './icons.js';
+import { RAIL_ICONS, BRAND_MARKS } from './icons.js';
 
 // ---------------------------------------------------------------------------
 // German label lookup — used ONLY to stress-test the layout against longer
@@ -230,6 +230,7 @@ function resetPath() {
 }
 
 const railEl = document.getElementById('rail');
+const railBrandEl = document.getElementById('railBrand');
 const railUserEl = document.getElementById('railUser');
 const railAssistantEl = document.getElementById('railAssistant');
 const railNotificationsEl = document.getElementById('railNotifications');
@@ -509,6 +510,9 @@ function resolveChain(rootNode) {
 // ---------------------------------------------------------------------------
 
 function renderRail() {
+  const brandKey = state.accountType === 'LH' ? 'LH' : 'SM';
+  railBrandEl.innerHTML = BRAND_MARKS[brandKey];
+  railBrandEl.title = PRODUCT_TIER_LABELS[state.accountType];
   const items = getRailItems(state.accountType);
   railEl.innerHTML = items.map(
     (item) => `
@@ -692,7 +696,7 @@ function renderRecordsInboxPanel(data) {
   // routing/selection via `data-inbox-name`), it just never renders as
   // visible text — a skeleton bar stands in for the title, same as the
   // snippet line already does for the preview.
-  const html = `<ul class="wf-list${content.showSnippet ? ' wf-list--snippets' : ''} wf-list--inbox">${content.names
+  const html = `${renderPanelHeader()}<ul class="wf-list${content.showSnippet ? ' wf-list--snippets' : ''} wf-list--inbox">${content.names
     .map((name) => {
       const snippet = content.showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
       return `
@@ -740,7 +744,7 @@ function renderPanel(data) {
   // EXPLORATORY scope switcher moved to the canvas's top-right (see
   // renderCanvas/renderScopeSwitcher) — repositioned per user feedback,
   // no longer rendered here in the panel.
-  let html = '';
+  let html = renderPanelHeader();
 
   // Sublist HTML renders immediately after its own parent item, inline
   // within the same list — not appended as one block after the whole list.
@@ -1458,6 +1462,20 @@ function breadcrumbHtml(trail) {
 // (most Configuration items) — in which case the row still renders (for
 // the H1/breadcrumb) but with an empty right-hand side, not collapsing to
 // nothing; a page keeps its title even without a switcher.
+// Product-tier name shown atop the L2 panel (Slack workspace-switcher
+// style) — a customer-facing tier label, distinct from the debug panel's
+// internal SM/LH/MP toggle values. MP is "SiteMinder Plus" here since it's
+// sold as a tier of SiteMinder, not a separate product like Little Hotelier.
+const PRODUCT_TIER_LABELS = {
+  SM: 'SiteMinder',
+  LH: 'Little Hotelier',
+  MP: 'SiteMinder Plus',
+};
+
+function renderPanelHeader() {
+  return `<div class="panel-header">${tr(PRODUCT_TIER_LABELS[state.accountType])}</div>`;
+}
+
 function renderCanvasHeader(pageLabel, trail, switcherMode) {
   const visibleTrail = trail ? visibleBreadcrumbTrail(trail) : [];
   const titleHtml =

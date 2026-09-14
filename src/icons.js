@@ -1,3 +1,17 @@
+// Rail brand mark — swaps with state.accountType (see renderRail). Real
+// brand colors, not the greyscale rail-icon tone: SiteMinder's actual navy
+// mark for SM/MP (MP — "SiteMinder Plus" — is a tier of SiteMinder, not a
+// separate product, so it reuses the SM mark), and Little Hotelier's own
+// mark/orange for LH. Path traced from the real SiteMinder brand mark
+// (Figma "Product-Brand-project-2025", node 8588:3465). LH's tile color
+// #FF6842 sampled directly from a real LH app-header screenshot (Figma
+// "2025 Brand refresh further exploration", node 3001:27249) since that
+// file's icon layer wasn't independently exportable at this nesting depth.
+export const BRAND_MARKS = {
+  SM: '<svg viewBox="0 0 167 167" fill="none"><path d="M141.021 0C155.368 0 167 11.6319 167 25.979V141.021C167 155.368 155.368 167 141.021 167H25.979C11.6319 167 0 155.368 0 141.021V25.979C0 11.6319 11.6319 0 25.979 0H141.021ZM95.4929 62.6431L95.517 112.396L47.3191 121.161V133.598L107.555 122.629C110.862 121.945 113.851 120.131 116.036 117.479C118.219 114.827 119.473 111.49 119.593 108.011V58.2609L95.4929 62.6431ZM59.3905 44.3564C56.0901 45.0491 53.1098 46.8671 50.9342 49.5207C48.7588 52.1744 47.5135 55.5086 47.3976 58.9827V108.736L71.4951 104.351V54.6006L119.696 45.8241V33.3994L59.3905 44.3564Z" fill="#001633"/></svg>',
+  LH: '<svg viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="6" fill="#FF6842"/><circle cx="12" cy="8.7" r="2.6" fill="#fff"/><rect x="10.6" y="7.4" width="2.8" height="1.6" rx="0.5" fill="#FF6842"/><path d="M7 17.2c0-2.9 2.2-5.2 5-5.2s5 2.3 5 5.2v0.3H7v-0.3Z" fill="#fff"/></svg>',
+};
+
 export const RAIL_ICONS = {
   // LH-only rail item (Front desk) — unattended-counter service bell.
   // EXPLORATORY: first pass, swap for a better icon if this doesn't read
