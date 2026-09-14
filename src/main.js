@@ -786,11 +786,12 @@ function renderPanel(data) {
   const items = data.items;
   // Grouping headings (e.g. "Products" — a plain label clustering already-
   // visible sibling items, never itself clickable/routable — see
-  // PATTERNS.md's folder-vs-heading rule) are invisible to routing
-  // entirely: filtered out before resolveSelected ever sees them, so one
-  // can never accidentally become "the routed item" via the nodes[0]
-  // fallback if it happened to sit first in the array.
-  const routableItems = items.filter((i) => !i.heading);
+  // PATTERNS.md's folder-vs-heading rule) AND plain-line dividers are
+  // invisible to routing entirely: filtered out before resolveSelected
+  // ever sees them, so one can never accidentally become "the routed
+  // item" via the nodes[0] fallback if it happened to sit first in the
+  // array.
+  const routableItems = items.filter((i) => !i.heading && !i.divider);
   const defaultRoutedItem = routableItems.length ? resolveSelected(routableItems, 0) : null;
   // A crossNav pick anywhere deeper in the tree overrides the plain
   // state.path[0] lookup above — see findCrossNavHomeItemKey.
@@ -816,6 +817,15 @@ function renderPanel(data) {
       // Grouping heading — plain label, never clickable/routable/expandable.
       // See PATTERNS.md's folder-vs-heading rule.
       html += `<li class="nav-list-heading">${tr(item.label)}</li>`;
+      return;
+    }
+    if (item.divider) {
+      // Plain line, no text — a LIGHTER visual separator than `heading`
+      // for a group that doesn't need its own label (Insights: the
+      // starred dashboards vs. My dashboards/My widgets/Recommendations
+      // below them — Robert: "some kind of visual divide between the
+      // dashboards and the last three items," not a labeled section).
+      html += `<li class="nav-list-divider" aria-hidden="true"></li>`;
       return;
     }
     const hasList = item.content?.type === 'list';
@@ -1118,6 +1128,10 @@ function renderChainBody(chain, i) {
       // `content.starredNames` (optional, e.g. My insights' Dashboards/
       // Charts): shows the illustrative star on specific rows.
       const starredNames = content.starredNames ? new Set(content.starredNames) : null;
+      // `content.presetNames` (optional, e.g. My dashboards): a small
+      // "Preset" tag on fixed/immutable rows — see renderRecordPicker's
+      // own comment.
+      const presetNames = content.presetNames ? new Set(content.presetNames) : null;
       // `content.display: 'table'` (optional, e.g. Rate plans, Yield
       // rules): renders the SAME real, clickable names as a table-styled
       // skeleton instead of a plain list — first column real + clickable,
@@ -1134,7 +1148,7 @@ function renderChainBody(chain, i) {
           ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3, content.nameSplitOn, content.usageColumn, content.syncsScope)
           : content.display === 'cards'
             ? renderRecordCards(step.options, pathIndex, content.cards, content.syncsScope)
-            : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope);
+            : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope, presetNames);
       // `content.topWidgets` (optional, e.g. Rate plans): a few dashboard-
       // cards widgets rendered ABOVE the picker — "contextual insights
       // around the place rather than just lists." Same building block
@@ -1269,15 +1283,23 @@ function renderChainBody(chain, i) {
 // Rendered as a `data-syncs-scope` flag on the link so that generic click
 // handler can tell which `data-path-key` clicks should also update
 // state.scope.
-function renderRecordPicker(names, depth, starredNames, showSnippet, syncsScope) {
+// `presetNames` (optional, e.g. My dashboards): a Set of names that are
+// FIXED/immutable rows (the 7 real preset dashboards) as opposed to the
+// user's own custom ones — shown with a small "Preset" tag so the two
+// are visually distinguishable (Robert: "show a visual in the dashboards
+// list to indicate the immutable dashboards versus the user ones").
+// Marks the exception (preset), not the default (custom) — a custom row
+// gets no tag at all, since "no tag" already reads as "yours, editable."
+function renderRecordPicker(names, depth, starredNames, showSnippet, syncsScope, presetNames) {
   return `<ul class="wf-list${showSnippet ? ' wf-list--snippets' : ''}">${names
     .map((name) => {
       const star = starredNames?.has(name) ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
+      const presetTag = presetNames?.has(name) ? `<span class="wf-list__preset-tag">Preset</span>` : '';
       const snippet = showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
       return `
         <li>
           <a href="#" class="wf-list__row" data-path-key="${depth}:${name}" ${syncsScope ? 'data-syncs-scope="true"' : ''}>
-            <span class="wf-list__row-title">${name}${star}</span>
+            <span class="wf-list__row-title">${name}${star}${presetTag}</span>
             ${snippet}
           </a>
         </li>

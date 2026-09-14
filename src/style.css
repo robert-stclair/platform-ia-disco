@@ -862,6 +862,15 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
+/* Plain-line divider — lighter separator than `.nav-list-heading` for a
+   group that doesn't need its own label (Insights: starred dashboards vs.
+   My dashboards/My widgets/Recommendations). */
+.nav-list-divider {
+  height: 1px;
+  margin: 8px 10px;
+  background: var(--border);
+}
+
 .nav-list-item a {
   display: flex;
   align-items: center;
@@ -1699,6 +1708,21 @@ a.wf-list__row:hover {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* "Preset" tag (My dashboards) — marks the 7 fixed/immutable rows,
+   distinct from the user's own custom ones (no tag at all, "yours,
+   editable" is the unmarked default). Reuses --tag-bg, a token that
+   existed but had no real usage yet. */
+.wf-list__preset-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tag-bg);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .wf-list__row-snippet-skel {

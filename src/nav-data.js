@@ -753,14 +753,67 @@ const PRESET_DASHBOARD_NAMES = [
   'Rate parity',
   'Availability',
 ];
+// The 7 preset dashboards' own top-level panel-item definitions — a real
+// array (not 7 hand-written literals) specifically so the Insights
+// section's `items` list and My dashboards' own list can both derive from
+// ONE shared source instead of two copies that could drift. `active:
+// true` only on the first (Overview) — same "first item is the default
+// landing page" convention every other section uses. Card shapes are
+// arbitrary/illustrative, just varied enough that the 7 pages don't look
+// identically empty.
+const PRESET_DASHBOARD_ITEMS = [
+  { key: 'overview', label: 'Overview', active: true, cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }] },
+  { key: 'booking-performance', label: 'Booking performance', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
+  { key: 'forecasting', label: 'Forecasting', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
+  { key: 'pace', label: 'Pace', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
+  { key: 'competitor-rates', label: 'Competitor rates', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }] },
+  { key: 'rate-parity', label: 'Rate parity', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }] },
+  { key: 'availability', label: 'Availability', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
+].map((item) => ({
+  key: item.key,
+  label: item.label,
+  ...(item.active ? { active: true } : {}),
+  // Dashboard card grid (PATTERNS.md) — confirmed with user: NO titles at
+  // all, even confirmed ones — a mix of real + skeleton titles reads
+  // oddly ("gets weird"), and this is meant to read as a full page of
+  // cards, not one confirmed metric. Every card is titleless (skeleton
+  // title bar, sized larger per user's "full page of titles, make them
+  // larger" direction) — shape only, not real content.
+  content: { type: 'sketch', sketch: 'dashboard-cards', cards: item.cards },
+  // `scopeSwitcher: 'multi-select'` on every dashboard-shaped item in
+  // this section (user: "keep property selector for all the insights
+  // dashboards").
+  scopeSwitcher: 'multi-select',
+}));
 // EXPLORATORY — a couple of illustrative custom (non-preset) dashboards,
 // generic realistic names, not real confirmed data.
 const SAMPLE_CUSTOM_DASHBOARDS = ['Weekly owner report', 'Peak season tracker'];
+// SHARED between My dashboards' own `starredNames` and the Insights
+// section's top-level item list (Robert: "make sure the top level L2
+// panel is consistent with whats starred" — confirmed: "it shows only
+// starred"). One list, read by both, so they can't silently drift apart.
+// Illustrative subset — 2 presets + 1 custom, not all-or-nothing — per
+// "show a scenario where user only surfaces a few, and some of their own
+// ones."
+const STARRED_DASHBOARD_NAMES = ['Overview', 'Rate parity', 'Weekly owner report'];
 const MY_DASHBOARDS_NODE = {
   key: 'my-dashboard',
   label: 'Dashboard',
   content: { type: 'sketch', sketch: 'dashboard-cards', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
 };
+// Same top-level-item shape as PRESET_DASHBOARD_ITEMS, for the custom
+// ones — starring applies uniformly regardless of preset-vs-custom
+// (Robert: "you need weekly owner report showing if its starred" — a
+// starred CUSTOM dashboard was invisible to the L2 panel filter, which
+// only ever looked at PRESET_DASHBOARD_ITEMS). Same shared
+// MY_DASHBOARDS_NODE content every custom dashboard opens (no per-
+// dashboard real content — same "start simple" convention).
+const CUSTOM_DASHBOARD_ITEMS = SAMPLE_CUSTOM_DASHBOARDS.map((name) => ({
+  key: `custom-dashboard-${name.toLowerCase().replace(/\s+/g, '-')}`,
+  label: name,
+  content: MY_DASHBOARDS_NODE.content,
+  scopeSwitcher: 'multi-select',
+}));
 
 // My widgets (Insights) — same real CRUD + list treatment as My
 // dashboards, for the individual widgets a custom dashboard would be
@@ -1446,101 +1499,28 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
       // the same titleless dashboard-cards shape Dashboard already used,
       // not that real complexity: "use the screenshot as if they are all
       // dashboards."
+      //
+      // ONLY THE STARRED ONES actually show in this top-level list (Robert:
+      // "make sure the top level L2 panel is consistent with whats
+      // starred" -> confirmed "it shows only starred") — filtered against
+      // the SAME `STARRED_DASHBOARD_NAMES` list My dashboards' own
+      // `starredNames` uses, so the two can't silently drift apart.
+      // Combines PRESET_DASHBOARD_ITEMS and CUSTOM_DASHBOARD_ITEMS before
+      // filtering — starring applies uniformly to both, a starred custom
+      // dashboard (e.g. "Weekly owner report") shows up here exactly like
+      // a starred preset would. The unstarred presets (today: Booking
+      // performance/Forecasting/Pace/Competitor rates/Availability) are
+      // still fully real — just only reachable via "My dashboards," not
+      // pinned to the rail list.
       items: [
-        {
-          key: 'overview',
-          label: 'Overview',
-          active: true,
-          // Dashboard card grid (PATTERNS.md) — confirmed with user: NO
-          // titles at all, even confirmed ones — a mix of real + skeleton
-          // titles reads oddly ("gets weird"), and this is meant to read
-          // as a full page of cards, not one confirmed metric. Every card
-          // is titleless (skeleton title bar, sized larger per user's
-          // "full page of titles, make them larger" direction) — shape
-          // only, not real content.
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }],
-          },
-          // `scopeSwitcher: 'multi-select'` on every dashboard-shaped item
-          // in this section (user: "keep property selector for all the
-          // insights dashboards").
-          scopeSwitcher: 'multi-select',
-        },
-        {
-          key: 'booking-performance',
-          label: 'Booking performance',
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
-          },
-          scopeSwitcher: 'multi-select',
-        },
-        {
-          key: 'forecasting',
-          label: 'Forecasting',
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
-          },
-          scopeSwitcher: 'multi-select',
-        },
-        {
-          key: 'pace',
-          label: 'Pace',
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
-          },
-          scopeSwitcher: 'multi-select',
-        },
-        {
-          key: 'competitor-rates',
-          label: 'Competitor rates',
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
-          },
-          scopeSwitcher: 'multi-select',
-        },
-        {
-          key: 'rate-parity',
-          label: 'Rate parity',
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
-          },
-          scopeSwitcher: 'multi-select',
-        },
-        {
-          key: 'availability',
-          label: 'Availability',
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
-          },
-          scopeSwitcher: 'multi-select',
-        },
-        // Real item below the 7-row block in the shipped product (mutually
-        // exclusive with a legacy "Dynamic Revenue Plus" row there — not
-        // modeled, this prototype just shows the newer name).
-        {
-          key: 'dynamic-pricing-insights',
-          label: 'Dynamic pricing',
-          content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
-          },
-          scopeSwitcher: 'multi-select',
-        },
+        ...[...PRESET_DASHBOARD_ITEMS, ...CUSTOM_DASHBOARD_ITEMS].filter((item) => STARRED_DASHBOARD_NAMES.includes(item.label)),
+        // Dynamic pricing REMOVED from this list (Robert: "we dont want
+        // dynamic pricing in that list") — it's real in the shipped
+        // product's Insights nav too, but already has its own home under
+        // Distribution (buildSmContentTree's distribution.items ->
+        // 'dynamic-pricing', force-single) — showing it a second time
+        // here would just be redundant, not additive.
+        //
         // Real product item in this position is "My charts" — modeled
         // here as two separate items instead ("My dashboards"/"My
         // widgets"), per Robert's explicit direction to build the
@@ -1550,6 +1530,12 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         // or widget-library feature exists there today) — new IA
         // territory for Platform 2.0, not a real-product match.
         //
+        // Plain-line divider (Robert: "some kind of visual divide between
+        // the dashboards and the last three items") — separates the
+        // starred DASHBOARD content above from the management/utility
+        // items below (My dashboards/My widgets/Recommendations), which
+        // are a different kind of thing, not more dashboards.
+        { divider: true },
         // Fixed preset rows (the 7 real dashboards above, same labels)
         // PLUS the user's own custom ones, in one combined list — presets
         // can't be deleted, only starred/unstarred; starring is the real
@@ -1564,7 +1550,8 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
             type: 'records',
             names: [...PRESET_DASHBOARD_NAMES, ...SAMPLE_CUSTOM_DASHBOARDS],
             detailNode: MY_DASHBOARDS_NODE,
-            starredNames: ['Overview', 'Rate parity', 'Weekly owner report'],
+            starredNames: STARRED_DASHBOARD_NAMES,
+            presetNames: PRESET_DASHBOARD_NAMES,
             newButtonLabel: 'New dashboard',
           },
           scopeSwitcher: 'multi-select',
