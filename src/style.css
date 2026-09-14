@@ -642,22 +642,6 @@ a { color: inherit; }
   overflow-y: auto;
 }
 
-/* Product-tier label (Slack workspace-switcher style) — SiteMinder /
-   Little Hotelier / SiteMinder Plus, driven by the debug panel's account
-   type toggle. Sits flush above the item list, negative-margined out of
-   .secondary-panel's own 20px/12px padding the same way other panel-top
-   elements do (see the sketch note below), then re-applies its own
-   tighter spacing so it reads as a compact strip, not a second full-height
-   padded block stacked on the list. */
-.panel-header {
-  margin: -20px -12px 12px;
-  padding: 14px 16px 10px;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text);
-  border-bottom: 1px solid var(--border);
-}
-
 /* First content item with no L2 panel at all (CHANGE-QUEUE.md item 1,
    Front desk's calendar) — `display: none` actually removes it from the
    flex row's width calculation, unlike just leaving it empty, which would

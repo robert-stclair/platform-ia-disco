@@ -696,7 +696,7 @@ function renderRecordsInboxPanel(data) {
   // routing/selection via `data-inbox-name`), it just never renders as
   // visible text — a skeleton bar stands in for the title, same as the
   // snippet line already does for the preview.
-  const html = `${renderPanelHeader()}<ul class="wf-list${content.showSnippet ? ' wf-list--snippets' : ''} wf-list--inbox">${content.names
+  const html = `<ul class="wf-list${content.showSnippet ? ' wf-list--snippets' : ''} wf-list--inbox">${content.names
     .map((name) => {
       const snippet = content.showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
       return `
@@ -744,7 +744,7 @@ function renderPanel(data) {
   // EXPLORATORY scope switcher moved to the canvas's top-right (see
   // renderCanvas/renderScopeSwitcher) — repositioned per user feedback,
   // no longer rendered here in the panel.
-  let html = renderPanelHeader();
+  let html = '';
 
   // Sublist HTML renders immediately after its own parent item, inline
   // within the same list — not appended as one block after the whole list.
@@ -1462,19 +1462,19 @@ function breadcrumbHtml(trail) {
 // (most Configuration items) — in which case the row still renders (for
 // the H1/breadcrumb) but with an empty right-hand side, not collapsing to
 // nothing; a page keeps its title even without a switcher.
-// Product-tier name shown atop the L2 panel (Slack workspace-switcher
-// style) — a customer-facing tier label, distinct from the debug panel's
-// internal SM/LH/MP toggle values. MP is "SiteMinder Plus" here since it's
-// sold as a tier of SiteMinder, not a separate product like Little Hotelier.
+// Product-tier name — a customer-facing tier label (distinct from the
+// debug panel's internal SM/LH/MP toggle values), used only as the rail
+// brand mark's tooltip (see renderRail). MP is "SiteMinder Plus" here
+// since it's sold as a tier of SiteMinder, not a separate product like
+// Little Hotelier. Deliberately NOT also shown as a static panel-header
+// label — that read as a dead Slack-workspace-switcher lookalike with no
+// function, and this scheme is specifically trying to cut chrome like
+// that, not add more of it.
 const PRODUCT_TIER_LABELS = {
   SM: 'SiteMinder',
   LH: 'Little Hotelier',
   MP: 'SiteMinder Plus',
 };
-
-function renderPanelHeader() {
-  return `<div class="panel-header">${tr(PRODUCT_TIER_LABELS[state.accountType])}</div>`;
-}
 
 function renderCanvasHeader(pageLabel, trail, switcherMode) {
   const visibleTrail = trail ? visibleBreadcrumbTrail(trail) : [];
