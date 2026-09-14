@@ -727,7 +727,12 @@ a { color: inherit; }
   justify-content: space-between;
   gap: 16px;
   padding: 10px 24px;
-  min-height: 20px;
+  /* Matches the scope switcher pill's own rendered height, so the bar
+     stays the same height whether or not a page has a switcher (Robert:
+     "keep the height of the top bar consistent even when there is no
+     switcher (like in user settings)") — was 20px, letting switcher-less
+     pages (My account) render ~15px shorter than pages with one. */
+  min-height: 36px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
