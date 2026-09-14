@@ -488,20 +488,26 @@ a { color: inherit; }
   flex-direction: column;
 }
 
+/* White chip behind the mark — the real SM navy mark (#001633) is actually
+   DARKER than the rail's own dark ground (--rail-ground: #26292E), so it
+   goes near-invisible without one; LH's mark carries its own orange tile
+   baked into the SVG and would work either way, but shares the same chip
+   for visual consistency between the two account types. */
 .rail__brand {
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   margin: 12px auto 8px;
+  border-radius: 8px;
+  background: #FFFFFF;
   flex-shrink: 0;
 }
 
 .rail__brand-mark {
   width: 20px;
   height: 20px;
-  color: var(--rail-icon);
 }
 
 .rail__items {
