@@ -690,8 +690,11 @@ const ASSISTANT_ITEMS = {
       actionIcon: '+',
       active: true,
       content: { type: 'sketch', sketch: 'chat-start' },
+      // `scopeSwitcher: 'multi-select'` (Confluence "IA node tree v2" — AI
+      // assistant > New chat/History, both).
+      scopeSwitcher: 'multi-select',
     },
-    { key: 'chat-history', label: 'History', content: { type: 'sketch', sketch: 'list' } },
+    { key: 'chat-history', label: 'History', content: { type: 'sketch', sketch: 'list' }, scopeSwitcher: 'multi-select' },
   ],
 };
 
@@ -1093,6 +1096,14 @@ function buildConfigurationPropertiesItem(showProperties) {
     key: 'properties-config',
     label: 'Properties',
     active: true,
+    // `scopeSwitcher: 'multi-select'` (Confluence "IA node tree v2" —
+    // Configuration > Properties): this is the concrete instance of the
+    // "list -> table, once >1 property" rule (v1b's own reasoning) —
+    // Properties follows the exact same switcher-driven behavior as Rate
+    // plans/Users, not a special case. One flag on this top-level item
+    // covers its tabs (Properties/Brands/Clusters), same mechanism as
+    // my-insights/payments.
+    scopeSwitcher: 'multi-select',
     content: {
       type: 'tabs',
       tabs: [
@@ -1456,6 +1467,9 @@ function buildSmContentTree(showProperties, scope) {
           key: 'users',
           label: 'Users',
           content: { type: 'records', names: SAMPLE_USERS, detailNode: buildUserNode(showProperties) },
+          // `scopeSwitcher: 'multi-select'` (Confluence "IA node tree v2" —
+          // Configuration > Users).
+          scopeSwitcher: 'multi-select',
         },
         // "Products" — a grouping HEADING (see PATTERNS.md's folder-vs-
         // heading rule), not a folder: always-expanded, no chevron, purely
