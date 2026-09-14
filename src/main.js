@@ -933,6 +933,20 @@ function renderCanvas(data) {
   const rootItem = data.items.length ? resolveSelected(data.items, 0) : null;
 
   if (!rootItem?.content) {
+    // Force-single conflict check needed HERE too, not just in the main
+    // path below — a content-less stub (Channels Plus, Metasearch) with
+    // `scopeSwitcher: 'force-single'` was silently skipping the conflict
+    // prompt entirely: this branch returns before `chain` is ever built,
+    // so the check further down (which needs `chain`) never ran. Caught
+    // live: visiting either stub at "All properties" scope just showed an
+    // empty page with a switcher that LOOKED enabled, instead of the same
+    // "select a property to continue" prompt every other force-single
+    // page shows.
+    if (rootItem?.scopeSwitcher && state.propertyCount === 'multiple' && scopeConflictsWithMode(rootItem.scopeSwitcher)) {
+      canvasEl.innerHTML = renderForceSinglePrompt(rootItem.scopeSwitcher);
+      wireScopeSwitcher();
+      return;
+    }
     canvasEl.innerHTML = renderCanvasHeader(rootItem?.label, null, rootItem?.scopeSwitcher);
     wireScopeSwitcher();
     return;
