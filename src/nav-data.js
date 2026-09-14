@@ -1291,7 +1291,20 @@ function buildConfigurationPropertiesItem(showProperties) {
           key: 'properties-list',
           label: 'Properties',
           active: true,
-          content: { type: 'records', names: SAMPLE_PROPERTIES, detailNode: buildPropertyNode(showProperties) },
+          // `display: 'cards'` (Robert: "property then the cards then the
+          // property then the cards sort of thing") — each property gets
+          // its own clickable name heading directly on this page, followed
+          // by a small dashboard-cards summary for that property, repeated
+          // per property. Name link still opens the property's full detail
+          // page (buildPropertyNode) — confirmed: "name stays clickable,"
+          // the cards are a summary, not a replacement for the full page.
+          content: {
+            type: 'records',
+            names: SAMPLE_PROPERTIES,
+            display: 'cards',
+            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
+            detailNode: buildPropertyNode(showProperties),
+          },
         },
         { key: 'brands', label: 'Brands', content: null, mpOnly: true },
         { key: 'clusters', label: 'Clusters', content: null, mpOnly: true },

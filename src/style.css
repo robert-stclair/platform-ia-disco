@@ -1103,6 +1103,35 @@ a { color: inherit; }
   opacity: 0.6;
 }
 
+/* `display: 'cards'` (Configuration > Properties, multi-property scope) —
+   repeated property-name + dashboard-cards groups, one per property. Each
+   group gets its own divider above it (except the first) so the eye can
+   tell where one property's summary ends and the next begins. */
+.record-cards-group {
+  padding-top: 28px;
+  margin-top: 28px;
+  border-top: 1px solid var(--border);
+}
+
+.record-cards-group:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+
+.record-cards-group__title {
+  display: block;
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.record-cards-group__title:hover {
+  text-decoration: underline;
+}
+
 /* Navigation dashboard (6th canonical page-skeleton type) — a grid of
    clickable TILES, real nav destinations, distinct from the inert
    `.sketch-dashboard-card` above. Reuses that pattern's card visual

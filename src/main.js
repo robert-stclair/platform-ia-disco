@@ -1042,13 +1042,18 @@ function renderChainBody(chain, i) {
       // skeleton instead of a plain list — first column real + clickable,
       // remaining columns skeleton-only, no real headers (same
       // titleless-skeleton convention as everywhere else) UNLESS
-      // `content.usageColumn` is set. Every other `records` caller
-      // (Properties, Users, Dashboards, Charts) omits this and keeps the
-      // plain list — this is additive, not a replacement.
+      // `content.usageColumn` is set. `content.display: 'cards'`
+      // (Configuration > Properties, multi-property scope): each name
+      // gets its own repeated name-heading + dashboard-cards block (see
+      // renderRecordCards) instead of a row in a list/table. Every other
+      // `records` caller (Users, Dashboards, Charts) omits `display` and
+      // keeps the plain list — both are additive, not replacements.
       const pickerHtml =
         content.display === 'table'
           ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3, content.nameSplitOn, content.usageColumn)
-          : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet);
+          : content.display === 'cards'
+            ? renderRecordCards(step.options, pathIndex, content.cards)
+            : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet);
       // `content.topWidgets` (optional, e.g. Rate plans): a few dashboard-
       // cards widgets rendered ABOVE the picker — "contextual insights
       // around the place rather than just lists." Same building block
@@ -1225,6 +1230,43 @@ function renderRecordPicker(names, depth, starredNames, showSnippet) {
 // wired up.
 const SORT_AFFORDANCE_ICON =
   '<svg class="sketch-table__sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>';
+
+// Extracted from the `dashboard-cards` sketch branch (renderSketch) so
+// `renderRecordCards` below can reuse the exact same card markup for its
+// per-record card blocks, without duplicating it.
+function renderDashboardCards(cards) {
+  return `<div class="sketch-dashboard-cards">${cards
+    .map((c) => {
+      const title = c.title
+        ? `<h3 class="sketch-dashboard-card__title">${tr(c.title)}</h3>`
+        : `<div class="sketch-dashboard-card__title-skel"></div>`;
+      return `<div class="sketch-dashboard-card">${title}<div class="sketch-dashboard-card__${c.shape === 'stat' ? 'stat' : 'chart'}"></div></div>`;
+    })
+    .join('')}</div>`;
+}
+
+// `display: 'cards'` (Configuration > Properties, multi-property scope) —
+// each property gets its own clickable name heading directly on THIS
+// page, immediately followed by a small dashboard-cards summary for that
+// property, then the next property below it — no separate click-through
+// needed to see the summary (the name link still opens the property's
+// full detail page, same as every other records picker: "name stays
+// clickable"). `cards` is the same shape `topWidgets`/dashboard-cards
+// sketches already use ([{title?, shape:'chart'|'stat'}]), repeated
+// identically under each property — illustrative, not per-property real
+// data.
+function renderRecordCards(names, depth, cards) {
+  return names
+    .map(
+      (name) => `
+        <div class="record-cards-group">
+          <a href="#" class="record-cards-group__title" data-path-key="${depth}:${name}">${name}</a>
+          ${renderDashboardCards(cards)}
+        </div>
+      `
+    )
+    .join('');
+}
 
 function renderRecordTable(names, depth, extraColumns, nameSplitOn, usageColumn) {
   const propertyHeader = nameSplitOn
@@ -1620,14 +1662,7 @@ function renderSketch(content) {
     // SHAPE only, with no real content confirmed yet (e.g. Insights'
     // Dashboard — confirmed with user: doesn't need real titles, just
     // needs to read as a dashboard-style page).
-    return `<div class="sketch-dashboard-cards">${content.cards
-      .map((c) => {
-        const title = c.title
-          ? `<h3 class="sketch-dashboard-card__title">${tr(c.title)}</h3>`
-          : `<div class="sketch-dashboard-card__title-skel"></div>`;
-        return `<div class="sketch-dashboard-card">${title}<div class="sketch-dashboard-card__${c.shape === 'stat' ? 'stat' : 'chart'}"></div></div>`;
-      })
-      .join('')}</div>`;
+    return renderDashboardCards(content.cards);
   }
   if (content.sketch === 'list') {
     // `starredRows` (optional): indices that get an illustrative star icon —
