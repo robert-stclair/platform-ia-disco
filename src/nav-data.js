@@ -733,6 +733,49 @@ const ASSISTANT_ITEMS = {
   ],
 };
 
+// My dashboards (Insights) — a real CRUD + starring list (Robert: "my
+// dashboardfs will be a lisr where user can do CRUD functions and
+// starring etc"), not the earlier illustrative-only starred-duplicates
+// approach. The 7 REAL preset dashboards (Overview/Booking performance/
+// Forecasting/Pace/Competitor rates/Rate parity/Availability — same
+// labels as the section's own top-level items) are FIXED rows here —
+// can't be deleted, only starred/unstarred — alongside the user's own
+// custom ones, which presumably CAN be deleted (not modeled yet, no CRUD
+// actually wired up — this is structure only, per this prototype's
+// convention). Starring is the real mechanism for which dashboards get
+// pinned/promoted elsewhere, not decoration.
+const PRESET_DASHBOARD_NAMES = [
+  'Overview',
+  'Booking performance',
+  'Forecasting',
+  'Pace',
+  'Competitor rates',
+  'Rate parity',
+  'Availability',
+];
+// EXPLORATORY — a couple of illustrative custom (non-preset) dashboards,
+// generic realistic names, not real confirmed data.
+const SAMPLE_CUSTOM_DASHBOARDS = ['Weekly owner report', 'Peak season tracker'];
+const MY_DASHBOARDS_NODE = {
+  key: 'my-dashboard',
+  label: 'Dashboard',
+  content: { type: 'sketch', sketch: 'dashboard-cards', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
+};
+
+// My widgets (Insights) — same real CRUD + list treatment as My
+// dashboards, for the individual widgets a custom dashboard would be
+// assembled from (Robert: "make widgets to use to assemble dashboards"
+// / "they need a my widgets list as well"). No presets here — a widget
+// only exists once a user has made one, unlike a dashboard (which always
+// has the 7 built-in ones) — EXPLORATORY sample names, not real confirmed
+// data.
+const SAMPLE_WIDGETS = ['ADR by channel', 'Length of stay', 'Cancellation rate', 'Direct booking share'];
+const MY_WIDGET_NODE = {
+  key: 'my-widget',
+  label: 'Widget',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Widget', shape: 'field' }] },
+};
+
 // EXPLORATORY — sample rate plan / yield rule names for the generic
 // `records` pattern (Distribution batch, items 1/2 — "go deep" per user).
 // Generic realistic names, not real confirmed data.
@@ -1495,6 +1538,49 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
             type: 'sketch',
             sketch: 'dashboard-cards',
             cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        // Real product item in this position is "My charts" — modeled
+        // here as two separate items instead ("My dashboards"/"My
+        // widgets"), per Robert's explicit direction to build the
+        // create-preset-or-custom / manage-your-own / build-widgets-to-
+        // assemble-into-dashboards concept, which has no counterpart in
+        // the real shipped product at all (confirmed: no custom-dashboard
+        // or widget-library feature exists there today) — new IA
+        // territory for Platform 2.0, not a real-product match.
+        //
+        // Fixed preset rows (the 7 real dashboards above, same labels)
+        // PLUS the user's own custom ones, in one combined list — presets
+        // can't be deleted, only starred/unstarred; starring is the real
+        // mechanism for which dashboards get pinned/promoted, not
+        // decoration. Illustrative starred subset (2 presets + 1 custom,
+        // not all-or-nothing) per Robert: "show a scenario where user
+        // only surfaces a few, and some of their own ones."
+        {
+          key: 'my-dashboards',
+          label: 'My dashboards',
+          content: {
+            type: 'records',
+            names: [...PRESET_DASHBOARD_NAMES, ...SAMPLE_CUSTOM_DASHBOARDS],
+            detailNode: MY_DASHBOARDS_NODE,
+            starredNames: ['Overview', 'Rate parity', 'Weekly owner report'],
+            newButtonLabel: 'New dashboard',
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        // Same real CRUD + list treatment as My dashboards, for the
+        // individual widgets a custom dashboard is assembled from. No
+        // preset widgets — unlike dashboards, there's nothing built-in
+        // here, only whatever a user has made.
+        {
+          key: 'my-widgets',
+          label: 'My widgets',
+          content: {
+            type: 'records',
+            names: SAMPLE_WIDGETS,
+            detailNode: MY_WIDGET_NODE,
+            newButtonLabel: 'New widget',
           },
           scopeSwitcher: 'multi-select',
         },

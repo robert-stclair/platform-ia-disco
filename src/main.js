@@ -1146,7 +1146,17 @@ function renderChainBody(chain, i) {
       const widgetsHtml = content.topWidgets
         ? `<div class="records-page__widgets">${renderSketch(content.topWidgets)}</div>`
         : '';
-      return { trail: [], bodyHtml: widgetsHtml + pickerHtml };
+      // `content.newButtonLabel` (My dashboards/My widgets) — a plain,
+      // NON-functional "+ New X" button above the picker (Robert: "you
+      // dont need to worry about new that would be a button on the list
+      // page" — just the structural affordance, no creation flow wired
+      // up). Same visual language as Rate plan → Channels' own "Add
+      // channel" button, but deliberately not a data-wizard-open trigger
+      // — nothing decided yet about what creating one of these involves.
+      const newButtonHtml = content.newButtonLabel
+        ? `<button class="records-page__new-btn" type="button"><span aria-hidden="true">+</span>${tr(content.newButtonLabel)}</button>`
+        : '';
+      return { trail: [], bodyHtml: newButtonHtml + widgetsHtml + pickerHtml };
     }
     // `content.crossNav` (buildUserNode's Properties tab / buildPropertyNode's
     // Users tile — two `records` pickers that point at EACH OTHER): marks
