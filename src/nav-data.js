@@ -145,16 +145,16 @@
 //                                                                    TITLELESS stat-shaped cards ("generic -
 //                                                                    no labels"), no more tab strip (was 7
 //                                                                    separate list tabs)
-//   Insights > Dashboard                      | dashboard cards    | sketch:'dashboard-cards', ALL cards
-//                                                                    titleless (skeleton title bar) — page
-//                                                                    shape only, confirmed no titles needed
-//   Insights > Recommendations                | list               | sketch:'list'
-//   Insights > My insights > Dashboards,      | records (nav)      | type:'records' -> CUSTOM_DASHBOARD_NODE;
-//     Charts                                                        starredNames marks illustrative rows;
-//                                                                    picker rows are 'list' via
-//                                                                    renderRecordPicker
-//   CUSTOM_DASHBOARD_NODE (any custom          | dashboard cards    | sketch:'dashboard-cards', same titleless
-//     dashboard/chart, incl. promoted items)                        skeleton as Insights' own Dashboard
+//   Insights (Overview, Booking performance,   | dashboard cards    | sketch:'dashboard-cards' on every item,
+//     Forecasting, Pace, Competitor rates,                           ALL cards titleless (skeleton title
+//     Rate parity, Availability, Dynamic                             bar) — page shape only. Matches the
+//     pricing, Recommendations)                                      REAL shipped Insights left nav
+//                                                                     (platform-property's Insights MFE,
+//                                                                     insights-aside.vue) modeled uniformly
+//                                                                     as dashboards, not that product's real
+//                                                                     per-item complexity (Prophet-report
+//                                                                     links, BETA/premium gating, etc.) — see
+//                                                                     the insights section's own comment.
 //   Transactions > Reservations                | list               | sketch:'list' (plain, not clickable
 //                                                                    records — unlike Rate plans/Yield rules)
 //   Transactions > Guest communications,       | none yet           | content: null, stub
@@ -732,36 +732,6 @@ const ASSISTANT_ITEMS = {
     { key: 'chat-history', label: 'History', content: { type: 'sketch', sketch: 'list' }, scopeSwitcher: 'multi-select' },
   ],
 };
-
-// A single custom dashboard/chart's own content — every custom dashboard
-// (whether a plain "Dashboards"/"Charts" list entry or a starred/promoted
-// top-level item) opens the SAME shared detail node, per the generic
-// `records` pattern (PATTERNS.md) — "the custom dashboards would use the
-// same skeleton" (user's direction, confirmed easy to treat them all the
-// same rather than special-casing just the starred ones). Titleless
-// dashboard-cards grid, same as Insights' own Dashboard — indicates page
-// shape only, no real card content.
-export const CUSTOM_DASHBOARD_NODE = {
-  key: 'custom-dashboard',
-  label: 'Dashboard',
-  content: {
-    type: 'sketch',
-    sketch: 'dashboard-cards',
-    cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
-  },
-};
-
-// EXPLORATORY — sample custom-dashboard names for the generic `records`
-// pattern, same treatment as SAMPLE_PROPERTIES/SAMPLE_USERS. "Weekly
-// performance", "Portfolio health", and "Channel comparison" are included
-// here (not just as standalone promoted top-level items) so the
-// illustrative star on these specific rows visually lines up with their
-// promoted duplicates — same names in both places, not just the same
-// concept. All three are DASHBOARDS, not charts — you can't pin/promote a
-// single chart on its own (user's explicit correction), only a whole
-// dashboard, so Charts has no starring concept at all.
-const SAMPLE_DASHBOARDS = ['Weekly performance', 'Channel comparison', 'Occupancy overview', 'Portfolio health', 'Revenue trends'];
-const SAMPLE_CHARTS = ['ADR by channel', 'Length of stay', 'Cancellation rate'];
 
 // EXPLORATORY — sample rate plan / yield rule names for the generic
 // `records` pattern (Distribution batch, items 1/2 — "go deep" per user).
@@ -1410,28 +1380,33 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
 function buildSmContentTree(showProperties, scope, accountType, enabledProducts) {
   return {
     insights: {
-      // "My insights" (CHANGE-QUEUE.md item 8) REPLACES the old informal
-      // flat `ugc` array. It's a FOLDER (per the folder-vs-heading rule —
-      // collapsed by default, chevron, children hidden until expanded),
-      // containing Dashboards and Charts — both clickable `records`
-      // pickers (the generic pattern Properties/Users use), each name
-      // opening CUSTOM_DASHBOARD_NODE's shared titleless dashboard-cards
-      // content. Starring is illustrative/non-functional — a couple of
-      // custom dashboards are duplicated as their own starred top-level
-      // entries (simplest approach for a static wireframe, since this
-      // isn't a real interaction — see CHANGE-QUEUE.md item 8's structural
-      // note). Which ones are "starred" is arbitrary illustration, not
-      // meaningful data.
+      // REBUILT (Robert flagged the previous structure as "messy," then:
+      // "can you check platform property as i said?") to match the REAL
+      // shipped Insights left nav in platform-property's Insights MFE
+      // (frontends/insights/src/components/insights-aside/insights-
+      // aside.vue), confirmed against a live screenshot of the actual
+      // product — not invented dashboard names. The earlier "My insights"
+      // folder (Dashboards/Charts sub-lists, starred/promoted duplicates)
+      // had NO real product counterpart at all — removed entirely, along
+      // with CUSTOM_DASHBOARD_NODE/SAMPLE_DASHBOARDS/SAMPLE_CHARTS, which
+      // existed only to support it.
       //
-      // Order (CHANGE-QUEUE.md item 2, reshuffled): Dashboard, then the
-      // starred/pinned items appended directly below it (forming one
-      // combined default-dashboards list), then My insights, then
-      // Recommendations LAST — a separate concept from dashboards, per
-      // user's reasoning, so it no longer sits second.
+      // Real nav order: Overview, Booking performance, Forecasting, Pace,
+      // Competitor rates, Rate parity, Availability, then Dynamic pricing,
+      // then Recommendations (the real product also has "My charts" in
+      // this position — not modeled here, no equivalent decision made
+      // yet). The real product's individual items differ a lot underneath
+      // (Overview is its own page; Booking performance/Pace/Competitor
+      // rates/Rate parity/Availability link out to legacy Prophet reports;
+      // Forecasting has real BETA gating and an upsell variant) — per
+      // Robert's explicit direction, ALL 7 are modeled uniformly here as
+      // the same titleless dashboard-cards shape Dashboard already used,
+      // not that real complexity: "use the screenshot as if they are all
+      // dashboards."
       items: [
         {
-          key: 'dashboard',
-          label: 'Dashboard',
+          key: 'overview',
+          label: 'Overview',
           active: true,
           // Dashboard card grid (PATTERNS.md) — confirmed with user: NO
           // titles at all, even confirmed ones — a mix of real + skeleton
@@ -1440,76 +1415,88 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
           // is titleless (skeleton title bar, sized larger per user's
           // "full page of titles, make them larger" direction) — shape
           // only, not real content.
-          //
-          // `scopeSwitcher: 'multi-select'` (Confluence "IA node tree v2"):
-          // Dashboard can be scoped to one property, a brand/cluster, or
-          // All — same per-item switcher mechanism as Distribution's items.
           content: {
             type: 'sketch',
             sketch: 'dashboard-cards',
             cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }],
           },
+          // `scopeSwitcher: 'multi-select'` on every dashboard-shaped item
+          // in this section (user: "keep property selector for all the
+          // insights dashboards").
           scopeSwitcher: 'multi-select',
         },
-        // Promoted/starred items — illustrative duplicates of a couple of
-        // My insights' starred rows below, surfaced at the top level,
-        // directly appended after Dashboard. Each opens the same
-        // CUSTOM_DASHBOARD_NODE content every custom dashboard/chart uses
-        // ("the custom dashboards would use the same skeleton" — user's
-        // direction) — same titleless dashboard-cards grid, not a
-        // Dashboards-list drill-down (these are standalone top-level
-        // items, not literally the same node reached two ways).
-        //
-        // `scopeSwitcher: 'multi-select'` on every one of these (user:
-        // "keep property selector for all the insights dashboards") — every
-        // dashboard-shaped page in this section carries the switcher
-        // consistently, not just Dashboard/Recommendations.
-        { key: 'starred-dashboard-1', label: 'Weekly performance', content: CUSTOM_DASHBOARD_NODE.content, starred: true, scopeSwitcher: 'multi-select' },
-        { key: 'starred-dashboard-2', label: 'Channel comparison', content: CUSTOM_DASHBOARD_NODE.content, starred: true, scopeSwitcher: 'multi-select' },
-        ...(showProperties
-          ? [{ key: 'starred-dashboard-3', label: 'Portfolio health', content: CUSTOM_DASHBOARD_NODE.content, starred: true, scopeSwitcher: 'multi-select' }]
-          : []),
         {
-          key: 'my-insights',
-          label: 'My insights',
-          // scopeSwitcher lives on the TOP-LEVEL routed item (renderCanvas
-          // reads rootItem.scopeSwitcher off data.items, not off whatever
-          // 'records' detail is drilled into) — so this one flag covers
-          // "My insights" itself AND everything reached underneath it
-          // (Dashboards list, Charts list, and every individual dashboard/
-          // chart opened via CUSTOM_DASHBOARD_NODE), not just the folder's
-          // own top level.
-          scopeSwitcher: 'multi-select',
+          key: 'booking-performance',
+          label: 'Booking performance',
           content: {
-            type: 'list',
-            items: [
-              // "Dashboards"/"Charts" are clickable records lists (same
-              // generic pattern as Properties/Users) — each name opens
-              // CUSTOM_DASHBOARD_NODE's shared titleless dashboard-cards
-              // content. Real item names shown (the breadcrumb-clarity
-              // exception, PATTERNS.md), same as Properties/Users pickers.
-              {
-                key: 'dashboards',
-                label: 'Dashboards',
-                content: {
-                  type: 'records',
-                  names: SAMPLE_DASHBOARDS,
-                  detailNode: CUSTOM_DASHBOARD_NODE,
-                  starredNames: showProperties
-                    ? ['Weekly performance', 'Channel comparison', 'Portfolio health']
-                    : ['Weekly performance', 'Channel comparison'],
-                },
-              },
-              // No starredNames — you can't pin/promote a single chart on
-              // its own (user's explicit correction), only a whole
-              // dashboard, so Charts has no starring concept at all.
-              {
-                key: 'charts',
-                label: 'Charts',
-                content: { type: 'records', names: SAMPLE_CHARTS, detailNode: CUSTOM_DASHBOARD_NODE },
-              },
-            ],
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
           },
+          scopeSwitcher: 'multi-select',
+        },
+        {
+          key: 'forecasting',
+          label: 'Forecasting',
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        {
+          key: 'pace',
+          label: 'Pace',
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        {
+          key: 'competitor-rates',
+          label: 'Competitor rates',
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        {
+          key: 'rate-parity',
+          label: 'Rate parity',
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        {
+          key: 'availability',
+          label: 'Availability',
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }],
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        // Real item below the 7-row block in the shipped product (mutually
+        // exclusive with a legacy "Dynamic Revenue Plus" row there — not
+        // modeled, this prototype just shows the newer name).
+        {
+          key: 'dynamic-pricing-insights',
+          label: 'Dynamic pricing',
+          content: {
+            type: 'sketch',
+            sketch: 'dashboard-cards',
+            cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
+          },
+          scopeSwitcher: 'multi-select',
         },
         // REVISED from a plain `sketch:'list'` — user wants Recommendations
         // to feel like its own real dashboard, connecting it to the
@@ -1542,11 +1529,9 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         },
       ],
       // Section-level `scopeSwitcher` REMOVED (Confluence "IA node tree
-      // v2") — same per-item change as Distribution. Every dashboard-shaped
-      // item in this section now carries its own `scopeSwitcher:
-      // 'multi-select'` (Dashboard, Recommendations, the starred/promoted
-      // items, and My insights) — user: "keep property selector for all the
-      // insights dashboards."
+      // v2") — every dashboard-shaped item in this section carries its own
+      // `scopeSwitcher: 'multi-select'` instead (user: "keep property
+      // selector for all the insights dashboards").
     },
     distribution: {
       items: [
