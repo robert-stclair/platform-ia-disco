@@ -783,8 +783,20 @@ const SAMPLE_YIELD_RULES = ['Weekend surcharge', 'Last-minute discount', 'Length
 // genuinely unique, not just visually different via an extra column).
 // Single-property/single-selected-property scope stays the plain 4 names,
 // unchanged.
-function buildRatePlanNames(scope) {
-  if (scope?.type === 'property') return SAMPLE_RATE_PLANS;
+//
+// `showProperties` param (bug fix): originally checked ONLY
+// `scope?.type === 'property'`, which meant an account with `propertyCount:
+// 'single'` (genuinely only ONE property, period) still showed the full
+// 5x-expanded table whenever the leftover global `state.scope` happened
+// to be 'all' — `propertyCount` and `scope` are independent state, so
+// toggling propertyCount to Single never touched scope.type. Caught live:
+// Reservations (and this function) kept expanding after switching to
+// Single in the debug panel. `showProperties` (accountType === 'MP' ||
+// propertyCount === 'multiple') is the correct combined signal for
+// "is there more than one property to even consider" — checked FIRST,
+// before the scope-specific check.
+function buildRatePlanNames(scope, showProperties) {
+  if (!showProperties || scope?.type === 'property') return SAMPLE_RATE_PLANS;
   const properties = SCOPE_PROPERTIES;
   return SAMPLE_RATE_PLANS.flatMap((plan) => properties.map((property) => `${plan} — ${property}`));
 }
@@ -1008,6 +1020,24 @@ const RESERVATION_NODE = {
   label: 'Reservation',
   content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Reservation', shape: 'field' }] },
 };
+
+// Reservations at >1-property scope (Robert: "reservations needs a
+// properties column"; confirmed: expand rows, not just add a column) —
+// same reasoning and same exact pattern as buildRatePlanNames: a
+// reservation belongs to exactly ONE property, so it's a genuinely
+// independent per-property object, not a shared portfolio concept the
+// way a Yield rule/User is. EXPANDS into one row per property per
+// reservation, real Property column via nameSplitOn — not a "N of M"
+// count column, which would misrepresent a 1:1 relationship as a
+// many-to-many one. Single-property/single-selected-property scope stays
+// the plain 4 names, unchanged. `showProperties` checked first — see
+// buildRatePlanNames' own comment for the bug this avoids repeating
+// (propertyCount: 'single' alone doesn't touch state.scope).
+function buildReservationNames(scope, showProperties) {
+  if (!showProperties || scope?.type === 'property') return SAMPLE_RESERVATIONS;
+  const properties = SCOPE_PROPERTIES;
+  return SAMPLE_RESERVATIONS.flatMap((reservation) => properties.map((property) => `${reservation} — ${property}`));
+}
 
 const SAMPLE_GUEST_COMMS = ['Pre-arrival', 'Confirmation', 'Post-stay'];
 const GUEST_COMM_NODE = {
@@ -1571,9 +1601,9 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
           label: 'Rate plans',
           content: {
             type: 'records',
-            names: buildRatePlanNames(scope),
+            names: buildRatePlanNames(scope, showProperties),
             display: 'table',
-            nameSplitOn: scope?.type === 'property' ? null : ' — ',
+            nameSplitOn: !showProperties || scope?.type === 'property' ? null : ' — ',
             detailNode: buildRatePlanNode(),
             topWidgets: {
               type: 'sketch',
@@ -1685,11 +1715,25 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         // `records` + `display: 'table'` pattern as Rate plans/Yield
         // rules, shared RESERVATION_NODE detail ("start simple," same
         // convention as YIELD_RULE_NODE).
+        //
+        // Row set is SCOPE-AWARE (Robert: "reservations needs a properties
+        // column"; confirmed: expand rows like Rate plans, not a count
+        // column) — see buildReservationNames' own comment for why this
+        // expands rather than adding a "N of M" column. `nameSplitOn`
+        // turns an expanded row's "{Reservation} — {Property}" name into
+        // a real Property column, same as Rate plans — only passed when
+        // scope is genuinely multi-property.
         {
           key: 'reservations',
           label: 'Reservations',
           active: true,
-          content: { type: 'records', names: SAMPLE_RESERVATIONS, display: 'table', detailNode: RESERVATION_NODE },
+          content: {
+            type: 'records',
+            names: buildReservationNames(scope, showProperties),
+            display: 'table',
+            nameSplitOn: !showProperties || scope?.type === 'property' ? null : ' — ',
+            detailNode: RESERVATION_NODE,
+          },
           scopeSwitcher: 'multi-select',
         },
         // Built out — Confluence: real List ("Pre-arrival, Confirmation,
