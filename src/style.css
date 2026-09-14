@@ -647,17 +647,48 @@ a { color: inherit; }
   display: none;
 }
 
-/* EXPLORATORY — property/cluster/brand scope switcher, repositioned to
-   the canvas's top-right per user feedback (was previously at the top of
-   the L2 panel — didn't want it eating into the panel's own space). See
-   CHANGE-QUEUE.md "Foundational, unsolved" section: expect this to change
-   further once Distribution's (unsolved) shape informs the final
-   mechanism. */
+/* Property scope switcher, positioned at the canvas's top-right (was
+   previously at the top of the L2 panel — didn't want it eating into the
+   panel's own space). Now per-item (see nav-data.js's `scopeSwitcher`,
+   renderCanvas) rather than section-level. */
 .canvas-scope-switcher {
   display: flex;
   justify-content: flex-end;
   padding: 16px 24px 0;
 }
+
+/* Dialed up from a bare unstyled <select> to a labeled pill — user's
+   direction: "too small/plain — needs more visual weight" (it was easy to
+   miss as a persistent, primary piece of chrome). The label sits INSIDE
+   the same pill as the control, not above/beside it, so the whole thing
+   reads as one compact unit rather than a form field. Greyscale only,
+   matches the rest of the prototype's chrome. */
+.scope-switcher-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 14px;
+  background-color: var(--surface-sunken);
+  border: 1.5px solid var(--border-strong);
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.scope-switcher-control__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* `is-force-single` (Confluence v2 — Inventory/Dynamic pricing): no visual
+   change to the pill itself — the constraint is communicated by which
+   <option>s are disabled inside the <select> (renderScopeSwitcher), not by
+   restyling the whole control differently per page. Class kept as a hook
+   in case that changes; deliberately a no-op today rather than invented
+   styling with no confirmed direction. */
 
 /* `appearance: none` strips the native <select> arrow entirely (browsers
    render this inconsistently, or not at all) — replaced with a custom
@@ -666,23 +697,44 @@ a { color: inherit; }
 .scope-switcher {
   display: block;
   min-width: 180px;
-  padding: 8px 32px 8px 10px;
-  font-size: 13px;
-  font-weight: 500;
+  padding: 6px 30px 6px 10px;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--text);
-  background-color: var(--surface-sunken);
+  background-color: var(--surface);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A96A3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 9px center;
   background-size: 14px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 999px;
   appearance: none;
   cursor: pointer;
 }
 
 .scope-switcher:hover {
   border-color: var(--border-strong);
+}
+
+/* Force-single conflict prompt (Confluence "IA node tree v2" — Inventory,
+   Dynamic pricing): shown INSTEAD OF the item's canvas content whenever
+   the user's global scope is all/brand/cluster on a page that can only
+   show one property at a time. Centered, quiet — a state to resolve, not
+   an error. See renderForceSinglePrompt/scopeConflictsWithMode. */
+.force-single-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 96px 24px;
+  text-align: center;
+}
+
+.force-single-prompt__text {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
 }
 
 .nav-list {
@@ -1251,6 +1303,32 @@ a { color: inherit; }
 
 .sketch-table__name-link:hover {
   text-decoration: underline;
+}
+
+/* Property column (Confluence "IA node tree v2" — Rate plans gets a
+   Property column once scope isn't a single property). Only case where
+   `.sketch-table` gets a real header row — everywhere else stays fully
+   titleless (see .sketch-table th's own comment above); the "Property"
+   label is the one exception, since the column holds real (not skeleton)
+   data. See renderRecordTable's `includePropertyColumn` branch. */
+.sketch-table__property-header {
+  color: var(--text-muted);
+}
+
+.sketch-table__property-cell {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Second half of a split row name (Confluence "IA node tree v2" — Rate
+   plans' All-properties expansion, e.g. "Standard Rate — Harbourview
+   Hotel"). Muted so the primary name (the rate plan itself) still reads
+   as the row's main identity, with the property as quieter context, all
+   within the same clickable link — no second real column needed. See
+   renderRecordTable's `nameSplitOn`. */
+.sketch-table__name-secondary {
+  color: var(--text-muted);
+  font-weight: 400;
 }
 
 /* Rate plan → Channels tab's real shape (was sketch:'list') — "i see a

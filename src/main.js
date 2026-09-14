@@ -147,13 +147,53 @@ function tr(label) {
 // clicking a specific child inside it does. This mirrors a real folder
 // tree: expanding ≠ selecting.
 
+// Prototype-settings persistence (debug panel only — NOT navigation state).
+// Remembers accountType/propertyCount/multipleSystems/language across a
+// reload via localStorage, so re-opening the prototype doesn't lose
+// whatever combination you were testing against. Deliberately narrow: only
+// the debug-panel toggles are persisted — section/path/scope/expandedKey/
+// wizard are real navigation/session state and should always start fresh
+// (a reload should land on the default route, just with the same settings
+// applied, not resume mid-navigation). Wrapped in try/catch since
+// localStorage can throw (private browsing, storage disabled) — falls
+// back to the hardcoded defaults below rather than breaking the load.
+const PROTOTYPE_SETTINGS_KEY = 'platform-ia-disco:prototype-settings';
+
+function loadPrototypeSettings() {
+  try {
+    const raw = localStorage.getItem(PROTOTYPE_SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function savePrototypeSettings() {
+  try {
+    localStorage.setItem(
+      PROTOTYPE_SETTINGS_KEY,
+      JSON.stringify({
+        accountType: state.accountType,
+        propertyCount: state.propertyCount,
+        multipleSystems: state.multipleSystems,
+        language: state.language,
+      })
+    );
+  } catch {
+    // Storage unavailable — settings just won't persist this session, not
+    // a functional break.
+  }
+}
+
+const savedPrototypeSettings = loadPrototypeSettings();
+
 const state = {
-  accountType: 'SM', // 'SM' | 'LH' | 'MP' — independent of propertyCount; only SM has real content so far
-  propertyCount: 'single', // 'single' | 'multiple' — independent of accountType
+  accountType: savedPrototypeSettings.accountType ?? 'SM', // 'SM' | 'LH' | 'MP' — independent of propertyCount; only SM has real content so far
+  propertyCount: savedPrototypeSettings.propertyCount ?? 'single', // 'single' | 'multiple' — independent of accountType
   section: 'insights',
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
-  multipleSystems: false, // hidden-settings toggle: does every property have >1 connected system?
+  multipleSystems: savedPrototypeSettings.multipleSystems ?? false, // hidden-settings toggle: does every property have >1 connected system?
   // Prototype-panel toggle: 'EN' | 'DE'. Swaps nav labels via `tr()` (see its
   // definition near the top of this file, alongside DE_LABELS) — a LAYOUT
   // stress test, not real i18n: no pluralization/interpolation, and the
@@ -161,7 +201,7 @@ const state = {
   // tooling, not part of the design being tested). Purpose is checking
   // whether rail tooltips, panel list items, tabs, breadcrumbs, tile titles,
   // etc. accommodate German's typically longer strings without breaking.
-  language: 'EN',
+  language: savedPrototypeSettings.language ?? 'EN',
   // EXPLORATORY — property/cluster/brand scope switcher sketch (Insights,
   // Health check once built). See CHANGE-QUEUE.md "Foundational, unsolved"
   // section: this whole mechanism is still being worked through, expected
@@ -510,18 +550,27 @@ railUserEl.addEventListener('click', () => switchToUtilitySection('my-account'))
 railAssistantEl.addEventListener('click', () => switchToUtilitySection('assistant'));
 railNotificationsEl.addEventListener('click', () => switchToUtilitySection('notifications'));
 
-// EXPLORATORY — property/cluster/brand scope switcher sketch. See
-// CHANGE-QUEUE.md "Foundational, unsolved" section — a section-level
-// `scopeSwitcher` flag controls where this shows (currently Insights and
-// Distribution wholesale, NOT per-item yet — see CONTEXT.md's per-section
-// audit for the target per-item shape, e.g. Rate plans/Yield rules
-// shouldn't have this, Inventory needs a different mechanism entirely).
+// Property scope switcher (Confluence "IA node tree v2" — Property scope
+// column). PER-ITEM now, not section-level (see nav-data.js's
+// `scopeSwitcher` on each item) — two modes:
+//   - 'multi-select': every option enabled, as before.
+//   - 'force-single': the item can't be scoped to All/Brand/Cluster (e.g.
+//     Inventory, Dynamic pricing — a per-property grid/calendar with no
+//     meaningful all-properties view). Those options render as disabled
+//     <option>s (greyed, unselectable) rather than disappearing — the
+//     switcher's shape stays the same everywhere, only availability
+//     changes, so it doesn't look like a different control depending on
+//     what page you're on. See wireScopeSwitcher for the fallback when
+//     state.scope is already 'all'/'brand'/'cluster' on arrival.
 // Renders a single <select> — simplest possible sketch, not a final
 // interaction design. Options: All properties, then every individual
 // property, then (MP only) Brands and Clusters as scoping groups.
-function renderScopeSwitcher() {
+function renderScopeSwitcher(mode) {
+  const forceSingle = mode === 'force-single';
   const groups = [];
-  groups.push(`<option value="all:" ${state.scope.type === 'all' ? 'selected' : ''}>All properties</option>`);
+  groups.push(
+    `<option value="all:" ${state.scope.type === 'all' ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>All properties</option>`
+  );
   groups.push(
     `<optgroup label="Properties">${SCOPE_PROPERTIES.map(
       (name) => `<option value="property:${name}" ${state.scope.type === 'property' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
@@ -530,16 +579,54 @@ function renderScopeSwitcher() {
   if (state.accountType === 'MP') {
     groups.push(
       `<optgroup label="Brands">${SCOPE_BRANDS.map(
-        (name) => `<option value="brand:${name}" ${state.scope.type === 'brand' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
+        (name) =>
+          `<option value="brand:${name}" ${state.scope.type === 'brand' && state.scope.key === name ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>${name}</option>`
       ).join('')}</optgroup>`
     );
     groups.push(
       `<optgroup label="Clusters">${SCOPE_CLUSTERS.map(
-        (name) => `<option value="cluster:${name}" ${state.scope.type === 'cluster' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
+        (name) =>
+          `<option value="cluster:${name}" ${state.scope.type === 'cluster' && state.scope.key === name ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>${name}</option>`
       ).join('')}</optgroup>`
     );
   }
-  return `<select class="scope-switcher" aria-label="Property scope">${groups.join('')}</select>`;
+  return `
+    <div class="scope-switcher-control ${forceSingle ? 'is-force-single' : ''}">
+      <span class="scope-switcher-control__label">Property scope</span>
+      <select class="scope-switcher" aria-label="Property scope">${groups.join('')}</select>
+    </div>
+  `;
+}
+
+// Whether the CURRENT global scope conflicts with a 'force-single' item
+// (Inventory, Dynamic pricing) — true whenever scope is 'all'/'brand'/
+// 'cluster'. Deliberately read-only: state.scope is never silently
+// mutated by navigation. "we can't switch the scope as people move
+// around — they need to own that" (user's correction after an earlier
+// version auto-fell-back to the first property on arrival, which
+// overrode a choice the user made elsewhere without asking). The ONLY
+// way state.scope changes is the user's own explicit action on the
+// <select> — including resolving the prompt this renders instead of the
+// page (see renderForceSinglePrompt) — never as a side effect of
+// navigating to a different item.
+function scopeConflictsWithMode(mode) {
+  return mode === 'force-single' && state.scope.type !== 'property';
+}
+
+// Blocking "select a property to continue" state — shown INSTEAD OF the
+// item's own canvas content whenever scopeConflictsWithMode is true. Reuses
+// the same <select> as the header switcher (same options, same disabled
+// All/Brand/Cluster per force-single) so there's only one control to keep
+// in sync, not two competing pickers. Confirmed direction: prompt, don't
+// guess — the earlier silent-fallback version is exactly what this
+// replaces.
+function renderForceSinglePrompt(mode) {
+  return `
+    <div class="force-single-prompt">
+      <p class="force-single-prompt__text">This page shows one property at a time. Select a property to continue.</p>
+      <div class="force-single-prompt__control">${renderScopeSwitcher(mode)}</div>
+    </div>
+  `;
 }
 
 function wireScopeSwitcher() {
@@ -782,17 +869,35 @@ function renderPanel(data) {
 function renderCanvas(data) {
   const rootItem = data.items.length ? resolveSelected(data.items, 0) : null;
 
-  // EXPLORATORY scope switcher (see renderScopeSwitcher) — lives top-right
-  // of the canvas, not the L2 panel (repositioned per user feedback: didn't
-  // want it eating into the panel's own space). Rendered here, BEFORE the
-  // early-return below, so it still shows even when the routed item has no
-  // content of its own (e.g. Insights' Dashboard) — the switcher is a
-  // property-scoping control for the whole SECTION, independent of whether
-  // this particular item happens to have canvas content.
+  // Property scope switcher (see renderScopeSwitcher) — lives top-right of
+  // the canvas, not the L2 panel (repositioned per user feedback: didn't
+  // want it eating into the panel's own space). PER-ITEM now (Confluence
+  // "IA node tree v2"): `rootItem.scopeSwitcher` ('multi-select' |
+  // 'force-single'), read off the specific routed item, not the whole
+  // section — Inventory and Rate plans sit in the same Distribution
+  // section but need different modes. Rendered here, BEFORE the early-
+  // return below, so it still shows even when the routed item has no
+  // canvas content of its own (e.g. Insights' Dashboard).
+  const scopeSwitcherMode = rootItem?.scopeSwitcher;
   const switcherHtml =
-    data.scopeSwitcher && state.propertyCount === 'multiple'
-      ? `<div class="canvas-scope-switcher">${renderScopeSwitcher()}</div>`
+    scopeSwitcherMode && state.propertyCount === 'multiple'
+      ? `<div class="canvas-scope-switcher">${renderScopeSwitcher(scopeSwitcherMode)}</div>`
       : '';
+
+  // Force-single conflict (Inventory, Dynamic pricing) — the user's global
+  // scope is 'all'/'brand'/'cluster' but this item can only show one
+  // property. BLOCKS the item's own content with an explicit prompt
+  // instead of silently picking a property for them — "they need to own
+  // that" (user's correction). state.scope is left completely untouched
+  // here; it only changes once the user picks an option in the prompt's
+  // own <select>, at which point it's the SAME global state.scope every
+  // other page reads too (confirmed: one shared scope, not a per-page
+  // override).
+  if (scopeSwitcherMode && state.propertyCount === 'multiple' && scopeConflictsWithMode(scopeSwitcherMode)) {
+    canvasEl.innerHTML = renderForceSinglePrompt(scopeSwitcherMode);
+    wireScopeSwitcher();
+    return;
+  }
 
   if (!rootItem?.content) {
     canvasEl.innerHTML = switcherHtml;
@@ -917,16 +1022,17 @@ function renderChainBody(chain, i) {
       // `content.starredNames` (optional, e.g. My insights' Dashboards/
       // Charts): shows the illustrative star on specific rows.
       const starredNames = content.starredNames ? new Set(content.starredNames) : null;
-      // `content.display: 'table'` (optional, e.g. Rate plans): renders the
-      // SAME real, clickable names as a table-styled skeleton instead of a
-      // plain list — first column real + clickable, remaining columns
-      // skeleton-only, no real headers (same titleless-skeleton convention
-      // as everywhere else). Every other `records` caller (Properties,
-      // Users, Dashboards, Charts, Yield rules) omits this and keeps the
+      // `content.display: 'table'` (optional, e.g. Rate plans, Yield
+      // rules): renders the SAME real, clickable names as a table-styled
+      // skeleton instead of a plain list — first column real + clickable,
+      // remaining columns skeleton-only, no real headers (same
+      // titleless-skeleton convention as everywhere else) UNLESS
+      // `content.usageColumn` is set. Every other `records` caller
+      // (Properties, Users, Dashboards, Charts) omits this and keeps the
       // plain list — this is additive, not a replacement.
       const pickerHtml =
         content.display === 'table'
-          ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3)
+          ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3, content.nameSplitOn, content.usageColumn)
           : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet);
       // `content.topWidgets` (optional, e.g. Rate plans): a few dashboard-
       // cards widgets rendered ABOVE the picker — "contextual insights
@@ -1070,18 +1176,46 @@ function renderRecordPicker(names, depth, starredNames, showSnippet) {
 // count, not real data) renders as plain skeleton cells alongside it — no
 // real headers at all, same titleless-skeleton convention as everywhere
 // else (this is a table's SHAPE, not its confirmed content).
-function renderRecordTable(names, depth, extraColumns) {
+//
+// `nameSplitOn` (Confluence "IA node tree v2" — Rate plans' All-properties
+// expansion): when the row's own name contains this separator (e.g.
+// " — "), the part after it renders as a second, muted span within the
+// SAME clickable link/cell — "Standard Rate" + a quieter "Harbourview
+// Hotel" — rather than a separate real column. The full string (with
+// separator) is still the row's actual identity/key (data-path-key,
+// breadcrumb label) — this only changes how it's DISPLAYED, not what it
+// IS, so the shared records key/crumb machinery every other caller relies
+// on is untouched. See buildRatePlanNames in nav-data.js for why rows
+// expand instead of gaining a column here.
+//
+// `usageColumn` (Confluence v2 — Yield rules' "how many properties are
+// using a rule"): `{ label, get(name) }` — when present, adds ONE real
+// (not skeleton) column with a real header, `get(name)` computed per row.
+// Unlike Rate plans, Yield rules' row COUNT doesn't change (see
+// ratePlanUsageCount's comment) — this is purely an added column on the
+// existing rows.
+function renderRecordTable(names, depth, extraColumns, nameSplitOn, usageColumn) {
+  const hasRealColumn = Boolean(usageColumn);
+  const headerRow = hasRealColumn
+    ? `<tr class="sketch-table__header-row"><th></th><th class="sketch-table__property-header">${usageColumn.label}</th>${Array(extraColumns).fill('<th></th>').join('')}</tr>`
+    : '';
   const rows = names
-    .map(
-      (name) => `
+    .map((name) => {
+      const [primary, secondary] = nameSplitOn ? name.split(nameSplitOn) : [name, null];
+      const nameHtml = secondary
+        ? `${primary}<span class="sketch-table__name-secondary"> — ${secondary}</span>`
+        : primary;
+      const usageCell = usageColumn ? `<td class="sketch-table__property-cell">${usageColumn.get(name)}</td>` : '';
+      return `
         <tr>
-          <td><a href="#" class="sketch-table__name-link" data-path-key="${depth}:${name}">${name}</a></td>
+          <td><a href="#" class="sketch-table__name-link" data-path-key="${depth}:${name}">${nameHtml}</a></td>
+          ${usageCell}
           ${Array(extraColumns).fill('<td><div class="sketch-table-cell"></div></td>').join('')}
         </tr>
-      `
-    )
+      `;
+    })
     .join('');
-  return `<table class="sketch-table">${rows}</table>`;
+  return `<table class="sketch-table">${headerRow}${rows}</table>`;
 }
 
 // Navigation dashboard (6th canonical page-skeleton type) — a flat grid of
@@ -1677,7 +1811,7 @@ function render() {
   // Falls through to an honest empty panel/canvas for any section with no
   // data for the current state (e.g. an undefined rail item for a given
   // account type) — no placeholders, just nothing rendered.
-  const content = getContent(state.accountType, state.propertyCount);
+  const content = getContent(state.accountType, state.propertyCount, state.scope);
   const data = content?.[state.section];
   if (!data) {
     panelEl.innerHTML = '';
@@ -1813,14 +1947,31 @@ document.querySelectorAll('[data-account-type]').forEach((el) => {
     state.accountType = el.dataset.accountType;
     // Front desk (LH-only) can leave state.section pointing at a rail item
     // that doesn't exist for the newly-selected account type — fall back
-    // to insights rather than stranding the user on a blank screen.
+    // to insights rather than stranding the user on a blank screen. This
+    // is the only case that needs a reset: the SECTION itself is gone.
+    //
+    // `resetPath()` REMOVED here (was unconditional — wiped the user's
+    // whole current path back to the section's default landing item on
+    // every account-type change, even when nothing on that path had
+    // actually changed). Caught live: sitting on Configuration → Direct
+    // Booking → Selling tools → Promotions and switching SM→MP bounced
+    // all the way back to Configuration's default (Properties), even
+    // though Direct Booking/Selling tools/Promotions all still exist for
+    // MP too. Same reasoning `property-count`'s handler below already
+    // applies — resolveSelected/resolveChain already fall back per-level
+    // if a specific path segment stops existing (e.g. Front desk itself),
+    // so there's no need to defensively wipe the whole path on every
+    // toggle. "make sure if i open the proto controls and change a
+    // setting you update for the current view/route" (user's direction) —
+    // changing a setting should react IN PLACE, not relocate the user.
     if (!getRailItems(state.accountType).some((i) => i.key === state.section)) {
       state.section = 'insights';
+      resetPath();
     }
-    resetPath();
     document.querySelectorAll('[data-account-type]').forEach((b) => {
       b.classList.toggle('is-active', b === el);
     });
+    savePrototypeSettings();
     render();
   });
 });
@@ -1842,6 +1993,7 @@ document.querySelectorAll('[data-property-count]').forEach((el) => {
     document.querySelectorAll('[data-property-count]').forEach((b) => {
       b.classList.toggle('is-active', b === el);
     });
+    savePrototypeSettings();
     render();
   });
 });
@@ -1852,6 +2004,7 @@ document.querySelectorAll('[data-system-count]').forEach((el) => {
     document.querySelectorAll('[data-system-count]').forEach((b) => {
       b.classList.toggle('is-active', b === el);
     });
+    savePrototypeSettings();
     render();
   });
 });
@@ -1862,8 +2015,27 @@ document.querySelectorAll('[data-language]').forEach((el) => {
     document.querySelectorAll('[data-language]').forEach((b) => {
       b.classList.toggle('is-active', b === el);
     });
+    savePrototypeSettings();
     render();
   });
+});
+
+// Sync the debug panel's own button highlighting to whatever was loaded
+// from localStorage (see savedPrototypeSettings above) — otherwise a
+// returning user would see e.g. "MP" applied to the actual prototype but
+// the panel's buttons still showing "SM" highlighted, since those
+// `is-active` classes are hardcoded in index.html for the default state.
+document.querySelectorAll('[data-account-type]').forEach((b) => {
+  b.classList.toggle('is-active', b.dataset.accountType === state.accountType);
+});
+document.querySelectorAll('[data-property-count]').forEach((b) => {
+  b.classList.toggle('is-active', b.dataset.propertyCount === state.propertyCount);
+});
+document.querySelectorAll('[data-system-count]').forEach((b) => {
+  b.classList.toggle('is-active', (b.dataset.systemCount === 'multiple') === state.multipleSystems);
+});
+document.querySelectorAll('[data-language]').forEach((b) => {
+  b.classList.toggle('is-active', b.dataset.language === state.language);
 });
 
 // Wires the theme-toggle skeleton's buttons — called per-render (from

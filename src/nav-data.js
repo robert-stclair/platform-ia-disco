@@ -720,6 +720,40 @@ const SAMPLE_CHARTS = ['ADR by channel', 'Length of stay', 'Cancellation rate'];
 const SAMPLE_RATE_PLANS = ['Standard Rate', 'Non-Refundable', 'Advance Purchase', 'Long Stay'];
 const SAMPLE_YIELD_RULES = ['Weekend surcharge', 'Last-minute discount', 'Length-of-stay discount'];
 
+// Rate plans at "All properties" scope (Confluence "IA node tree v2" —
+// user: "for rate plans wed wnat to see more when its all properties"):
+// EXPANDS into one row per property per rate plan, not just an added
+// Property column on the same 4 rows. There's no Group Rate Plan/template
+// layer in THIS tree (that's Distribution's separate "Group rate plans"
+// MP-only node) — without one, each property's own "Standard Rate" is a
+// genuinely independent object, so showing 4 names once, annotated with
+// SOME property, would misrepresent the data model. Real per-property
+// names generated as "{Rate plan} — {Property}" so every row gets a
+// unique, distinct, clickable identity (the shared `records` mechanism
+// keys off name/pathIndex — see resolveChain — so names must stay
+// genuinely unique, not just visually different via an extra column).
+// Single-property/single-selected-property scope stays the plain 4 names,
+// unchanged.
+function buildRatePlanNames(scope) {
+  if (scope?.type === 'property') return SAMPLE_RATE_PLANS;
+  const properties = SCOPE_PROPERTIES;
+  return SAMPLE_RATE_PLANS.flatMap((plan) => properties.map((property) => `${plan} — ${property}`));
+}
+
+// Yield rules "properties using this rule" (user: "we'd want to see a
+// concept of how many properties are using a rule - so it prob becomes a
+// table"): unlike Rate plans, this does NOT expand rows — one row per
+// RULE stays (a yield rule is a real shared concept you'd apply across a
+// portfolio, not an independent per-property object the way an unlinked
+// rate plan is). Real count only, not interactive (confirmed) — no
+// per-property breakdown/expansion yet. Deterministic per rule name (not
+// random) so re-renders don't flicker a different count for the same row.
+function ratePlanUsageCount(ruleName) {
+  const total = SCOPE_PROPERTIES.length;
+  const seed = [...ruleName].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return 1 + (seed % total); // 1..total, never 0 — a defined rule is always in use somewhere
+}
+
 // Distribution's actual channel universe — deliberately ONE list, no
 // categorical split between OTAs and SiteMinder's own products: "crucially
 // that list included direct booking and channels plus as well as otas."
@@ -995,6 +1029,12 @@ const HEALTH_CHECK_ITEM = {
       { shape: 'stat' },
     ],
   },
+  // `scopeSwitcher: 'multi-select'` (user: "health check can be all
+  // properties or not") — unlike Inventory/Dynamic pricing, Health check
+  // is a status-dashboard shape, not a per-property grid/calendar, so a
+  // portfolio-wide "how's everything doing" view is meaningful here. Can
+  // be scoped to one property, a brand/cluster, or All.
+  scopeSwitcher: 'multi-select',
 };
 
 // EXPLORATORY — sample data for the property/cluster/brand scope switcher
@@ -1060,7 +1100,7 @@ function buildConfigurationPropertiesItem(showProperties) {
 // Every panel item is a real Node (key, label, content) — no more plain
 // {label, active} objects. A leaf item with nothing to click into (e.g.
 // "Inventory") is still a Node, just with content: null.
-function buildSmContentTree(showProperties) {
+function buildSmContentTree(showProperties, scope) {
   return {
     insights: {
       // "My insights" (CHANGE-QUEUE.md item 8) REPLACES the old informal
@@ -1093,11 +1133,16 @@ function buildSmContentTree(showProperties) {
           // is titleless (skeleton title bar, sized larger per user's
           // "full page of titles, make them larger" direction) — shape
           // only, not real content.
+          //
+          // `scopeSwitcher: 'multi-select'` (Confluence "IA node tree v2"):
+          // Dashboard can be scoped to one property, a brand/cluster, or
+          // All — same per-item switcher mechanism as Distribution's items.
           content: {
             type: 'sketch',
             sketch: 'dashboard-cards',
             cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }],
           },
+          scopeSwitcher: 'multi-select',
         },
         // Promoted/starred items — illustrative duplicates of a couple of
         // My insights' starred rows below, surfaced at the top level,
@@ -1173,12 +1218,14 @@ function buildSmContentTree(showProperties) {
               { shape: 'stat' },
             ],
           },
+          scopeSwitcher: 'multi-select',
         },
       ],
-      // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
-      // section. Only Insights and (once built) Health check carry this;
-      // Configuration/Distribution/Transactions deliberately don't yet.
-      scopeSwitcher: showProperties,
+      // Section-level `scopeSwitcher` REMOVED (Confluence "IA node tree
+      // v2") — same per-item change as Distribution. Dashboard and
+      // Recommendations each carry their own `scopeSwitcher: 'multi-select'`
+      // above; My insights/starred items don't (first-pass — unconfirmed in
+      // the Confluence tree, revisit once that's settled).
     },
     distribution: {
       items: [
@@ -1186,11 +1233,24 @@ function buildSmContentTree(showProperties) {
         // skeleton without words" (confirmed by user): a plain column
         // count + row count, no real labels at all — shape only, nothing
         // about Inventory's real columns/rows is decided yet.
+        //
+        // `scopeSwitcher: 'force-single'` (Confluence "IA node tree v2" —
+        // Property scope column): Inventory is a per-property grid, there's
+        // no meaningful "all properties" or cluster view of it. The
+        // switcher's All/Brand/Cluster options are disabled (see
+        // renderScopeSwitcher). If the global scope is already all/brand/
+        // cluster when the user arrives here, this page does NOT silently
+        // pick a property for them — it shows an explicit "select a
+        // property to continue" prompt instead (renderForceSinglePrompt) —
+        // "we can't switch the scope as people move around — they need to
+        // own that." Whatever they pick becomes the new GLOBAL scope,
+        // same as changing it from the header switcher anywhere else.
         {
           key: 'inventory',
           label: 'Inventory',
           active: true,
           content: { type: 'sketch', sketch: 'grid', columns: 7, rows: 6 },
+          scopeSwitcher: 'force-single',
         },
         // Clickable `records` list (Distribution batch item 1 — "go
         // deep"), same generic pattern as Properties/Users/Dashboards.
@@ -1206,13 +1266,33 @@ function buildSmContentTree(showProperties) {
         // already uses for Rate plan's own Overview "Performance" section.
         // 3 cards, mixed stat+chart, matching that section's proportions —
         // titleless/skeleton, no real numbers/charts confirmed yet.
+        //
+        // `scopeSwitcher: 'multi-select'` (Confluence v2): a genuine
+        // multi-property collection — the switcher can be set to a single
+        // property, a brand/cluster, or All.
+        //
+        // Row set is now SCOPE-AWARE (user: "for rate plans wed wnat to see
+        // more when its all properties") — `buildRatePlanNames(scope)`
+        // returns the plain 4 names at single-property scope, or expands to
+        // one row per property per rate plan otherwise (see that function's
+        // comment for why this expands rather than adding a column: no
+        // GRP/template layer here, so each property's "Standard Rate" is a
+        // real independent object, not a shared one just annotated with
+        // where it lives). `nameSplitOn` (new, renderRecordTable/
+        // renderRecordPicker): splits each row's name at " — " and renders
+        // the property half muted, so an expanded row still reads as
+        // "Standard Rate" + a quieter "Harbourview Hotel," not one flat
+        // string — without needing a second real column or touching the
+        // shared `records` key/crumb machinery every other caller
+        // (Properties, Users, Dashboards, Charts) also relies on.
         {
           key: 'rate-plans',
           label: 'Rate plans',
           content: {
             type: 'records',
-            names: SAMPLE_RATE_PLANS,
+            names: buildRatePlanNames(scope),
             display: 'table',
+            nameSplitOn: ' — ',
             detailNode: buildRatePlanNode(showProperties),
             topWidgets: {
               type: 'sketch',
@@ -1220,12 +1300,29 @@ function buildSmContentTree(showProperties) {
               cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
             },
           },
+          scopeSwitcher: 'multi-select',
         },
         // Same pattern (item 2), own shared detail node.
+        //
+        // NOW a table (user: "for yield rules we'd want to see a concept of
+        // how many properties are using a rule - so it prob becomes a
+        // table") — unlike Rate plans, this does NOT expand rows (a yield
+        // rule is a shared portfolio concept, not an independent
+        // per-property object) — one row per rule stays, with a real
+        // "Uses" column (`usageColumn`, new) showing a real, deterministic
+        // count via `ratePlanUsageCount`. Real count only, not interactive
+        // (confirmed) — no per-property breakdown/expansion yet.
         {
           key: 'yield-rules',
           label: 'Yield rules',
-          content: { type: 'records', names: SAMPLE_YIELD_RULES, detailNode: YIELD_RULE_NODE },
+          content: {
+            type: 'records',
+            names: SAMPLE_YIELD_RULES,
+            display: 'table',
+            usageColumn: { label: 'Uses', get: (name) => `${ratePlanUsageCount(name)} of ${SCOPE_PROPERTIES.length} properties` },
+            detailNode: YIELD_RULE_NODE,
+          },
+          scopeSwitcher: 'multi-select',
         },
         // Calendar-style grid (user: "dynamic pricing is a grid as well -
         // can use the LH calendar style") — same 7-weekday-column, 5-row
@@ -1234,11 +1331,15 @@ function buildSmContentTree(showProperties) {
         // noPanel like Front desk's own usage. `badge: true` — same
         // illustrative "something needs attention" dot as Health check/
         // Recommendations (CONTEXT.md's notification candidate-model).
+        //
+        // `scopeSwitcher: 'force-single'`: same reasoning as Inventory —
+        // per-property calendar, no all-properties/cluster view exists.
         {
           key: 'dynamic-pricing',
           label: 'Dynamic pricing',
           badge: true,
           content: { type: 'sketch', sketch: 'calendar' },
+          scopeSwitcher: 'force-single',
         },
         // Distribution's "Properties" item REMOVED (CHANGE-QUEUE.md
         // Distribution batch item 5) — user flagged, on reflection, they
@@ -1250,12 +1351,13 @@ function buildSmContentTree(showProperties) {
         // Configuration's own Properties item is unrelated and unaffected.
         HEALTH_CHECK_ITEM,
       ],
-      // EXPLORATORY sketch flag — see CHANGE-QUEUE.md "Foundational, unsolved"
-      // section. Visual sketch only: showing the switcher present throughout
-      // Distribution does NOT resolve how it interacts with Distribution's
-      // bulk rate distribution tension — that's still flagged as the hard,
-      // unsolved case, this just makes the shape visible to react to.
-      scopeSwitcher: showProperties,
+      // Section-level `scopeSwitcher` REMOVED (Confluence "IA node tree
+      // v2"): the switcher is now a PER-ITEM property (see each item
+      // above), not a section-wide flag. This is the per-item shape
+      // CONTEXT.md's per-section audit flagged as the target — Inventory
+      // and Rate plans/Yield rules genuinely differ (force-single vs.
+      // multi-select), which a single section-level boolean couldn't
+      // express. Don't reintroduce a section-level flag here.
     },
     // Renamed from "transactions" alongside the rail item's own rename —
     // see BASE_RAIL_ITEMS' comment for why.
@@ -1348,9 +1450,13 @@ function buildSmContentTree(showProperties) {
 //     let this comment go stale.
 //   - propertyCount: 'single' | 'multiple' — independent of account type;
 //     also drives Properties, alongside accountType === 'MP'.
-export function getContent(accountType, propertyCount) {
+//   - scope: the property/cluster/brand switcher's current value (see
+//     state.scope in main.js) — threaded through so scope-aware row sets
+//     (Rate plans' expansion, once other items need it) can react live.
+//     Optional; content that doesn't care about scope just ignores it.
+export function getContent(accountType, propertyCount, scope) {
   const showProperties = accountType === 'MP' || propertyCount === 'multiple';
-  const tree = buildSmContentTree(showProperties);
+  const tree = buildSmContentTree(showProperties, scope);
   // My account — not a rail section (getRailItems is unaffected), reached
   // via the rail's user avatar instead. Same regardless of account type/
   // property count, so it's added here rather than inside
