@@ -502,8 +502,8 @@ a { color: inherit; }
 }
 
 .rail__brand-mark {
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
 }
 
 .rail__items {
@@ -591,6 +591,11 @@ a { color: inherit; }
   box-shadow: inset 0 0 0 1.5px var(--rail-icon-active);
 }
 
+/* Hit target stays 44px (click/tap area, spacing rhythm) but the
+   hover/active highlight itself is drawn at 32px via ::before — matching
+   the brand mark's own 32px footprint above it, rather than the full 44px
+   box (Robert: "reduce the size of selected state in the rail to match
+   the brand icon"). */
 .rail-item {
   display: flex;
   align-items: center;
@@ -602,18 +607,37 @@ a { color: inherit; }
   border: none;
   background: transparent;
   color: var(--rail-icon);
-  transition: background 0.12s ease, color 0.12s ease;
+  position: relative;
+}
+
+.rail-item::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 8px;
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+.rail-item__icon,
+.rail-item__icon svg {
   position: relative;
 }
 
 .rail-item:hover {
-  background: var(--rail-ground-raised);
   color: #C4C8CE;
 }
 
+.rail-item:hover::before {
+  background: var(--rail-ground-raised);
+}
+
 .rail-item.is-active {
-  background: var(--rail-active-bg);
   color: var(--rail-icon-active);
+}
+
+.rail-item.is-active::before {
+  background: var(--rail-active-bg);
 }
 
 .rail-item__icon {
@@ -693,29 +717,21 @@ a { color: inherit; }
   padding: 0;
 }
 
-/* Property scope switcher pill — DELIBERATELY compact now that it shares
-   a row with the page title rather than floating alone (user: "even the
-   switcher is a bit big atm"). Smaller padding, no uppercase label (was
-   eating width for little benefit once paired with a title on the same
-   line) — just the select itself, still visually a pill/control, not a
-   bare unstyled <select>. Greyscale only, matches the rest of the
-   prototype's chrome. */
+/* Property scope switcher pill — no visible "Property scope" label
+   anymore (removed: it was redundant clutter once the switcher got its
+   own dedicated header row rather than sharing one with the page title —
+   the <select>'s aria-label still carries it for accessibility). Sized a
+   little bigger than the cramped version that existed only to fit
+   alongside a title on the same line. Greyscale only, matches the rest of
+   the prototype's chrome. */
 .scope-switcher-control {
   display: inline-flex;
   align-items: center;
   flex: none;
-  padding: 1px 1px 1px 8px;
+  padding: 2px;
   background-color: var(--surface-sunken);
   border: 1px solid var(--border-strong);
   border-radius: 999px;
-}
-
-.scope-switcher-control__label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-muted);
-  white-space: nowrap;
-  margin-right: 6px;
 }
 
 /* `is-force-single` (Confluence v2 — Inventory/Dynamic pricing): no visual
@@ -728,20 +744,19 @@ a { color: inherit; }
 /* `appearance: none` strips the native <select> arrow entirely (browsers
    render this inconsistently, or not at all) — replaced with a custom
    chevron via background-image so it still visibly reads as a dropdown.
-   Greyscale only, matches --text-muted. Sized down alongside the pill
-   above — smaller min-width, tighter padding, regular (not bold) weight. */
+   Greyscale only, matches --text-muted. */
 .scope-switcher {
   display: block;
-  min-width: 130px;
-  padding: 2px 22px 2px 8px;
-  font-size: 12.5px;
+  min-width: 150px;
+  padding: 6px 28px 6px 14px;
+  font-size: 13.5px;
   font-weight: 500;
   color: var(--text);
   background-color: var(--surface);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A96A3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 7px center;
-  background-size: 12px;
+  background-position: right 10px center;
+  background-size: 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
   appearance: none;

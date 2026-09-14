@@ -596,7 +596,6 @@ function renderScopeSwitcher(mode) {
   }
   return `
     <div class="scope-switcher-control ${forceSingle ? 'is-force-single' : ''}">
-      <span class="scope-switcher-control__label">Property scope</span>
       <select class="scope-switcher" aria-label="Property scope">${groups.join('')}</select>
     </div>
   `;
