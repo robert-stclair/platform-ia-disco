@@ -872,12 +872,25 @@ function renderPanel(data) {
 function renderCanvas(data) {
   const rootItem = data.items.length ? resolveSelected(data.items, 0) : null;
 
+  if (!rootItem?.content) {
+    canvasEl.innerHTML = renderCanvasHeader(rootItem?.label, null, rootItem?.scopeSwitcher);
+    wireScopeSwitcher();
+    return;
+  }
+
+  const chain = resolveChain(rootItem);
+
   // Property scope switcher mode (see renderScopeSwitcher) — PER-ITEM
-  // (Confluence "IA node tree v2"): `rootItem.scopeSwitcher`
-  // ('multi-select' | 'force-single'), read off the specific routed item,
-  // not the whole section — Inventory and Rate plans sit in the same
-  // Distribution section but need different modes.
-  const scopeSwitcherMode = rootItem?.scopeSwitcher;
+  // (Confluence "IA node tree v2"), but not just off the top-level routed
+  // item anymore: a TAB can carry its own `scopeSwitcher` too (e.g. a
+  // user's own "Properties" tab inside buildUserNode needs multi-select
+  // even though sibling tabs like "User details" don't need a switcher at
+  // all). Walk the resolved chain from the deepest step backward and use
+  // the first `scopeSwitcher` found, falling back to rootItem's own — most
+  // items only ever set it at the root level (Inventory, Rate plans, ...),
+  // so this changes nothing for them; it only matters for a tabs node
+  // whose individual tabs disagree.
+  const scopeSwitcherMode = chain.reduceRight((found, step) => found ?? step.node?.scopeSwitcher, undefined) ?? rootItem?.scopeSwitcher;
 
   // Force-single conflict (Inventory, Dynamic pricing) — the user's global
   // scope is 'all'/'brand'/'cluster' but this item can only show one
@@ -893,14 +906,6 @@ function renderCanvas(data) {
     wireScopeSwitcher();
     return;
   }
-
-  if (!rootItem?.content) {
-    canvasEl.innerHTML = renderCanvasHeader(rootItem?.label, null, scopeSwitcherMode);
-    wireScopeSwitcher();
-    return;
-  }
-
-  const chain = resolveChain(rootItem);
 
   // Records-inbox mode (Notifications): the picker itself already rendered
   // PERMANENTLY in the L2 panel (renderRecordsInboxPanel) — the canvas must

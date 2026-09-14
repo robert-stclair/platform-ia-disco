@@ -270,6 +270,16 @@ function buildUserNode(showProperties) {
               {
                 key: 'user-properties',
                 label: 'Properties',
+                // `scopeSwitcher: 'multi-select'` (Confluence "IA node tree
+                // v2" — a user's own Properties tab), TAB-LEVEL, not on the
+                // whole Users item — "User details" doesn't need a
+                // switcher, only this one tab does. renderCanvas resolves
+                // scopeSwitcherMode from the deepest chain step that sets
+                // one, falling back up to the root item — see its own
+                // comment for why this needed a small mechanism change
+                // (previously scopeSwitcher only existed at the top-level
+                // routed item, never inside a nested tabs strip).
+                scopeSwitcher: 'multi-select',
                 content: {
                   type: 'records',
                   names: SAMPLE_PROPERTIES,
