@@ -1273,20 +1273,19 @@ function buildSmContentTree(showProperties, scope) {
         // multi-property collection — the switcher can be set to a single
         // property, a brand/cluster, or All.
         //
-        // Row set is now SCOPE-AWARE (user: "for rate plans wed wnat to see
-        // more when its all properties") — `buildRatePlanNames(scope)`
-        // returns the plain 4 names at single-property scope, or expands to
-        // one row per property per rate plan otherwise (see that function's
-        // comment for why this expands rather than adding a column: no
+        // Row set is SCOPE-AWARE (user: "for rate plans wed wnat to see more
+        // when its all properties") — `buildRatePlanNames(scope)` returns
+        // the plain 4 names at single-property scope, or expands to one row
+        // per property per rate plan otherwise (see that function's comment
+        // for why this expands rather than always adding a column: no
         // GRP/template layer here, so each property's "Standard Rate" is a
         // real independent object, not a shared one just annotated with
-        // where it lives). `nameSplitOn` (new, renderRecordTable/
-        // renderRecordPicker): splits each row's name at " — " and renders
-        // the property half muted, so an expanded row still reads as
-        // "Standard Rate" + a quieter "Harbourview Hotel," not one flat
-        // string — without needing a second real column or touching the
-        // shared `records` key/crumb machinery every other caller
-        // (Properties, Users, Dashboards, Charts) also relies on.
+        // where it lives). `nameSplitOn` (renderRecordTable) is what turns
+        // an expanded row's "{Rate plan} — {Property}" name into a real
+        // Property column — only passed when scope is genuinely
+        // multi-property; at single-property scope there's no property
+        // half to split out, so the column shouldn't render at all rather
+        // than show up empty.
         {
           key: 'rate-plans',
           label: 'Rate plans',
@@ -1294,7 +1293,7 @@ function buildSmContentTree(showProperties, scope) {
             type: 'records',
             names: buildRatePlanNames(scope),
             display: 'table',
-            nameSplitOn: ' — ',
+            nameSplitOn: scope?.type === 'property' ? null : ' — ',
             detailNode: buildRatePlanNode(),
             topWidgets: {
               type: 'sketch',
