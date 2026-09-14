@@ -488,11 +488,9 @@ a { color: inherit; }
   flex-direction: column;
 }
 
-/* White chip behind the mark — the real SM navy mark (#001633) is actually
-   DARKER than the rail's own dark ground (--rail-ground: #26292E), so it
-   goes near-invisible without one; LH's mark carries its own orange tile
-   baked into the SVG and would work either way, but shares the same chip
-   for visual consistency between the two account types. */
+/* Both brand marks are now self-contained colored tiles (own rounded-square
+   background baked into the SVG, matching how each product's icon actually
+   appears in-app) — no chip background needed here. */
 .rail__brand {
   display: flex;
   justify-content: center;
@@ -500,14 +498,12 @@ a { color: inherit; }
   width: 32px;
   height: 32px;
   margin: 12px auto 8px;
-  border-radius: 8px;
-  background: #FFFFFF;
   flex-shrink: 0;
 }
 
 .rail__brand-mark {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
 }
 
 .rail__items {
