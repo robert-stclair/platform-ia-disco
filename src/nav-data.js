@@ -1377,11 +1377,19 @@ function buildSmContentTree(showProperties, scope) {
     // Renamed from "transactions" alongside the rail item's own rename —
     // see BASE_RAIL_ITEMS' comment for why.
     operations: {
+      // `scopeSwitcher: 'multi-select'` on every top-level item here (user:
+      // "also need the switcher in the operations section - we can work
+      // through the details later") — first pass at plain multi-select
+      // everywhere, same default this project uses elsewhere absent a
+      // specific reason for force-single (e.g. Inventory/Dynamic pricing).
+      // Revisit per-item once the actual per-tab needs (Payments'
+      // Transactions vs. Payouts vs. Invoices, etc.) are worked through —
+      // don't treat this as confirmed.
       items: [
         // sketch:'list' (CHANGE-QUEUE.md item 7) — a plain list, NOT the
         // clickable `records` pattern (unlike Rate plans/Yield rules).
-        { key: 'reservations', label: 'Reservations', active: true, content: { type: 'sketch', sketch: 'list' } },
-        { key: 'guest-communications', label: 'Guest communications', content: null },
+        { key: 'reservations', label: 'Reservations', active: true, content: { type: 'sketch', sketch: 'list' }, scopeSwitcher: 'multi-select' },
+        { key: 'guest-communications', label: 'Guest communications', content: null, scopeSwitcher: 'multi-select' },
         // "Payments" — the TRANSACTIONAL half of Pay's IA split (the other
         // half, low-touch setup, lives under Config → Pay, see PAY_LIST).
         // REVISED from an earlier version that flattened these into 4
@@ -1399,6 +1407,13 @@ function buildSmContentTree(showProperties, scope) {
         {
           key: 'payments',
           label: 'Payments',
+          // One flag covers every tab underneath (Transactions/Payouts/
+          // Invoices/Payment requests/Automated payments) — same mechanism
+          // as My insights. Some of these tabs may end up needing
+          // force-single instead once worked through in detail (e.g.
+          // Payouts could be inherently property-specific) — not decided
+          // yet, don't read this as confirmed per-tab.
+          scopeSwitcher: 'multi-select',
           content: {
             type: 'tabs',
             tabs: [
