@@ -496,11 +496,9 @@ a { color: inherit; }
 }
 
 .rail__brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--rail-ground-raised);
-  border: 1px dashed #565B64;
+  width: 22px;
+  height: 22px;
+  color: var(--rail-icon);
 }
 
 .rail__items {
@@ -647,40 +645,72 @@ a { color: inherit; }
   display: none;
 }
 
-/* Property scope switcher, positioned at the canvas's top-right (was
-   previously at the top of the L2 panel — didn't want it eating into the
-   panel's own space). Now per-item (see nav-data.js's `scopeSwitcher`,
-   renderCanvas) rather than section-level. */
-.canvas-scope-switcher {
+/* Single top line: page title (or breadcrumb, once drilled down) on the
+   left, Property scope switcher on the right — user's direction: "we want
+   to just take minimal vertical space so maybe h1/crumb/property switcher
+   are that top line." Replaces two previously-separate rows
+   (.canvas-scope-switcher floating alone, .breadcrumb below it). See
+   renderCanvasHeader in main.js.
+   Its own distinct BAND (border-bottom, full-bleed background, real
+   vertical padding) — user: "looking a bit messy with the side panel
+   items sitting at same height as the h1." Before this, the header had no
+   visual weight of its own (just top padding, no border), so it read as
+   the SAME kind of element as the panel's own selected list item sitting
+   right beside it at the same height — two competing labels instead of
+   one clear page header. Standard pattern for a side-nav + content-header
+   layout (Linear/Notion/Vercel-style): give the header a real bar so it's
+   unambiguously "the page's header," not a stray heading floating at the
+   top of the content. */
+.canvas-header {
   display: flex;
-  justify-content: flex-end;
-  padding: 16px 24px 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  min-height: 30px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
-/* Dialed up from a bare unstyled <select> to a labeled pill — user's
-   direction: "too small/plain — needs more visual weight" (it was easy to
-   miss as a persistent, primary piece of chrome). The label sits INSIDE
-   the same pill as the control, not above/beside it, so the whole thing
-   reads as one compact unit rather than a form field. Greyscale only,
-   matches the rest of the prototype's chrome. */
+.canvas-page-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+/* Breadcrumb, when present, sits in the SAME slot as .canvas-page-title
+   (renderCanvasHeader picks one or the other, never both) — no extra
+   margin/padding of its own needed here since .canvas-header already
+   provides it. */
+.canvas-header .breadcrumb {
+  padding: 0;
+}
+
+/* Property scope switcher pill — DELIBERATELY compact now that it shares
+   a row with the page title rather than floating alone (user: "even the
+   switcher is a bit big atm"). Smaller padding, no uppercase label (was
+   eating width for little benefit once paired with a title on the same
+   line) — just the select itself, still visually a pill/control, not a
+   bare unstyled <select>. Greyscale only, matches the rest of the
+   prototype's chrome. */
 .scope-switcher-control {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 8px 6px 14px;
+  flex: none;
+  padding: 3px 3px 3px 10px;
   background-color: var(--surface-sunken);
-  border: 1.5px solid var(--border-strong);
+  border: 1px solid var(--border-strong);
   border-radius: 999px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .scope-switcher-control__label {
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
+  margin-right: 6px;
 }
 
 /* `is-force-single` (Confluence v2 — Inventory/Dynamic pricing): no visual
@@ -693,19 +723,20 @@ a { color: inherit; }
 /* `appearance: none` strips the native <select> arrow entirely (browsers
    render this inconsistently, or not at all) — replaced with a custom
    chevron via background-image so it still visibly reads as a dropdown.
-   Greyscale only, matches --text-muted. */
+   Greyscale only, matches --text-muted. Sized down alongside the pill
+   above — smaller min-width, tighter padding, regular (not bold) weight. */
 .scope-switcher {
   display: block;
-  min-width: 180px;
-  padding: 6px 30px 6px 10px;
-  font-size: 13.5px;
-  font-weight: 600;
+  min-width: 130px;
+  padding: 4px 24px 4px 8px;
+  font-size: 12.5px;
+  font-weight: 500;
   color: var(--text);
   background-color: var(--surface);
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238A96A3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 9px center;
-  background-size: 14px;
+  background-position: right 7px center;
+  background-size: 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   appearance: none;

@@ -869,20 +869,12 @@ function renderPanel(data) {
 function renderCanvas(data) {
   const rootItem = data.items.length ? resolveSelected(data.items, 0) : null;
 
-  // Property scope switcher (see renderScopeSwitcher) — lives top-right of
-  // the canvas, not the L2 panel (repositioned per user feedback: didn't
-  // want it eating into the panel's own space). PER-ITEM now (Confluence
-  // "IA node tree v2"): `rootItem.scopeSwitcher` ('multi-select' |
-  // 'force-single'), read off the specific routed item, not the whole
-  // section — Inventory and Rate plans sit in the same Distribution
-  // section but need different modes. Rendered here, BEFORE the early-
-  // return below, so it still shows even when the routed item has no
-  // canvas content of its own (e.g. Insights' Dashboard).
+  // Property scope switcher mode (see renderScopeSwitcher) — PER-ITEM
+  // (Confluence "IA node tree v2"): `rootItem.scopeSwitcher`
+  // ('multi-select' | 'force-single'), read off the specific routed item,
+  // not the whole section — Inventory and Rate plans sit in the same
+  // Distribution section but need different modes.
   const scopeSwitcherMode = rootItem?.scopeSwitcher;
-  const switcherHtml =
-    scopeSwitcherMode && state.propertyCount === 'multiple'
-      ? `<div class="canvas-scope-switcher">${renderScopeSwitcher(scopeSwitcherMode)}</div>`
-      : '';
 
   // Force-single conflict (Inventory, Dynamic pricing) — the user's global
   // scope is 'all'/'brand'/'cluster' but this item can only show one
@@ -900,7 +892,7 @@ function renderCanvas(data) {
   }
 
   if (!rootItem?.content) {
-    canvasEl.innerHTML = switcherHtml;
+    canvasEl.innerHTML = renderCanvasHeader(rootItem?.label, null, scopeSwitcherMode);
     wireScopeSwitcher();
     return;
   }
@@ -915,12 +907,12 @@ function renderCanvas(data) {
   // to crumb back to, the list never left the panel.
   if (data.customPanel === 'records-inbox') {
     if (!chain[0]?.selectedKey) {
-      canvasEl.innerHTML = `${switcherHtml}<div class="sketch"><div class="records-inbox-empty">Select a notification to view it</div></div>`;
+      canvasEl.innerHTML = `${renderCanvasHeader(rootItem.label, null, scopeSwitcherMode)}<div class="sketch"><div class="records-inbox-empty">Select a notification to view it</div></div>`;
       wireScopeSwitcher();
       return;
     }
     const detail = renderChainBody(chain, 1);
-    canvasEl.innerHTML = `${switcherHtml}<div class="sketch">${detail.bodyHtml}</div>`;
+    canvasEl.innerHTML = `${renderCanvasHeader(rootItem.label, null, scopeSwitcherMode)}<div class="sketch">${detail.bodyHtml}</div>`;
     wireScopeSwitcher();
     wirePathLinks();
     wireThemeToggle();
@@ -935,7 +927,13 @@ function renderCanvas(data) {
   // tabs anywhere in its ancestry (Users, Channels, Manage products) got no
   // padding at all, rendering flush against the canvas edges — caught
   // while building item 7's standard-margin audit.
-  canvasEl.innerHTML = switcherHtml + breadcrumbHtml(trail) + `<div class="sketch">${bodyHtml}</div>`;
+  //
+  // Single header row (user: "we want to just take minimal vertical space
+  // so maybe h1/crumb/property switcher are that top line") — replaces the
+  // old two-row switcherHtml + breadcrumbHtml stack. See
+  // renderCanvasHeader's own comment for how the title/breadcrumb share
+  // one slot.
+  canvasEl.innerHTML = renderCanvasHeader(rootItem.label, trail, scopeSwitcherMode) + `<div class="sketch">${bodyHtml}</div>`;
   wireScopeSwitcher();
   wirePathLinks();
   wireBreadcrumb();
@@ -1412,17 +1410,17 @@ const WIZARD_DEFINITIONS = {
   },
 };
 
-function breadcrumbHtml(trail) {
-  // Slice off everything before the LAST `resetTrail` crumb (see the
-  // `records` branch's `crossNav` handling in renderChainBody) — a
-  // cross-navigation re-entry (User ↔ Property) marks its own crumb this
-  // way so the breadcrumb shows "where I am," not the full click history
-  // that led here. `state.path`/truncateTo are untouched by this — only
-  // what's DISPLAYED is trimmed, applied once here since every ancestor's
-  // `.concat()` along the way can only grow the trail, never retroactively
-  // shorten what a caller already prepended.
+// Returns the breadcrumb's own visible trail (see the function below for
+// why `resetTrail` crumbs get sliced off) without rendering anything —
+// split out so renderCanvasHeader can ask "is there a real multi-level
+// trail right now?" without duplicating this slicing logic.
+function visibleBreadcrumbTrail(trail) {
   const lastResetIndex = trail.reduce((acc, t, i) => (t.resetTrail ? i : acc), -1);
-  const visibleTrail = lastResetIndex > 0 ? trail.slice(lastResetIndex) : trail;
+  return lastResetIndex > 0 ? trail.slice(lastResetIndex) : trail;
+}
+
+function breadcrumbHtml(trail) {
+  const visibleTrail = visibleBreadcrumbTrail(trail);
   // A single crumb with nothing above or below it is noise — only show the
   // breadcrumb once there's an actual multi-level trail to convey.
   if (visibleTrail.length <= 1) return '';
@@ -1439,6 +1437,35 @@ function breadcrumbHtml(trail) {
       .join('') +
     `</div>`
   );
+}
+
+// Single top line combining the page title (or breadcrumb, once drilled
+// down) with the Property scope switcher — user's direction: "we want to
+// just take minimal vertical space so maybe h1/crumb/property switcher are
+// that top line." Replaces what used to be TWO separate rows (the
+// switcher's own `.canvas-scope-switcher` div, then breadcrumbHtml's own
+// `.breadcrumb` div below it) with one shared flex row: title/breadcrumb
+// on the left, switcher on the right, same vertical space either way.
+//
+// `pageLabel` (rootItem.label, e.g. "Rate plans") renders as a plain H1
+// whenever there's no real multi-level trail yet (visibleBreadcrumbTrail
+// has ≤1 entry — the existing "single crumb is noise" rule, reused rather
+// than duplicated). Once a real drill-down exists, the breadcrumb REPLACES
+// the H1 in the exact same slot — it doesn't stack below it. This is the
+// same row growing into a different form, not a second row appearing.
+//
+// `switcherMode` — undefined/falsy when this item has no switcher at all
+// (most Configuration items) — in which case the row still renders (for
+// the H1/breadcrumb) but with an empty right-hand side, not collapsing to
+// nothing; a page keeps its title even without a switcher.
+function renderCanvasHeader(pageLabel, trail, switcherMode) {
+  const visibleTrail = trail ? visibleBreadcrumbTrail(trail) : [];
+  const titleHtml =
+    visibleTrail.length > 1
+      ? breadcrumbHtml(trail)
+      : `<h1 class="canvas-page-title">${tr(pageLabel)}</h1>`;
+  const switcherHtml = switcherMode && state.propertyCount === 'multiple' ? renderScopeSwitcher(switcherMode) : '';
+  return `<div class="canvas-header">${titleHtml}${switcherHtml}</div>`;
 }
 
 function wireBreadcrumb() {
