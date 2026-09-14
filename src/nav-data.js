@@ -653,6 +653,16 @@ const NOTIFICATIONS_ITEMS = {
       // the L2 panel and the detail in the main panel - just like an email
       // browser might have it."
       content: { type: 'records', names: SAMPLE_NOTIFICATIONS, detailNode: NOTIFICATION_DETAIL_NODE, showSnippet: true },
+      // `scopeSwitcher: 'multi-select'` (user: "notifications could prob
+      // have the switcher as well") — added for consistency with every
+      // other section, though note the tension this creates: the comment
+      // above (SAMPLE_NOTIFICATIONS) frames these as ACCOUNT-level concerns
+      // (password expiry, mentions, login alerts), deliberately NOT
+      // property/portfolio-scoped. A property switcher implies these
+      // notifications vary by property, which the current sample data
+      // doesn't actually reflect — left as-is per "we can work through the
+      // details later," not resolved here.
+      scopeSwitcher: 'multi-select',
     },
   ],
 };
