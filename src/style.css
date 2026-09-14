@@ -497,7 +497,7 @@ a { color: inherit; }
   align-items: center;
   width: 32px;
   height: 32px;
-  margin: 12px auto 8px;
+  margin: 20px auto 8px;
   flex-shrink: 0;
 }
 
@@ -535,11 +535,11 @@ a { color: inherit; }
    cliché, and this app isn't ready to use its real assistant branding
    yet). A circled "?" reads more like "ask this" than "get human help." */
 .rail-item__icon--assistant {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 1.6px solid currentColor;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -641,24 +641,42 @@ a { color: inherit; }
 }
 
 .rail-item__icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .rail-item__icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   stroke: currentColor;
   fill: none;
   stroke-width: 1.7;
 }
 
-/* Pane 2: secondary panel */
+/* Pane 2: secondary panel — inverted dark chrome, Slack-sidebar style
+   (Robert: "more like the slack reference" — a genuinely dark panel next
+   to the rail, not a light grey tint). Locally REDEFINES the shared
+   --surface/--text/--border tokens the whole panel's children already
+   reference (nav-list, nav-sublist, the records-inbox rows, etc.) — same
+   pattern .rail uses for its own always-dark chrome (see .rail's own
+   comment), so every descendant picks up dark-safe colors automatically
+   with no per-element changes needed. Deliberately its own darker shade
+   than --rail-ground, not identical, so the two dark panels still read as
+   separate layers next to each other. */
 .secondary-panel {
-  width: 240px;
+  --surface: #2E323A;
+  --surface-sunken: #21252B;
+  --surface-raised: #3B404A;
+  --border: #3D424B;
+  --border-strong: #4B515C;
+  --text: #F0F2F4;
+  --text-secondary: #C4C9D0;
+  --text-muted: #8B929C;
+
+  width: 212px;
   flex-shrink: 0;
   background: var(--surface);
   border-right: 1px solid var(--border);
@@ -669,7 +687,7 @@ a { color: inherit; }
 /* First content item with no L2 panel at all (CHANGE-QUEUE.md item 1,
    Front desk's calendar) — `display: none` actually removes it from the
    flex row's width calculation, unlike just leaving it empty, which would
-   still reserve its 240px. */
+   still reserve its own width. */
 .secondary-panel.is-hidden {
   display: none;
 }
@@ -824,13 +842,16 @@ a { color: inherit; }
   cursor: pointer;
 }
 
+/* --surface-raised, not --surface-sunken: this panel is now dark chrome,
+   so the selected/hover row needs to be LIGHTER than the panel behind it,
+   not recessed. */
 .nav-list-item a:hover {
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
   color: var(--text);
 }
 
 .nav-list-item.is-active a {
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
   color: var(--text);
   font-weight: 700;
 }
@@ -930,12 +951,12 @@ a { color: inherit; }
 
 .nav-sublist a:hover {
   color: var(--text);
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
 }
 
 .nav-sublist a.is-active {
   color: var(--text);
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
   font-weight: 700;
 }
 
@@ -1633,12 +1654,15 @@ a.wf-list__row:hover {
   width: 85%;
 }
 
+/* --surface-raised, not --surface-sunken — same reasoning as
+   .nav-list-item's hover/active above: this panel is dark chrome now, so
+   the highlight needs to be lighter than its own background. */
 .wf-list--inbox a.wf-list__row:hover {
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
 }
 
 .wf-list--inbox .wf-list__row.is-active {
-  background: var(--surface-sunken);
+  background: var(--surface-raised);
 }
 
 .wf-list--inbox .wf-list__row.is-active .wf-list__row-title-skel {
