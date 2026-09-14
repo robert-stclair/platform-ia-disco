@@ -768,6 +768,28 @@ function ratePlanUsageCount(ruleName) {
   return 1 + (seed % total); // 1..total, never 0 — a defined rule is always in use somewhere
 }
 
+// EXPLORATORY — sample GRP (Group Rate Plan) template names, MP only
+// (Confluence "IA node tree v2" — Distribution > Group rate plans, its own
+// object, outside switcher scope: "not applicable — own object"). Generic
+// realistic names, not real confirmed data.
+const SAMPLE_GROUP_RATE_PLANS = ['GRP Summer Template', 'GRP Corporate Template'];
+
+// A GRP's per-property sync status (Confluence v1b's fuller vocabulary:
+// synced/diverged/unlinked/deleted/error — v2's tree simplifies display to
+// "synced"/"diverged" as the two illustrative examples, but the full set
+// is the real vocabulary). Deterministic per (grpName, propertyName) pair,
+// same seeded-hash approach as ratePlanUsageCount, so re-renders don't
+// flicker a different status for the same row. `grpName` stays a real
+// param even though every GRP currently opens the SAME shared detail node
+// (buildGroupRatePlanNode has no per-name variant yet, same convention as
+// buildRatePlanNode/YIELD_RULE_NODE) — keeps this ready if a genuinely
+// per-GRP breakdown is wanted later, without a signature change then.
+const GRP_SYNC_STATUSES = ['Synced', 'Diverged', 'Unlinked', 'Deleted', 'Error'];
+function groupRatePlanSyncStatus(grpName, propertyName) {
+  const seed = [...`${grpName}:${propertyName}`].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+  return GRP_SYNC_STATUSES[seed % GRP_SYNC_STATUSES.length];
+}
+
 // Distribution's actual channel universe — deliberately ONE list, no
 // categorical split between OTAs and SiteMinder's own products: "crucially
 // that list included direct booking and channels plus as well as otas."
@@ -873,6 +895,52 @@ function buildRatePlanNode() {
         // whole IA's not-yet-tackled editing-surface pattern.
         { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'channel-rates', channels: RATE_PLAN_CHANNELS } },
         { key: 'integrated-systems', label: 'Integrated systems', content: { type: 'sketch', sketch: 'list' } },
+      ],
+    },
+  };
+}
+
+// A GRP (Group Rate Plan) template's own detail — MP only (Confluence "IA
+// node tree v2" — Distribution > Group rate plans). ONE shared node every
+// GRP in the list opens (same convention as buildRatePlanNode/
+// YIELD_RULE_NODE — clicking any GRP name shows the same illustrative
+// shape, not a genuinely distinct per-name detail). Reuses
+// buildRatePlanNode()'s shared-config tabs (Overview/Rooms/Channels/
+// Integrated systems — a GRP's own template config IS that same shape,
+// just pushed to multiple properties instead of belonging to one), then
+// appends ONE extra tab a plain rate plan doesn't have: "Properties this
+// GRP is pushed to" — real per-property rows (Confluence: "not applicable
+// — own object" for the switcher; this is the GRP's own fixed property-
+// assignment list, not switcher-filtered), using the same `records` +
+// `usageColumn` mechanism Yield rules' "Uses" count uses, with a real
+// sync-status value instead. Each row is clickable through to that
+// property's own detail (buildPropertyNode) — same as every other
+// Properties list in this app, not a dead-end status table.
+function buildGroupRatePlanNode() {
+  const baseTabs = buildRatePlanNode().content.tabs;
+  return {
+    key: 'group-rate-plan',
+    label: 'Group rate plan',
+    content: {
+      type: 'tabs',
+      tabs: [
+        ...baseTabs,
+        {
+          key: 'grp-properties',
+          label: 'Properties',
+          content: {
+            type: 'records',
+            names: SCOPE_PROPERTIES,
+            display: 'table',
+            // `tableColumns: 0` — Property + Status is the whole concept
+            // here (unlike Rate plans/Yield rules, which default to 3
+            // filler columns for more data expected later); extra empty
+            // columns would just be clutter on an otherwise-complete table.
+            tableColumns: 0,
+            detailNode: () => buildPropertyNode(true),
+            usageColumn: { label: 'Status', get: (property) => groupRatePlanSyncStatus('grp', property) },
+          },
+        },
       ],
     },
   };
@@ -1123,7 +1191,13 @@ function buildConfigurationPropertiesItem(showProperties) {
 // Every panel item is a real Node (key, label, content) — no more plain
 // {label, active} objects. A leaf item with nothing to click into (e.g.
 // "Inventory") is still a Node, just with content: null.
-function buildSmContentTree(showProperties, scope) {
+//
+// `accountType` (new) is needed specifically for Group rate plans (MP
+// only) — that's a real "MP only" distinction (Confluence "IA node tree
+// v2"), NOT the same as `showProperties` (which is also true for a plain
+// SM account with propertyCount: 'multiple', and Group rate plans should
+// NOT show for that case — only true MP accounts get it).
+function buildSmContentTree(showProperties, scope, accountType) {
   return {
     insights: {
       // "My insights" (CHANGE-QUEUE.md item 8) REPLACES the old informal
@@ -1338,6 +1412,33 @@ function buildSmContentTree(showProperties, scope) {
           },
           scopeSwitcher: 'multi-select',
         },
+        // Group rate plans — MP only (Confluence "IA node tree v2"): its
+        // own object, OUTSIDE switcher scope entirely (no `scopeSwitcher`
+        // set here at all — "not applicable — own object," distinct from
+        // `force-single`/`multi-select`/no-switcher-because-account-level;
+        // this is "no switcher because the whole node doesn't participate
+        // in property scoping the way a normal per-property collection
+        // does"). Real, deterministic sample names via
+        // SAMPLE_GROUP_RATE_PLANS — same shared-detail-node convention as
+        // Rate plans/Yield rules (see buildGroupRatePlanNode's comment).
+        // Gated on true accountType === 'MP', NOT `showProperties` (which
+        // is also true for a plain SM account with propertyCount:
+        // 'multiple' — Group rate plans should NOT show for that case,
+        // only real MP accounts get it; see buildSmContentTree's own
+        // comment on why accountType had to be threaded through).
+        ...(accountType === 'MP'
+          ? [
+              {
+                key: 'group-rate-plans',
+                label: 'Group rate plans',
+                content: {
+                  type: 'records',
+                  names: SAMPLE_GROUP_RATE_PLANS,
+                  detailNode: buildGroupRatePlanNode(),
+                },
+              },
+            ]
+          : []),
         // Same pattern (item 2), own shared detail node.
         //
         // NOW a table (user: "for yield rules we'd want to see a concept of
@@ -1510,7 +1611,7 @@ function buildSmContentTree(showProperties, scope) {
 //     Optional; content that doesn't care about scope just ignores it.
 export function getContent(accountType, propertyCount, scope) {
   const showProperties = accountType === 'MP' || propertyCount === 'multiple';
-  const tree = buildSmContentTree(showProperties, scope);
+  const tree = buildSmContentTree(showProperties, scope, accountType);
   // My account — not a rail section (getRailItems is unaffected), reached
   // via the rail's user avatar instead. Same regardless of account type/
   // property count, so it's added here rather than inside
