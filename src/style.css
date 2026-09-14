@@ -1377,13 +1377,17 @@ a { color: inherit; }
   text-decoration: underline;
 }
 
-/* Property column (Confluence "IA node tree v2" — Rate plans gets a
-   Property column once scope isn't a single property). Only case where
-   `.sketch-table` gets a real header row — everywhere else stays fully
-   titleless (see .sketch-table th's own comment above); the "Property"
-   label is the one exception, since the column holds real (not skeleton)
-   data. See renderRecordTable's `includePropertyColumn` branch. */
+/* Property/Uses columns (Confluence "IA node tree v2" — Rate plans gets a
+   real Property column once scope isn't a single property; Yield rules
+   gets a real Uses count column). Only case where `.sketch-table` gets a
+   real header row — everywhere else stays fully titleless (see
+   .sketch-table th's own comment above); these labels are the exception,
+   since the columns hold real (not skeleton) data. See
+   renderRecordTable's `nameSplitOn`/`usageColumn` params. */
 .sketch-table__property-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   color: var(--text-muted);
 }
 
@@ -1392,15 +1396,14 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
-/* Second half of a split row name (Confluence "IA node tree v2" — Rate
-   plans' All-properties expansion, e.g. "Standard Rate — Harbourview
-   Hotel"). Muted so the primary name (the rate plan itself) still reads
-   as the row's main identity, with the property as quieter context, all
-   within the same clickable link — no second real column needed. See
-   renderRecordTable's `nameSplitOn`. */
-.sketch-table__name-secondary {
-  color: var(--text-muted);
-  font-weight: 400;
+/* Sort-affordance chevron (Property header only) — visual indicator that
+   the column is sortable, no working sort wired up (see
+   SORT_AFFORDANCE_ICON's own comment in main.js for why). */
+.sketch-table__sort-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  opacity: 0.6;
 }
 
 /* Rate plan → Channels tab's real shape (was sketch:'list') — "i see a

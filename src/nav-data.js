@@ -131,12 +131,13 @@
 //                                                                    skeleton without words") — real
 //                                                                    columns/rows not decided, don't guess
 //   Distribution > Rate plans                 | records (nav,      | type:'records', display:'table' ->
-//                                                table)               buildRatePlanNode(showProperties) — tabs
+//                                                table)               buildRatePlanNode() — tabs
 //                                                                    (Overview/Rooms/Channels/
-//                                                                    Connectivities/Properties[MP]) whose
-//                                                                    Overview tab holds a nav-dashboard
-//                                                                    (mode b, nested-in-a-tab — see
-//                                                                    PATTERNS.md); tiles use linksToTab to
+//                                                                    Integrated systems), no Properties tab
+//                                                                    (GRP-entity-only concept, not a plain
+//                                                                    rate plan's). Overview tab holds a
+//                                                                    nav-dashboard (mode b, nested-in-a-tab —
+//                                                                    see PATTERNS.md); tiles use linksToTab to
 //                                                                    switch sibling tabs, no extra nav level
 //   Distribution > Yield rules                | records (nav)      | type:'records' -> YIELD_RULE_NODE (same
 //                                                                    simple treatment)
@@ -783,9 +784,12 @@ const RATE_PLAN_CHANNELS = ['Direct Booking', 'Booking.com', 'Expedia'];
 // `tip` is left unset everywhere for now (renders as a skeleton bar) — the
 // user's direction ("provide real time tips on what is not set up") is
 // about the tile's SHAPE being able to carry a status string, not live data
-// existing yet. Properties tab/tile only for MP/multi-property accounts,
-// same `showProperties` gating buildUserNode's own "Properties" tab uses.
-function buildRatePlanNode(showProperties) {
+// existing yet. NO Properties tab/tile here (removed) — bulk property
+// assignment is a GRP-entity concept only. A plain Rate plan has no GRP/
+// template layer underneath it (see buildRatePlanNames/Rate plans' own
+// row-expansion at multi-property scope), so each property's rate plan is
+// a genuinely independent object with nothing to "assign to properties."
+function buildRatePlanNode() {
   return {
     key: 'rate-plan',
     label: 'Rate plan',
@@ -815,7 +819,6 @@ function buildRatePlanNode(showProperties) {
               // `connectivities`) rather than leaving an internal key that
               // no longer matches its visible label.
               { key: 'integrated-systems-tile', label: 'Integrated systems', linksToTab: 'integrated-systems' },
-              ...(showProperties ? [{ key: 'properties-tile', label: 'Properties', linksToTab: 'properties' }] : []),
             ],
             // Two purely decorative sections stacked below the tile grid —
             // never navigable, rendered via the same renderSketch dispatcher
@@ -857,7 +860,6 @@ function buildRatePlanNode(showProperties) {
         // whole IA's not-yet-tackled editing-surface pattern.
         { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'channel-rates', channels: RATE_PLAN_CHANNELS } },
         { key: 'integrated-systems', label: 'Integrated systems', content: { type: 'sketch', sketch: 'list' } },
-        ...(showProperties ? [{ key: 'properties', label: 'Properties', content: { type: 'sketch', sketch: 'list' } }] : []),
       ],
     },
   };
@@ -1293,7 +1295,7 @@ function buildSmContentTree(showProperties, scope) {
             names: buildRatePlanNames(scope),
             display: 'table',
             nameSplitOn: ' — ',
-            detailNode: buildRatePlanNode(showProperties),
+            detailNode: buildRatePlanNode(),
             topWidgets: {
               type: 'sketch',
               sketch: 'dashboard-cards',

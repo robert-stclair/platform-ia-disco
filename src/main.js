@@ -1195,21 +1195,40 @@ function renderRecordPicker(names, depth, starredNames, showSnippet) {
 // Unlike Rate plans, Yield rules' row COUNT doesn't change (see
 // ratePlanUsageCount's comment) — this is purely an added column on the
 // existing rows.
+// `nameSplitOn` (Rate plans, multi-property scope): each expanded row's
+// name is "{Rate plan} — {Property}" — split here into a REAL "Property"
+// column, not an inline name-suffix (was: rendered as a muted suffix on
+// the name link itself; changed since that read as a subtitle rather than
+// real table structure). `usageColumn` (Yield rules): a separately-passed
+// column showing a computed value per row (e.g. a usage count) — the two
+// are independent column kinds and either, both, or neither may be
+// present depending on the caller.
+// Sort-affordance chevron on the Property header (Confluence "IA node
+// tree v2" — Rate plans' Property column): visual indicator only, no
+// working sort behind it — this prototype stays non-interactive at the
+// sketch level everywhere else (e.g. Yield rules' Uses column is real-
+// count-only, no interaction), so this reads as "sortable" without being
+// wired up.
+const SORT_AFFORDANCE_ICON =
+  '<svg class="sketch-table__sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>';
+
 function renderRecordTable(names, depth, extraColumns, nameSplitOn, usageColumn) {
-  const hasRealColumn = Boolean(usageColumn);
-  const headerRow = hasRealColumn
-    ? `<tr class="sketch-table__header-row"><th></th><th class="sketch-table__property-header">${usageColumn.label}</th>${Array(extraColumns).fill('<th></th>').join('')}</tr>`
+  const propertyHeader = nameSplitOn
+    ? `<th class="sketch-table__property-header">Property${SORT_AFFORDANCE_ICON}</th>`
+    : '';
+  const usageHeader = usageColumn ? `<th class="sketch-table__property-header">${usageColumn.label}</th>` : '';
+  const headerRow = propertyHeader || usageHeader
+    ? `<tr class="sketch-table__header-row"><th></th>${propertyHeader}${usageHeader}${Array(extraColumns).fill('<th></th>').join('')}</tr>`
     : '';
   const rows = names
     .map((name) => {
       const [primary, secondary] = nameSplitOn ? name.split(nameSplitOn) : [name, null];
-      const nameHtml = secondary
-        ? `${primary}<span class="sketch-table__name-secondary"> — ${secondary}</span>`
-        : primary;
+      const propertyCell = nameSplitOn ? `<td class="sketch-table__property-cell">${secondary}</td>` : '';
       const usageCell = usageColumn ? `<td class="sketch-table__property-cell">${usageColumn.get(name)}</td>` : '';
       return `
         <tr>
-          <td><a href="#" class="sketch-table__name-link" data-path-key="${depth}:${name}">${nameHtml}</a></td>
+          <td><a href="#" class="sketch-table__name-link" data-path-key="${depth}:${name}">${primary}</a></td>
+          ${propertyCell}
           ${usageCell}
           ${Array(extraColumns).fill('<td><div class="sketch-table-cell"></div></td>').join('')}
         </tr>
