@@ -219,6 +219,21 @@ const state = {
   // navigation destination the way Configuration/Distribution's Properties
   // picker is.
   scope: { type: 'all', key: null }, // { type: 'all' | 'property' | 'cluster' | 'brand', key: string | null }
+  // Which `state.path` INDEX currently holds a property name that
+  // `state.scope` is tracking — set alongside `state.scope` whenever a
+  // `syncsScope` pick is made (wirePathLinks), `null` otherwise. Lets the
+  // scope switcher's OWN change handler (wireScopeSwitcher) tell whether
+  // it's currently sitting a level or more INSIDE that same property
+  // (e.g. on "Room types," not just the property's own tiles page) — if
+  // so, switching properties from there should follow you to the SAME
+  // sub-page on the newly-picked property, not leave you looking at the
+  // old property's content under a new scope value (Robert: "switching
+  // property when i am a level down in properties should switch the
+  // property"). `null` whenever scope changes via any OTHER route (the
+  // switcher itself, a non-property scope) — only a genuine property
+  // drill-down sets this, so it can't misfire for pages that merely
+  // happen to be scoped to a property without being INSIDE one.
+  scopedPathDepth: null,
   // Full-page modal / wizard — the first EDITING surface in this
   // prototype, distinct from everything else (which is all read/browse
   // navigation). "we haven't tackled an editing style surface yet but i
@@ -665,6 +680,23 @@ function wireScopeSwitcher() {
   if (!select) return;
   select.addEventListener('change', () => {
     const [type, key] = select.value.split(':');
+    // Switching properties while genuinely INSIDE that property's own
+    // pages (not just scoped to it — e.g. on "Room types," not the
+    // property's top-level tiles) should follow you to the SAME sub-page
+    // on the newly-picked property, not strand you looking at the old
+    // property's content (Robert: "switching property when i am a level
+    // down in properties should switch the property"). `scopedPathDepth`
+    // (set by wirePathLinks' proxy-click) names which state.path index
+    // holds the property name — if that index still exists (we're at or
+    // below it) AND the new scope is also a property (switching to All/
+    // Brand/Cluster has no obvious "same sub-page" target), splice just
+    // that ONE segment, leaving every deeper segment (which tab/tile
+    // you're on) untouched.
+    if (type === 'property' && state.scopedPathDepth !== null && state.path.length > state.scopedPathDepth) {
+      state.path[state.scopedPathDepth] = key;
+    } else {
+      state.scopedPathDepth = null;
+    }
     state.scope = { type, key: key || null };
     render();
   });
@@ -1468,6 +1500,7 @@ function wirePathLinks() {
       // that page renders, state.scope already reflects where you are.
       if (el.dataset.syncsScope) {
         state.scope = { type: 'property', key };
+        state.scopedPathDepth = Number(d);
       }
       select(Number(d), key);
       render();
