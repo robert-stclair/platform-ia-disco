@@ -795,10 +795,17 @@ const SAMPLE_YIELD_RULES = ['Weekend surcharge', 'Last-minute discount', 'Length
 // propertyCount === 'multiple') is the correct combined signal for
 // "is there more than one property to even consider" — checked FIRST,
 // before the scope-specific check.
+// Property-first row order (Robert: "for tables that have properties col
+// lets default to a property sort") — properties.flatMap(plans), not
+// plans.flatMap(properties), so every property's own rate plans sit
+// together (Harbourview's Standard Rate/Non-Refundable/…, then the next
+// property's), rather than one plan repeated across every property
+// before the next plan starts. Same reasoning applies to
+// buildReservationNames below.
 function buildRatePlanNames(scope, showProperties) {
   if (!showProperties || scope?.type === 'property') return SAMPLE_RATE_PLANS;
   const properties = SCOPE_PROPERTIES;
-  return SAMPLE_RATE_PLANS.flatMap((plan) => properties.map((property) => `${plan} — ${property}`));
+  return properties.flatMap((property) => SAMPLE_RATE_PLANS.map((plan) => `${plan} — ${property}`));
 }
 
 // Yield rules "properties using this rule" (user: "we'd want to see a
@@ -1033,10 +1040,12 @@ const RESERVATION_NODE = {
 // the plain 4 names, unchanged. `showProperties` checked first — see
 // buildRatePlanNames' own comment for the bug this avoids repeating
 // (propertyCount: 'single' alone doesn't touch state.scope).
+// Property-first row order — see buildRatePlanNames' own comment for why
+// (properties.flatMap(reservations), not reservations.flatMap(properties)).
 function buildReservationNames(scope, showProperties) {
   if (!showProperties || scope?.type === 'property') return SAMPLE_RESERVATIONS;
   const properties = SCOPE_PROPERTIES;
-  return SAMPLE_RESERVATIONS.flatMap((reservation) => properties.map((property) => `${reservation} — ${property}`));
+  return properties.flatMap((property) => SAMPLE_RESERVATIONS.map((reservation) => `${reservation} — ${property}`));
 }
 
 const SAMPLE_GUEST_COMMS = ['Pre-arrival', 'Confirmation', 'Post-stay'];
