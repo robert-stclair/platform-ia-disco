@@ -1779,10 +1779,34 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         // Clickable, using the generic `records` pattern — same mechanism
         // Properties uses (CHANGE-QUEUE.md item 3), not a Users-specific
         // one. Each user opens buildUserNode's shared detail tabs.
+        //
+        // At >1 property, becomes a real table with a Properties count
+        // column (Robert: "users becomes a table in >1 property view with
+        // a property column") — the concrete "eventually Users" instance
+        // of the same "list -> table, once >1 property" rule already
+        // applied to Configuration's Properties. There's no real per-user
+        // property-membership data in this prototype (every user's own
+        // Properties tab shows the same full SAMPLE_PROPERTIES list), so
+        // the column is a deterministic "N of M properties" count, same
+        // usageColumn mechanism and even the same seeded-hash helper
+        // (ratePlanUsageCount — a generic name-seeded hash despite the
+        // name, already reused once for a non-rate-plan case) Yield
+        // rules' own "Uses" column uses — not per-user real data, real
+        // count only, not interactive.
         {
           key: 'users',
           label: 'Users',
-          content: { type: 'records', names: SAMPLE_USERS, detailNode: buildUserNode(showProperties) },
+          content: {
+            type: 'records',
+            names: SAMPLE_USERS,
+            detailNode: buildUserNode(showProperties),
+            ...(showProperties
+              ? {
+                  display: 'table',
+                  usageColumn: { label: 'Properties', get: (name) => `${ratePlanUsageCount(name)} of ${SCOPE_PROPERTIES.length} properties` },
+                }
+              : {}),
+          },
           // `scopeSwitcher: 'multi-select'` (Confluence "IA node tree v2" —
           // Configuration > Users).
           scopeSwitcher: 'multi-select',
