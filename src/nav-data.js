@@ -291,6 +291,12 @@ function buildUserNode(showProperties) {
                   type: 'records',
                   names: SAMPLE_PROPERTIES,
                   detailNode: () => buildPropertyNode(showProperties),
+                  // `syncsScope: true` — clicking a property here acts as a
+                  // proxy click on the global scope switcher itself (see
+                  // wirePathLinks), not just a page navigation. Robert:
+                  // "its like a proxy click on the switcher when clicking
+                  // property on the page."
+                  syncsScope: true,
                   // Cross-navigation, not a deeper drill-down — this picker
                   // and buildPropertyNode's own "Users" tile point at EACH
                   // OTHER, so following one from the other must not keep
@@ -421,6 +427,18 @@ function buildPropertyNode(showProperties) {
   return {
     key: 'property',
     label: 'Property settings',
+    // `scopeSwitcher: 'multi-select'` — genuinely useful here now, not
+    // stale: clicking a property name anywhere (`syncsScope`, see
+    // wirePathLinks) acts as a proxy click on the switcher itself,
+    // setting the real global state.scope to that property. So by the
+    // time you're on this page, the switcher already correctly shows
+    // where you are — and, being live, lets you jump straight to a
+    // DIFFERENT property from here without navigating back to the list
+    // first (Robert: "the switcher stays active since its actually
+    // useful"). Earlier attempts (hide entirely, then a disabled
+    // force-current lock) were both dropped once the proxy-click idea
+    // made the switcher's value trustworthy on this page.
+    scopeSwitcher: 'multi-select',
     content: {
       type: 'nav-dashboard',
       tiles: [
@@ -955,6 +973,9 @@ function buildGroupRatePlanNode() {
             // columns would just be clutter on an otherwise-complete table.
             tableColumns: 0,
             detailNode: () => buildPropertyNode(true),
+            // `syncsScope: true` — same proxy-click-on-the-switcher
+            // behavior as the main Properties list (see its own comment).
+            syncsScope: true,
             usageColumn: { label: 'Status', get: (property) => groupRatePlanSyncStatus('grp', property) },
           },
         },
@@ -1311,6 +1332,14 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
             display: 'cards',
             cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
             detailNode: buildPropertyNode(showProperties),
+            // `syncsScope: true` — clicking a property name acts as a
+            // proxy click on the global scope switcher (see
+            // wirePathLinks) — the switcher already reflects where you
+            // are by the time buildPropertyNode's own page renders,
+            // which is what makes keeping ITS switcher active useful
+            // rather than stale (Robert: "the switcher stays active
+            // since its actually useful").
+            syncsScope: true,
           },
         },
         // `scopeSwitcher: 'force-all'` — Brands/Clusters ARE all-properties

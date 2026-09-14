@@ -232,10 +232,19 @@ const state = {
   wizard: null, // { steps: WizardStep[], currentStep: number, data: object, onComplete: (data) => void } | null
 };
 
+// Does NOT touch state.scope — the property/cluster/brand switcher is a
+// GLOBAL, user-owned value ("we can't switch the scope as people move
+// around - they need to own that"), completely independent of navigation.
+// It used to reset to 'all' here unconditionally on every section switch
+// (Configuration -> Distribution, etc.), which silently discarded a scope
+// the user had just deliberately set — directly contradicting that same
+// principle already applied everywhere else (the force-single conflict
+// prompt, the proxy-click-on-a-property mechanism). Caught live: setting
+// scope to a specific property via a property page's own switcher, then
+// switching rail sections, silently reset back to "All properties."
 function resetPath() {
   state.path = [];
   state.expandedKey = null;
-  state.scope = { type: 'all', key: null };
 }
 
 const railEl = document.getElementById('rail');
@@ -1076,10 +1085,10 @@ function renderChainBody(chain, i) {
       // keeps the plain list — both are additive, not replacements.
       const pickerHtml =
         content.display === 'table'
-          ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3, content.nameSplitOn, content.usageColumn)
+          ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3, content.nameSplitOn, content.usageColumn, content.syncsScope)
           : content.display === 'cards'
-            ? renderRecordCards(step.options, pathIndex, content.cards)
-            : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet);
+            ? renderRecordCards(step.options, pathIndex, content.cards, content.syncsScope)
+            : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope);
       // `content.topWidgets` (optional, e.g. Rate plans): a few dashboard-
       // cards widgets rendered ABOVE the picker — "contextual insights
       // around the place rather than just lists." Same building block
@@ -1198,14 +1207,20 @@ function renderChainBody(chain, i) {
 // skeleton content" rule — no real notification body copy is confirmed.
 // Every other `records` caller (Properties, Users, Dashboards, Charts,
 // Yield rules) omits this and keeps the plain single-line row.
-function renderRecordPicker(names, depth, starredNames, showSnippet) {
+// `syncsScope` (optional, e.g. Properties): the rows here ARE properties,
+// so picking one acts as a proxy click on the global scope switcher
+// itself, not just a page navigation — see wirePathLinks' own comment.
+// Rendered as a `data-syncs-scope` flag on the link so that generic click
+// handler can tell which `data-path-key` clicks should also update
+// state.scope.
+function renderRecordPicker(names, depth, starredNames, showSnippet, syncsScope) {
   return `<ul class="wf-list${showSnippet ? ' wf-list--snippets' : ''}">${names
     .map((name) => {
       const star = starredNames?.has(name) ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
       const snippet = showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
       return `
         <li>
-          <a href="#" class="wf-list__row" data-path-key="${depth}:${name}">
+          <a href="#" class="wf-list__row" data-path-key="${depth}:${name}" ${syncsScope ? 'data-syncs-scope="true"' : ''}>
             <span class="wf-list__row-title">${name}${star}</span>
             ${snippet}
           </a>
@@ -1281,12 +1296,12 @@ function renderDashboardCards(cards) {
 // sketches already use ([{title?, shape:'chart'|'stat'}]), repeated
 // identically under each property — illustrative, not per-property real
 // data.
-function renderRecordCards(names, depth, cards) {
+function renderRecordCards(names, depth, cards, syncsScope) {
   return names
     .map(
       (name) => `
         <div class="record-cards-group">
-          <a href="#" class="record-cards-group__title" data-path-key="${depth}:${name}">${name}</a>
+          <a href="#" class="record-cards-group__title" data-path-key="${depth}:${name}" ${syncsScope ? 'data-syncs-scope="true"' : ''}>${name}</a>
           ${renderDashboardCards(cards)}
         </div>
       `
@@ -1294,7 +1309,7 @@ function renderRecordCards(names, depth, cards) {
     .join('');
 }
 
-function renderRecordTable(names, depth, extraColumns, nameSplitOn, usageColumn) {
+function renderRecordTable(names, depth, extraColumns, nameSplitOn, usageColumn, syncsScope) {
   const propertyHeader = nameSplitOn
     ? `<th class="sketch-table__property-header">Property${SORT_AFFORDANCE_ICON}</th>`
     : '';
@@ -1309,7 +1324,7 @@ function renderRecordTable(names, depth, extraColumns, nameSplitOn, usageColumn)
       const usageCell = usageColumn ? `<td class="sketch-table__property-cell">${usageColumn.get(name)}</td>` : '';
       return `
         <tr>
-          <td><a href="#" class="sketch-table__name-link" data-path-key="${depth}:${name}">${primary}</a></td>
+          <td><a href="#" class="sketch-table__name-link" data-path-key="${depth}:${name}" ${syncsScope ? 'data-syncs-scope="true"' : ''}>${primary}</a></td>
           ${propertyCell}
           ${usageCell}
           ${Array(extraColumns).fill('<td><div class="sketch-table-cell"></div></td>').join('')}
@@ -1442,6 +1457,18 @@ function wirePathLinks() {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       const [d, key] = el.dataset.pathKey.split(':');
+      // `data-syncs-scope` (Properties, GRP's Properties table) — clicking
+      // this record is a PROXY CLICK on the global scope switcher itself,
+      // not just a page navigation (Robert: "its like a proxy click on
+      // the switcher when clicking property on the page"). Sets the same
+      // state.scope the switcher's own <select> change handler sets
+      // (wireScopeSwitcher) — one shared mechanism, two entry points. This
+      // is what makes buildPropertyNode's own switcher trustworthy/useful
+      // once you're on a property's page, instead of stale: by the time
+      // that page renders, state.scope already reflects where you are.
+      if (el.dataset.syncsScope) {
+        state.scope = { type: 'property', key };
+      }
       select(Number(d), key);
       render();
     });
