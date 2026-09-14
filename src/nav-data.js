@@ -1264,7 +1264,7 @@ export const SCOPE_CLUSTERS = ['East Coast', 'West Coast', 'Inland'];
 // Properties/Brands/Clusters are TABS (not a panel sublist) inside the
 // "Properties" item — Brands and Clusters are gated further, MP only
 // (mpOnly: true), filtered out of the tab strip unless accountType==='MP'.
-function buildConfigurationPropertiesItem(showProperties) {
+function buildConfigurationPropertiesItem(showProperties, scope) {
   if (!showProperties) {
     // Renamed from "Property settings" to "Property" (CHANGE-QUEUE.md item
     // 1) — scoped to just this panel item's label; buildPropertyNode itself
@@ -1298,16 +1298,30 @@ function buildConfigurationPropertiesItem(showProperties) {
           // per property. Name link still opens the property's full detail
           // page (buildPropertyNode) — confirmed: "name stays clickable,"
           // the cards are a summary, not a replacement for the full page.
+          // Scoped to a single property (Robert: "when >1 properties and i
+          // filter on one then you would hide the others") — filters down
+          // to just that property's own card group. Brand/cluster scope
+          // still shows every property — there's no brand/cluster ->
+          // member-property mapping in this prototype's sample data to
+          // filter against, so that's left as a separate, not-yet-decided
+          // question rather than invented here.
           content: {
             type: 'records',
-            names: SAMPLE_PROPERTIES,
+            names: scope?.type === 'property' ? [scope.key] : SAMPLE_PROPERTIES,
             display: 'cards',
             cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
             detailNode: buildPropertyNode(showProperties),
           },
         },
-        { key: 'brands', label: 'Brands', content: null, mpOnly: true },
-        { key: 'clusters', label: 'Clusters', content: null, mpOnly: true },
+        // `scopeSwitcher: 'force-all'` — Brands/Clusters ARE all-properties
+        // concepts by definition (a brand/cluster spans multiple
+        // properties), so there's no meaningful single-property or
+        // brand/cluster-scoped-within-a-brand view here. Visible switcher,
+        // locked to "All properties," disabled — not hidden, same slot as
+        // every other page (Robert: "force switcher there to all and
+        // disable").
+        { key: 'brands', label: 'Brands', content: null, mpOnly: true, scopeSwitcher: 'force-all' },
+        { key: 'clusters', label: 'Clusters', content: null, mpOnly: true, scopeSwitcher: 'force-all' },
       ],
     },
   };
@@ -1732,7 +1746,7 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
     },
     configuration: {
       items: [
-        buildConfigurationPropertiesItem(showProperties),
+        buildConfigurationPropertiesItem(showProperties, scope),
         // Clickable, using the generic `records` pattern — same mechanism
         // Properties uses (CHANGE-QUEUE.md item 3), not a Users-specific
         // one. Each user opens buildUserNode's shared detail tabs.
@@ -1753,13 +1767,26 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         // accounts that have signed up for that product"). Defaults to all
         // 4 enabled (see state.enabledProducts in main.js), so this is a
         // no-op unless the debug panel is used to deselect one.
+        //
+        // `scopeSwitcher: 'force-single'` on all 4 — Confluence's v2 tree
+        // leaves Property scope blank for these, but the earlier v1c draft
+        // is explicit: "not applicable — no group config yet." There's no
+        // group/portfolio-level product config anywhere in this tree (see
+        // the "Group-level product config is still missing" open thread) —
+        // until that exists, a product is configured one property at a
+        // time, so single-property is the only meaningful mode, same
+        // reasoning as Inventory/Dynamic pricing.
         ...(enabledProducts.includes('direct-booking')
-          ? [{ key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST }]
+          ? [{ key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST, scopeSwitcher: 'force-single' }]
           : []),
-        ...(enabledProducts.includes('channels-plus') ? [{ key: 'channels-plus', label: 'Channels Plus', content: null }] : []),
-        ...(enabledProducts.includes('metasearch') ? [{ key: 'metasearch', label: 'Metasearch', content: null }] : []),
+        ...(enabledProducts.includes('channels-plus')
+          ? [{ key: 'channels-plus', label: 'Channels Plus', content: null, scopeSwitcher: 'force-single' }]
+          : []),
+        ...(enabledProducts.includes('metasearch')
+          ? [{ key: 'metasearch', label: 'Metasearch', content: null, scopeSwitcher: 'force-single' }]
+          : []),
         // NEW — stub for now (content: null), no shape decided yet.
-        ...(enabledProducts.includes('pay') ? [{ key: 'pay', label: 'Pay', content: PAY_LIST }] : []),
+        ...(enabledProducts.includes('pay') ? [{ key: 'pay', label: 'Pay', content: PAY_LIST, scopeSwitcher: 'force-single' }] : []),
         // Renamed from "Manage products" (CHANGE-QUEUE.md item 6) — "Add
         // products" more precisely signals its action (add a NEW product
         // to the account) vs. the settings-page items above it. `actionIcon`

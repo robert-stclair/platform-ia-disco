@@ -578,34 +578,44 @@ railNotificationsEl.addEventListener('click', () => switchToUtilitySection('noti
 // Renders a single <select> — simplest possible sketch, not a final
 // interaction design. Options: All properties, then every individual
 // property, then (MP only) Brands and Clusters as scoping groups.
+//
+// `force-all` (Brands/Clusters): these ARE all-properties concepts by
+// definition — a brand or cluster spans multiple properties, so there's
+// no meaningful single-property or brand/cluster-of-a-brand scoping for
+// this page. Visible (not hidden — Robert: "visible, locked to all,
+// disabled", same slot as every other page) but the whole <select> is
+// disabled and always shows "All properties" selected, REGARDLESS of the
+// actual global state.scope — this page doesn't participate in the
+// shared scope at all, it just always operates at the All level.
 function renderScopeSwitcher(mode) {
   const forceSingle = mode === 'force-single';
+  const forceAll = mode === 'force-all';
   const groups = [];
   groups.push(
-    `<option value="all:" ${state.scope.type === 'all' ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>All properties</option>`
+    `<option value="all:" ${state.scope.type === 'all' || forceAll ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>All properties</option>`
   );
   groups.push(
     `<optgroup label="Properties">${SCOPE_PROPERTIES.map(
-      (name) => `<option value="property:${name}" ${state.scope.type === 'property' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
+      (name) => `<option value="property:${name}" ${!forceAll && state.scope.type === 'property' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
     ).join('')}</optgroup>`
   );
   if (state.accountType === 'MP') {
     groups.push(
       `<optgroup label="Brands">${SCOPE_BRANDS.map(
         (name) =>
-          `<option value="brand:${name}" ${state.scope.type === 'brand' && state.scope.key === name ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>${name}</option>`
+          `<option value="brand:${name}" ${!forceAll && state.scope.type === 'brand' && state.scope.key === name ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>${name}</option>`
       ).join('')}</optgroup>`
     );
     groups.push(
       `<optgroup label="Clusters">${SCOPE_CLUSTERS.map(
         (name) =>
-          `<option value="cluster:${name}" ${state.scope.type === 'cluster' && state.scope.key === name ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>${name}</option>`
+          `<option value="cluster:${name}" ${!forceAll && state.scope.type === 'cluster' && state.scope.key === name ? 'selected' : ''} ${forceSingle ? 'disabled' : ''}>${name}</option>`
       ).join('')}</optgroup>`
     );
   }
   return `
-    <div class="scope-switcher-control ${forceSingle ? 'is-force-single' : ''}">
-      <select class="scope-switcher" aria-label="Property scope">${groups.join('')}</select>
+    <div class="scope-switcher-control ${forceSingle ? 'is-force-single' : ''} ${forceAll ? 'is-force-all' : ''}">
+      <select class="scope-switcher" aria-label="Property scope" ${forceAll ? 'disabled' : ''}>${groups.join('')}</select>
     </div>
   `;
 }
@@ -894,12 +904,28 @@ function renderCanvas(data) {
   // item anymore: a TAB can carry its own `scopeSwitcher` too (e.g. a
   // user's own "Properties" tab inside buildUserNode needs multi-select
   // even though sibling tabs like "User details" don't need a switcher at
-  // all). Walk the resolved chain from the deepest step backward and use
-  // the first `scopeSwitcher` found, falling back to rootItem's own — most
-  // items only ever set it at the root level (Inventory, Rate plans, ...),
-  // so this changes nothing for them; it only matters for a tabs node
-  // whose individual tabs disagree.
-  const scopeSwitcherMode = chain.reduceRight((found, step) => found ?? step.node?.scopeSwitcher, undefined) ?? rootItem?.scopeSwitcher;
+  // all; Brands/Clusters need 'force-all'). Walk the resolved chain from
+  // the deepest step backward and use the first `scopeSwitcher` found,
+  // falling back to rootItem's own — most items only ever set it at the
+  // root level (Inventory, Rate plans, ...), so this changes nothing for
+  // them; it only matters for a tabs node whose individual tabs disagree.
+  //
+  // `resolveChain` NEVER pushes a chain step for the selected tab itself
+  // when that tab's own `content` is falsy (`while (node?.content)` exits
+  // before the next push) — e.g. Brands/Clusters (content: null). Their
+  // `scopeSwitcher` would silently never be seen by the walk above, since
+  // it only ever looks at `step.node` for steps that DID get pushed. Look
+  // it up directly here: any `tabs`-type step's own `options` array holds
+  // the full (filtered) tab objects, so its `selectedKey` can be resolved
+  // back to the actual tab even when that tab never became its own step.
+  // Caught live: Brands' switcher stayed on the last real global scope
+  // instead of locking to "All properties" as force-all requires.
+  const selectedTabScopeSwitcher = chain
+    .filter((step) => step.content?.type === 'tabs' && step.selectedKey)
+    .map((step) => step.options.find((t) => t.key === step.selectedKey)?.scopeSwitcher)
+    .findLast((mode) => mode !== undefined);
+  const scopeSwitcherMode =
+    selectedTabScopeSwitcher ?? chain.reduceRight((found, step) => found ?? step.node?.scopeSwitcher, undefined) ?? rootItem?.scopeSwitcher;
 
   // Force-single conflict (Inventory, Dynamic pricing) — the user's global
   // scope is 'all'/'brand'/'cluster' but this item can only show one

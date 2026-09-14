@@ -727,12 +727,15 @@ a { color: inherit; }
   justify-content: space-between;
   gap: 16px;
   padding: 10px 24px;
-  /* Matches the scope switcher pill's own rendered height, so the bar
-     stays the same height whether or not a page has a switcher (Robert:
-     "keep the height of the top bar consistent even when there is no
-     switcher (like in user settings)") — was 20px, letting switcher-less
-     pages (My account) render ~15px shorter than pages with one. */
-  min-height: 36px;
+  /* Matches the scope switcher pill's own TOTAL rendered height (56px),
+     so the bar stays the same height whether or not a page has a switcher
+     (Robert: "keep the height of the top bar consistent even when there
+     is no switcher (like in user settings)"). This box is border-box
+     (global reset), so min-height already includes the 10px+10px padding
+     above — a first attempt at 36px (the padding-EXCLUSIVE content
+     height) was still smaller than the page's own natural ~40.5px height
+     and did nothing; 56px is the real floor to match. */
+  min-height: 56px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -776,6 +779,19 @@ a { color: inherit; }
    restyling the whole control differently per page. Class kept as a hook
    in case that changes; deliberately a no-op today rather than invented
    styling with no confirmed direction. */
+
+/* `is-force-all` (Brands/Clusters — all-properties concepts by
+   definition, no meaningful scoping): the whole <select> is genuinely
+   disabled here (not just some options), so dim the pill a touch beyond
+   the browser's own default disabled look — reads clearly as "locked,"
+   not "just greyed out by accident." */
+.scope-switcher-control.is-force-all {
+  opacity: 0.6;
+}
+
+.scope-switcher-control.is-force-all .scope-switcher {
+  cursor: default;
+}
 
 /* `appearance: none` strips the native <select> arrow entirely (browsers
    render this inconsistently, or not at all) — replaced with a custom
@@ -1104,19 +1120,30 @@ a { color: inherit; }
 }
 
 /* `display: 'cards'` (Configuration > Properties, multi-property scope) —
-   repeated property-name + dashboard-cards groups, one per property. Each
-   group gets its own divider above it (except the first) so the eye can
-   tell where one property's summary ends and the next begins. */
+   repeated property-name + dashboard-cards groups, one per property. The
+   divider lives on the ADJACENT-SIBLING selector below, not on the base
+   class, so it only ever appears BETWEEN two groups — no exception rule
+   needed for "the first one," and no dependency on DOM structural
+   pseudo-classes at all.
+
+   Two things were tried and failed here, worth not repeating: `:first-
+   child` doesn't match because a `.tab-strip` sibling (Properties/Brands/
+   Clusters tabs) always renders immediately before these groups, so the
+   first `.record-cards-group` is never its parent's first child.
+   `:first-of-type` ALSO doesn't match — it keys off ELEMENT TAG NAME, not
+   class, and every sibling here (including `.tab-strip`) is a plain
+   `<div>`, so `:first-of-type` matched the tab strip, not the first card
+   group. Both were confirmed failing live via `el.matches(':first-of-
+   type')` returning false before landing on this selector (Robert:
+   "remove additional line above first property in that view"). */
 .record-cards-group {
-  padding-top: 28px;
-  margin-top: 28px;
-  border-top: 1px solid var(--border);
+  padding-top: 0;
 }
 
-.record-cards-group:first-child {
-  padding-top: 0;
-  margin-top: 0;
-  border-top: none;
+.record-cards-group + .record-cards-group {
+  margin-top: 28px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
 }
 
 .record-cards-group__title {
