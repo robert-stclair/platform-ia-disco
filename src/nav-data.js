@@ -188,12 +188,92 @@ const BASE_RAIL_ITEMS = [
   { key: 'configuration', label: 'Configuration', icon: 'configuration' },
 ];
 
-// The 4 "Add-on" products (Confluence "IA node tree v2" — Direct Booking/
-// Channels Plus/Metasearch/Pay are tagged Add-on: "a section that only
-// exists in the IA for accounts that have signed up for that product").
-// Keys match Configuration's own product item keys exactly — see
-// buildSmContentTree's configuration.items below.
-export const PRODUCT_KEYS = ['direct-booking', 'channels-plus', 'metasearch', 'pay'];
+// Direct Booking is tier-gated (v3, real packaging confirmed against
+// siteminder.com/pricing) — comes with SiteMinder Plus, driven directly by
+// `state.tier === 'siteminder-plus'` (a plain boolean, not a keyed list —
+// it's the only thing tier gates, see hasDirectBooking below).
+
+// "In-product sign-ups" (v3) — activated independently of tier, regardless
+// of their real underlying payment model (Robert: "keep it simpler .. just
+// one combined list for now" rather than splitting further by
+// commission-vs-subscription or self-serve-vs-sales-mediated, which real-
+// world research surfaced as a genuine further distinction — DR+ needs
+// sales contact per siteminder.com, Channels Plus/Pay/Metasearch are all
+// self-serve/automatic — deferred, not built). Keys match Configuration's
+// own product item keys exactly — see buildSmContentTree's
+// configuration.items below.
+export const PRODUCT_KEYS = ['channels-plus', 'pay', 'metasearch'];
+
+// "Manage products" (v3, renamed from "Add products" — Robert: "shall we
+// call it add or manage products" -> Manage) — the centralised
+// management/upsell surface for every product, active or not, replacing
+// the old approach of giving each unowned product its own inert stub node
+// in Configuration (Robert: "not to bloat the ia with upsells .. if they
+// are not active they would be shown on the add products page"). Real
+// value prop + billing model per product (Robert: "eventually it would
+// have to do the heavy lifting of the sales job framing the different
+// products .. each card can say the product value prop, the billing model
+// etc") — wording grounded in siteminder.com's actual public copy/pricing
+// page and Sam's own correction on how Metasearch/Demand+ really activates
+// (self-serve/automatic, transaction-fee-only, no sales contact — distinct
+// from DR+, which genuinely requires "contacting our sales team").
+const MANAGE_PRODUCTS_CATALOG = [
+  {
+    key: 'direct-booking',
+    name: 'Direct Booking',
+    tagline: 'Your own booking engine, on your own website.',
+    valueProp: "Convert more of your own traffic directly, without paying a third-party commission on every booking. Included in SiteMinder Plus, alongside your website builder and direct-booking apps.",
+    billing: 'Included in SiteMinder Plus',
+    tier: 'siteminder-plus',
+  },
+  {
+    key: 'channels-plus',
+    name: 'Channels Plus',
+    tagline: 'Reach more travellers across more OTAs.',
+    valueProp: 'Distribute to 450+ channels including Trip.com and Agoda, all managed from the same place you already manage rates and inventory.',
+    billing: 'Commission-based — no separate subscription',
+  },
+  {
+    key: 'pay',
+    name: 'Pay',
+    tagline: 'Take payments without a separate provider.',
+    valueProp: 'Process guest payments directly inside SiteMinder — no reconciling a separate payment platform against your reservations.',
+    billing: 'Transaction-based — no separate subscription',
+  },
+  {
+    key: 'metasearch',
+    name: 'Metasearch',
+    tagline: 'Show up on Google and trivago — automatically.',
+    valueProp: 'SiteMinder manages your metasearch setup, billing, bidding and campaigns end to end. No setup cost, no monthly fee — you only pay for completed stays booked directly through your own website.',
+    billing: 'Transaction-based · self-serve activation',
+  },
+  {
+    key: 'dr-plus',
+    name: 'DR+',
+    tagline: 'Data-driven pricing recommendations, daily.',
+    valueProp: 'Continuously identifies and recommends better pricing decisions using your own data, market intelligence and demand signals — you stay in control of every change.',
+    billing: 'Standalone subscription · sales-assisted setup',
+  },
+];
+
+// Tier comparison grid (v3, Robert: "you could also have the pricing grid
+// for the tiers in there") — Direct Booking's real story is "upgrade the
+// whole tier," not "activate this one thing" the way Metasearch/DR+ are,
+// so it gets its own comparison rather than living purely as a product
+// card. Feature list grounded in siteminder.com/pricing's own breakdown.
+const TIER_COMPARISON = {
+  tiers: ['SiteMinder', 'SiteMinder Plus'],
+  rows: [
+    { feature: 'Channel manager', included: [true, true] },
+    { feature: 'Channels Plus (450+ channels)', included: [true, true] },
+    { feature: 'PMS integration', included: [true, true] },
+    { feature: 'Performance & pace insights', included: [true, true] },
+    { feature: 'Direct Booking engine', included: [false, true] },
+    { feature: 'Hotel website builder', included: [false, true] },
+    { feature: 'Rate parity & competitor insights', included: [false, true] },
+  ],
+};
+
 
 // The rail was constant across every account type until LH's "Front desk"
 // item (CHANGE-QUEUE.md item 5) — the first case of the rail itself
@@ -787,26 +867,44 @@ const HOME_CONTENT = {
         // First-pass grouping only (Robert: "its a start") — not confirmed,
         // grouped by what a hotelier would investigate together rather than
         // Sam's doc's own flat list (occupancy/ADR/RevPAR/pace/channel mix).
-        // Forecasting group (v3, Robert: "add a forecasting row under
-        // performance") links straight to the existing Forecasting PRESET
-        // dashboard under My dashboards — reuses it rather than inventing a
-        // second Forecasting page. Rates & distribution / Occupancy & demand
-        // / Channel mix have no confirmed dashboard to link to yet, so they
-        // stay inert (same "shape only" convention as everywhere unwired).
+        // Performance is deliberately RETROSPECTIVE only now (Robert:
+        // "performance as a section is retrospective .. forecasting is
+        // stuff like pace etc which is looking forwards .. it needs its own
+        // row") — Forecasting (and "Pace vs. comp set," itself forward-
+        // looking by the same logic) moved OUT into its own row below.
         groups: [
-          { title: 'Rates & distribution', stats: [{ label: 'ADR' }, { label: 'RevPAR' }, { label: 'Pace vs. comp set' }] },
+          { title: 'Rates & distribution', stats: [{ label: 'ADR' }, { label: 'RevPAR' }] },
           { title: 'Occupancy & demand', stats: [{ label: 'Occupancy' }, { label: 'Strongest period' }, { label: 'Weakest period' }] },
           { title: 'Channel mix', stats: [{ label: 'Direct share' }, { label: 'OTA share' }] },
-          {
-            title: 'Forecasting',
-            stats: [{ label: 'Next 30 days' }, { label: 'Next 90 days' }],
-            linkTo: ['my-dashboards', 'Forecasting'],
-          },
+        ],
+      },
+    },
+    {
+      heading: 'Forecasting',
+      // Own row, separate from Performance's retrospective content (see
+      // comment above) — links to the existing Forecasting PRESET dashboard
+      // under My dashboards, reusing it rather than inventing a second
+      // Forecasting page. 3 separate cards (Robert: "make forecasting a few
+      // digets" / "widgets") — matches Performance row's own rhythm of
+      // distinct cards rather than one wide card with 3 stacked stats.
+      viewAll: { linkTo: ['my-dashboards', 'Forecasting'] },
+      content: {
+        type: 'sketch',
+        sketch: 'metric-groups',
+        groups: [
+          { title: 'Next 30 days', stats: [{ label: 'Projected occupancy' }, { label: 'Projected revenue' }], linkTo: ['my-dashboards', 'Forecasting'] },
+          { title: 'Next 90 days', stats: [{ label: 'Projected occupancy' }, { label: 'Projected revenue' }], linkTo: ['my-dashboards', 'Forecasting'] },
+          { title: 'Pace vs. comp set', stats: [{ label: 'Your pace' }, { label: 'Comp set pace' }], linkTo: ['my-dashboards', 'Forecasting'] },
         ],
       },
     },
     {
       heading: 'Tracking past recommendations performance',
+      // "View all" (v3, Robert: "a tab under recommendations page called
+      // performance") — jumps to Recommendations' new "Performance" tab,
+      // which shows the fuller accepted-recommendation value history behind
+      // this row's own 3-item summary.
+      viewAll: { linkTo: ['recommendations', 'performance'] },
       content: {
         type: 'sketch',
         sketch: 'value-tracker',
@@ -1571,9 +1669,19 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
 // SM account with propertyCount: 'multiple', and Group rate plans should
 // NOT show for that case — only true MP accounts get it).
 //
-// `enabledProducts` (new) gates Configuration's 4 "Add-on" product items
-// (Direct Booking/Channels Plus/Metasearch/Pay) — see PRODUCT_KEYS.
-function buildSmContentTree(showProperties, scope, accountType, enabledProducts) {
+// `hasDirectBooking` (v3, real packaging) gates Direct Booking's
+// Configuration item — true only on SiteMinder Plus (state.tier in
+// main.js), independent of enabledProducts. `enabledProducts` gates
+// whether Channels Plus/Pay/Metasearch ("In-product sign-ups") each get
+// their own item — see PRODUCT_KEYS. `hasDrPlus` (v3, Robert: "config
+// would also get a DR+ config space") gates DR+'s own item the same way,
+// kept as a SEPARATE parameter since DR+ is genuinely a standalone add-on
+// subscription (confirmed against siteminder.com/pricing), independent of
+// tier and of the other 3 sign-ups. When any of these is NOT active, it
+// gets no Configuration item at all — it shows up on "Add products"
+// instead (v3 principle: don't bloat the IA with upsell stubs for unowned
+// products).
+function buildSmContentTree(showProperties, scope, accountType, enabledProducts, hasDrPlus, hasDirectBooking) {
   return {
     insights: {
       // REBUILT (Robert flagged the previous structure as "messy," then:
@@ -1682,20 +1790,52 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         // stage idea, NOT built — don't add grouping structure without
         // picking this back up. `badge: true` — same illustrative
         // "something needs attention" dot as Health check.
+        //
+        // Gained a "Performance" tab (v3, Robert: "a tab under
+        // recommendations page called performance") — Home's value-tracking
+        // row ("Tracking past recommendations performance") "View all"
+        // lands here, showing the fuller accepted-recommendation value
+        // history behind the row's own 3-item summary.
         {
           key: 'recommendations',
           label: 'Recommendations',
           badge: true,
           content: {
-            type: 'sketch',
-            sketch: 'dashboard-cards',
-            cards: [
-              { shape: 'stat' },
-              { shape: 'chart' },
-              { shape: 'chart' },
-              { shape: 'stat' },
-              { shape: 'chart' },
-              { shape: 'stat' },
+            type: 'tabs',
+            tabs: [
+              {
+                key: 'recommendations',
+                label: 'Recommendations',
+                active: true,
+                content: {
+                  type: 'sketch',
+                  sketch: 'dashboard-cards',
+                  cards: [
+                    { shape: 'stat' },
+                    { shape: 'chart' },
+                    { shape: 'chart' },
+                    { shape: 'stat' },
+                    { shape: 'chart' },
+                    { shape: 'stat' },
+                  ],
+                },
+              },
+              {
+                key: 'performance',
+                label: 'Performance',
+                content: {
+                  type: 'sketch',
+                  sketch: 'value-tracker',
+                  summary: '12 recommendations accepted in the last 90 days — an estimated $4,860 in additional revenue.',
+                  recent: [
+                    { title: 'Weekend surcharge, Fri 8 Aug', value: '+$180', status: 'Confirmed' },
+                    { title: 'Deluxe King rate increase, 16 Oct', value: '+$25/night', status: 'Estimated' },
+                    { title: 'Reopened Booking.com, 3 nights', value: '+$410', status: 'Confirmed' },
+                    { title: 'Added non-refundable rate, Standard Room', value: '+$95', status: 'Confirmed' },
+                    { title: 'Extended stay discount, 5+ nights', value: '+$310', status: 'Estimated' },
+                  ],
+                },
+              },
             ],
           },
           scopeSwitcher: 'multi-select',
@@ -2026,13 +2166,8 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         // heading rule), not a folder: always-expanded, no chevron, purely
         // clusters the already-visible items below it under one label.
         { heading: true, label: 'Products' },
-        // Each gated on `enabledProducts` (Confluence "IA node tree v2" —
-        // all 4 tagged Add-on: "a section that only exists in the IA for
-        // accounts that have signed up for that product"). Defaults to all
-        // 4 enabled (see state.enabledProducts in main.js), so this is a
-        // no-op unless the debug panel is used to deselect one.
         //
-        // `scopeSwitcher: 'force-single'` on all 4 — Confluence's v2 tree
+        // `scopeSwitcher: 'force-single'` throughout — Confluence's v2 tree
         // leaves Property scope blank for these, but the earlier v1c draft
         // is explicit: "not applicable — no group config yet." There's no
         // group/portfolio-level product config anywhere in this tree (see
@@ -2040,25 +2175,58 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
         // until that exists, a product is configured one property at a
         // time, so single-property is the only meaningful mode, same
         // reasoning as Inventory/Dynamic pricing.
-        ...(enabledProducts.includes('direct-booking')
+        //
+        // Direct Booking is tier-gated (v3, real packaging confirmed
+        // against siteminder.com/pricing) — comes with SiteMinder Plus,
+        // driven by `hasDirectBooking` (state.tier in main.js), NOT
+        // enabledProducts. DELIBERATELY gets no Configuration item at all
+        // when the account is on the base tier (Robert: "not to bloat the
+        // ia with upsells .. if they are not active they would be shown on
+        // the add products page") — shows on "Add products" instead.
+        ...(hasDirectBooking
           ? [{ key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST, scopeSwitcher: 'force-single' }]
           : []),
+        // Channels Plus, Pay, Metasearch ("In-product sign-ups," v3) —
+        // independently toggleable regardless of tier or each other (Robert:
+        // "keep it simpler .. just one combined list for now" rather than
+        // further splitting by payment model/activation method — see
+        // PRODUCT_KEYS' own comment). Same "no item at all when inactive"
+        // principle as Direct Booking/DR+ — shows on "Add products" instead.
         ...(enabledProducts.includes('channels-plus')
           ? [{ key: 'channels-plus', label: 'Channels Plus', content: null, scopeSwitcher: 'force-single' }]
           : []),
+        ...(enabledProducts.includes('pay') ? [{ key: 'pay', label: 'Pay', content: PAY_LIST, scopeSwitcher: 'force-single' }] : []),
         ...(enabledProducts.includes('metasearch')
           ? [{ key: 'metasearch', label: 'Metasearch', content: null, scopeSwitcher: 'force-single' }]
           : []),
-        // NEW — stub for now (content: null), no shape decided yet.
-        ...(enabledProducts.includes('pay') ? [{ key: 'pay', label: 'Pay', content: PAY_LIST, scopeSwitcher: 'force-single' }] : []),
-        // Renamed from "Manage products" (CHANGE-QUEUE.md item 6) — "Add
-        // products" more precisely signals its action (add a NEW product
-        // to the account) vs. the settings-page items above it. `actionIcon`
-        // marks it as an ACTION ROW, a third panel-list pattern alongside
-        // folder/heading (PATTERNS.md) — plain clickable like Direct
-        // Booking/Channels Plus, just with a leading icon distinguishing
-        // "does something" from "navigates to a settings page."
-        { key: 'manage-products', label: 'Add products', content: null, actionIcon: '+' },
+        // DR+ — a genuinely separate standalone add-on subscription,
+        // independent of tier and of the 3 in-product sign-ups above (see
+        // buildSmContentTree's own comment on `hasDrPlus`).
+        ...(hasDrPlus ? [{ key: 'dr-plus', label: 'DR+', content: null, scopeSwitcher: 'force-single' }] : []),
+        // "Manage products" (v3, renamed from "Add products") — grown from
+        // an inert action-row stub into the real centralised management/
+        // upsell surface (Robert: "tha tapge would grow to be a
+        // centralised management space for producrs .. it would have to do
+        // the heavy lifting of the sales job framing the different
+        // products"). Shows EVERY product, active or not — each card
+        // carries a real value prop + billing model, with active ones
+        // marked owned rather than removed from view entirely, plus the
+        // SiteMinder/SiteMinder Plus tier comparison since Direct Booking's
+        // real story is "upgrade the tier," not "activate this one thing."
+        {
+          key: 'manage-products',
+          label: 'Manage products',
+          content: {
+            type: 'sketch',
+            sketch: 'product-cards',
+            tierComparison: TIER_COMPARISON,
+            currentTier: hasDirectBooking ? 'siteminder-plus' : 'siteminder',
+            products: MANAGE_PRODUCTS_CATALOG.map((p) => ({
+              ...p,
+              active: p.key === 'direct-booking' ? hasDirectBooking : p.key === 'dr-plus' ? hasDrPlus : enabledProducts.includes(p.key),
+            })),
+          },
+        },
       ],
     },
   };
@@ -2079,15 +2247,20 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts)
 //     state.scope in main.js) — threaded through so scope-aware row sets
 //     (Rate plans' expansion, once other items need it) can react live.
 //     Optional; content that doesn't care about scope just ignores it.
-//   - enabledProducts: which "Add-on" products (Confluence "IA node tree
-//     v2") this account has signed up for — gates Configuration's Direct
-//     Booking/Channels Plus/Metasearch/Pay items. Optional; defaults to
-//     every product enabled (main.js's own state default already does
-//     this, but keep the fallback here too so a caller that omits it
-//     entirely doesn't accidentally hide every product).
-export function getContent(accountType, propertyCount, scope, enabledProducts = PRODUCT_KEYS) {
+//   - enabledProducts: which "In-product sign-ups" (v3) this account has
+//     activated — gates Configuration's Channels Plus/Pay/Metasearch
+//     items. Optional; defaults to all 3 enabled (main.js's own state
+//     default already does this, but keep the fallback here too so a
+//     caller that omits it entirely doesn't accidentally hide every one).
+//   - hasDrPlus: whether this account has the separate DR+ add-on
+//     subscription — gates Configuration's DR+ item. Optional; defaults to
+//     true, same "don't accidentally hide it" reasoning as enabledProducts.
+//   - hasDirectBooking: whether this account is on SiteMinder Plus (v3,
+//     real packaging) — gates Configuration's Direct Booking item.
+//     Optional; defaults to true, same reasoning as the other two.
+export function getContent(accountType, propertyCount, scope, enabledProducts = PRODUCT_KEYS, hasDrPlus = true, hasDirectBooking = true) {
   const showProperties = accountType === 'MP' || propertyCount === 'multiple';
-  const tree = buildSmContentTree(showProperties, scope, accountType, enabledProducts);
+  const tree = buildSmContentTree(showProperties, scope, accountType, enabledProducts, hasDrPlus, hasDirectBooking);
   // My account — not a rail section (getRailItems is unaffected), reached
   // via the rail's user avatar instead. Same regardless of account type/
   // property count, so it's added here rather than inside

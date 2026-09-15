@@ -1342,15 +1342,31 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
-.home-page__row-view-all {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
+/* Shared minimal "view all" affordance — a bare chevron, no repeated "View
+   all" text (Robert: "view all is going to get repetitive maybe we can
+   have a more minimal control"). Used by Priority actions' own header and
+   by any Home row's heading-bar. See renderViewAllChevron. */
+.home-view-all-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 6px;
+  color: var(--text-muted);
   text-decoration: none;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
-.home-page__row-view-all:hover {
-  text-decoration: underline;
+.home-view-all-chevron svg {
+  width: 16px;
+  height: 16px;
+}
+
+.home-view-all-chevron:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
 }
 
 /* Priority actions widget — real title + real rationale per card (higher
@@ -1375,17 +1391,6 @@ a { color: inherit; }
   font-size: 14px;
   font-weight: 700;
   color: var(--text);
-}
-
-.priority-actions__view-all {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-decoration: none;
-}
-
-.priority-actions__view-all:hover {
-  text-decoration: underline;
 }
 
 .priority-actions__cards {
@@ -1563,6 +1568,162 @@ a { color: inherit; }
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--tag-bg);
+  color: var(--text-muted);
+}
+
+/* "Manage products" (v3) — tier comparison + real value-prop cards per
+   product. See renderProductCards/wireProductCards. */
+.manage-products {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.product-tier-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.product-tier-comparison th,
+.product-tier-comparison td {
+  padding: 10px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.product-tier-comparison thead th {
+  background: var(--surface-sunken);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.product-tier-comparison thead th.is-current-tier {
+  color: var(--text);
+  position: relative;
+}
+
+.product-tier-comparison thead th.is-current-tier::after {
+  content: 'current';
+  display: block;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.product-tier-comparison__feature {
+  text-align: left;
+  color: var(--text-secondary);
+}
+
+.product-tier-comparison__check {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.product-tier-comparison tbody tr:last-child th,
+.product-tier-comparison tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.product-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.product-card.is-active {
+  border-color: var(--border-strong);
+}
+
+.product-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.product-card__name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.product-card__owned-badge {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tag-bg);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.product-card__tagline {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.product-card__value-prop {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.product-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.product-card__billing {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.product-card__action {
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.product-card__action:hover {
+  background: var(--surface-sunken);
+}
+
+.product-card__action--remove {
   color: var(--text-muted);
 }
 

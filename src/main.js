@@ -45,7 +45,7 @@ const DE_LABELS = {
   'Adoption': 'Akzeptanz',
   'About page': 'Info-Seite',
   'Accepted payments': 'Akzeptierte Zahlungsarten',
-  'Add products': 'Produkte hinzufügen',
+  'Manage products': 'Produkte verwalten',
   'API': 'API',
   'Automated payments': 'Automatisierte Zahlungen',
   'Booking rules': 'Buchungsregeln',
@@ -179,6 +179,8 @@ function savePrototypeSettings() {
         multipleSystems: state.multipleSystems,
         language: state.language,
         enabledProducts: state.enabledProducts,
+        tier: state.tier,
+        hasDrPlus: state.hasDrPlus,
       })
     );
   } catch {
@@ -196,13 +198,35 @@ const state = {
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: savedPrototypeSettings.multipleSystems ?? false, // hidden-settings toggle: does every property have >1 connected system?
-  // Which "Add-on" products (Confluence "IA node tree v2") this account
-  // has signed up for — gates Direct Booking/Channels Plus/Metasearch/Pay
-  // in Configuration. Defaults to ALL enabled so existing behavior is
-  // unchanged unless someone actively deselects one in the debug panel —
-  // there was previously no entitlement concept here at all, so every
-  // account saw all 4 unconditionally.
+  // Real SiteMinder packaging (v3 — Robert: "the current bubling is
+  // SiteMinder which is channel manager etc .. then SiteMinder Plus which
+  // brings in DB, then the rest is add-ons," refined through several
+  // corrections, confirmed against siteminder.com/pricing and Sam's own
+  // real-world knowledge of Demand+/Metasearch's actual activation):
+  //
+  //   - Tier: base SiteMinder vs. SiteMinder Plus. Plus additionally
+  //     unlocks Direct Booking — the ONLY thing tier gates now (Metasearch
+  //     moved out of tier-gating once Robert flagged uncertainty about how
+  //     it's really activated).
+  //   - "In-product sign-ups" (PRODUCT_KEYS): Channels Plus, Pay,
+  //     Metasearch — independently toggleable regardless of tier, kept as
+  //     ONE combined list rather than split further by payment model
+  //     (commission vs. subscription) or activation method (self-serve vs.
+  //     sales-mediated) — a real further distinction surfaced by research
+  //     (DR+ needs sales contact, the other 3 are self-serve/automatic per
+  //     siteminder.com) but deliberately deferred: "keep it simpler .. just
+  //     one combined list for now."
+  //   - DR+ (hasDrPlus): a genuinely separate standalone add-on
+  //     subscription, independent of tier and of the 3 sign-ups above.
+  //
+  // Each of these DOES gate Configuration's tree now (getContent's
+  // hasDirectBooking/enabledProducts/hasDrPlus params) — when inactive, the
+  // product gets NO Configuration item at all, appearing on "Add products"
+  // instead (v3 principle: don't bloat the IA with upsell stubs for unowned
+  // products — Robert: "not to bloat the ia with upsells").
   enabledProducts: savedPrototypeSettings.enabledProducts ?? [...PRODUCT_KEYS],
+  tier: savedPrototypeSettings.tier ?? 'siteminder-plus', // 'siteminder' | 'siteminder-plus'
+  hasDrPlus: savedPrototypeSettings.hasDrPlus ?? true,
   // Prototype-panel toggle: 'EN' | 'DE'. Swaps nav labels via `tr()` (see its
   // definition near the top of this file, alongside DE_LABELS) — a LAYOUT
   // stress test, not real i18n: no pluralization/interpolation, and the
@@ -1047,6 +1071,7 @@ function renderCanvas(data) {
   wireBreadcrumb();
   wireThemeToggle();
   wireWizardOpenButtons();
+  wireProductCards();
 }
 
 // Render every step in `chain` from `i` onward into nested HTML, plus the
@@ -1373,18 +1398,27 @@ function renderDashboardCards(cards) {
 // preview of the same clickable-tile language `nav-dashboard` uses
 // (chevron, hover) — `renderSketch` has no path/depth context to wire a
 // real destination here, same "shape only" convention as `dashboard-cards`.
+// Shared minimal "view all" affordance — a bare chevron, no "View all" text
+// (Robert: "view all is going to get repetitive maybe we can have a more
+// minimal control") — used identically by Priority actions' own header and
+// by renderHome's generic row-heading-bar, so all 3 Home rows read the same
+// way instead of stacking 3 near-identical text links down the page.
+function renderViewAllChevron(pathKey) {
+  return `<a href="#" class="home-view-all-chevron" data-path-key="${pathKey}" aria-label="${tr('View all')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></a>`;
+}
+
 function renderPriorityActions(items, viewAllKey) {
   const count = items.length;
   // `viewAllKey` (e.g. 'recommendations') routes to a real top-level
   // Insights item via the same `data-path-key` mechanism every other canvas
   // link uses (wirePathLinks calls select(0, key) + render()) — switches
   // the rail's selected item, doesn't just point at an inert "#".
-  const viewAllHref = viewAllKey ? `data-path-key="0:${viewAllKey}"` : '';
+  const viewAllHtml = viewAllKey ? renderViewAllChevron(`0:${viewAllKey}`) : '';
   return `
     <div class="priority-actions">
       <div class="priority-actions__header">
         <span class="priority-actions__heading">${tr('Priority actions')} — ${count} ${tr('actions for review')}</span>
-        <a href="#" class="priority-actions__view-all" ${viewAllHref}>${tr('View all')} ›</a>
+        ${viewAllHtml}
       </div>
       <div class="priority-actions__cards">
         ${items
@@ -1482,6 +1516,98 @@ function renderValueTracker(summary, recent) {
       </div>
     </div>
   `;
+}
+
+// "Manage products" (v3) — a real card per product (value prop + billing
+// model), plus the SiteMinder/SiteMinder Plus tier comparison. Each card's
+// Activate/Remove button actually flips the underlying state live
+// (Robert: "itd be neat if we can add remove products in the ui just to
+// get the feel for it, obv without the onboarding") — same state
+// (enabledProducts/hasDrPlus/tier) the debug panel's own controls read
+// and write, via `data-toggle-product` (see wireProductCards below) rather
+// than a separate parallel mechanism. No real activation FLOW (confirmation,
+// billing capture, etc.) — just the state flip, same "structure only"
+// convention as everywhere else not yet built.
+function renderProductCards(content) {
+  const { tierComparison, currentTier, products } = content;
+  const tierTable = `
+    <div class="product-tier-comparison">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            ${tierComparison.tiers
+              .map((t, i) => `<th class="${i === (currentTier === 'siteminder-plus' ? 1 : 0) ? 'is-current-tier' : ''}">${tr(t)}</th>`)
+              .join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${tierComparison.rows
+            .map(
+              (row) => `
+                <tr>
+                  <td class="product-tier-comparison__feature">${tr(row.feature)}</td>
+                  ${row.included.map((inc) => `<td class="product-tier-comparison__check">${inc ? '✓' : '—'}</td>`).join('')}
+                </tr>
+              `
+            )
+            .join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  const cards = products
+    .map(
+      (p) => `
+        <div class="product-card ${p.active ? 'is-active' : ''}">
+          <div class="product-card__top">
+            <h3 class="product-card__name">${tr(p.name)}</h3>
+            ${p.active ? `<span class="product-card__owned-badge">${tr('Active')}</span>` : ''}
+          </div>
+          <p class="product-card__tagline">${tr(p.tagline)}</p>
+          <p class="product-card__value-prop">${tr(p.valueProp)}</p>
+          <div class="product-card__footer">
+            <span class="product-card__billing">${tr(p.billing)}</span>
+            <button type="button" class="product-card__action ${p.active ? 'product-card__action--remove' : 'product-card__action--activate'}" data-toggle-product="${p.key}">
+              ${p.active ? tr('Remove') : tr('Activate')}
+            </button>
+          </div>
+        </div>
+      `
+    )
+    .join('');
+  return `
+    <div class="manage-products">
+      ${tierTable}
+      <div class="product-cards">${cards}</div>
+    </div>
+  `;
+}
+
+// Activate/Remove buttons (v3) — same state the debug panel's Tier/In-
+// product sign-ups/DR+ controls read and write (state.tier/enabledProducts/
+// hasDrPlus), so this page and the debug panel are two views onto one
+// source of truth, never a separate parallel toggle. Direct Booking flips
+// state.tier itself (it's the only thing tier gates — see buildSmContentTree's
+// own comment), not enabledProducts.
+function wireProductCards() {
+  canvasEl.querySelectorAll('[data-toggle-product]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.toggleProduct;
+      if (key === 'direct-booking') {
+        state.tier = state.tier === 'siteminder-plus' ? 'siteminder' : 'siteminder-plus';
+        syncTierButtons();
+      } else if (key === 'dr-plus') {
+        state.hasDrPlus = !state.hasDrPlus;
+      } else {
+        state.enabledProducts = state.enabledProducts.includes(key)
+          ? state.enabledProducts.filter((k) => k !== key)
+          : [...state.enabledProducts, key];
+      }
+      savePrototypeSettings();
+      render();
+    });
+  });
 }
 
 // `display: 'cards'` (Configuration > Properties, multi-property scope) —
@@ -1921,13 +2047,12 @@ function renderSectionsSketch(sections) {
 function renderHome(rows) {
   return `<div class="home-page">${rows
     .map((row) => {
-      // `row.viewAll` (optional): {label, linkTo: [itemKey, recordName]} —
-      // same "jump to a specific nested dashboard" mechanism as a metric
-      // group's own `linkTo` (Performance row itself needs a "View all"
-      // alongside its individual groups' links).
-      const viewAll = row.viewAll
-        ? `<a href="#" class="home-page__row-view-all" data-path-key="0:${row.viewAll.linkTo[0]}:${row.viewAll.linkTo[1]}">${tr('View all')} ›</a>`
-        : '';
+      // `row.viewAll` (optional): {linkTo: [itemKey, recordName]} — same
+      // "jump to a specific nested dashboard" mechanism as a metric group's
+      // own `linkTo` (Performance row itself needs a "View all" alongside
+      // its individual groups' links). Renders as the same bare chevron
+      // Priority actions uses, not repeated "View all" text.
+      const viewAll = row.viewAll ? renderViewAllChevron(`0:${row.viewAll.linkTo[0]}:${row.viewAll.linkTo[1]}`) : '';
       const heading =
         row.heading || viewAll
           ? `<div class="home-page__row-heading-bar">${row.heading ? `<div class="home-page__row-heading">${tr(row.heading)}</div>` : '<span></span>'}${viewAll}</div>`
@@ -1944,6 +2069,7 @@ function renderHome(rows) {
 
 function renderSketch(content) {
   if (content.sketch === 'home') return renderHome(content.rows);
+  if (content.sketch === 'product-cards') return renderProductCards(content);
   if (content.sketch === 'sections') return renderSectionsSketch(content.sections);
   if (content.sketch === 'media') {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
@@ -2251,7 +2377,14 @@ function render() {
   // Falls through to an honest empty panel/canvas for any section with no
   // data for the current state (e.g. an undefined rail item for a given
   // account type) — no placeholders, just nothing rendered.
-  const content = getContent(state.accountType, state.propertyCount, state.scope, state.enabledProducts);
+  const content = getContent(
+    state.accountType,
+    state.propertyCount,
+    state.scope,
+    state.enabledProducts,
+    state.hasDrPlus,
+    state.tier === 'siteminder-plus'
+  );
   const data = content?.[state.section];
   if (!data) {
     panelEl.innerHTML = '';
@@ -2460,17 +2593,34 @@ document.querySelectorAll('[data-language]').forEach((el) => {
   });
 });
 
-// Products — genuinely a TOGGLE, not select-one: clicking a button flips
-// just that product in/out of state.enabledProducts, any number can be
-// active at once (unlike every other debug-panel group above, which
-// selects exactly one of a fixed set).
-document.querySelectorAll('[data-product]').forEach((el) => {
+// Extracted so BOTH the Tier debug-panel buttons themselves AND
+// wireProductCards' Direct Booking card (which also flips state.tier — see
+// below) can keep the debug panel's own highlighting in sync, rather than
+// only the direct click handler updating it. Without this, toggling Direct
+// Booking from Manage products would silently leave the debug panel
+// showing the wrong tier highlighted until the next full page load —
+// exactly the sync bug Robert caught with the old separate-controls setup,
+// just relocated rather than fixed, had this not been shared.
+function syncTierButtons() {
+  document.querySelectorAll('[data-tier]').forEach((b) => {
+    b.classList.toggle('is-active', b.dataset.tier === state.tier);
+  });
+}
+
+// Tier (v3) — select-one, like Account type/Property count above. Drives
+// Direct Booking's Configuration visibility directly via
+// `state.tier === 'siteminder-plus'` passed straight into getContent (real
+// packaging, confirmed against siteminder.com/pricing). Kept in the debug
+// panel (Robert: "just keep the tier thing in the settings for now") —
+// unlike Channels Plus/Pay/Metasearch/DR+ ("In-product sign-ups," v3),
+// which were ALSO briefly debug-panel toggles but are now controlled ONLY
+// from Configuration > Manage products' own Activate/Remove buttons (see
+// wireProductCards) — no separate debug control, no [data-product]/
+// [data-dr-plus] buttons in index.html at all anymore.
+document.querySelectorAll('[data-tier]').forEach((el) => {
   el.addEventListener('click', () => {
-    const key = el.dataset.product;
-    state.enabledProducts = state.enabledProducts.includes(key)
-      ? state.enabledProducts.filter((k) => k !== key)
-      : [...state.enabledProducts, key];
-    el.classList.toggle('is-active', state.enabledProducts.includes(key));
+    state.tier = el.dataset.tier;
+    syncTierButtons();
     savePrototypeSettings();
     render();
   });
@@ -2493,9 +2643,7 @@ document.querySelectorAll('[data-system-count]').forEach((b) => {
 document.querySelectorAll('[data-language]').forEach((b) => {
   b.classList.toggle('is-active', b.dataset.language === state.language);
 });
-document.querySelectorAll('[data-product]').forEach((b) => {
-  b.classList.toggle('is-active', state.enabledProducts.includes(b.dataset.product));
-});
+syncTierButtons();
 
 // Wires the theme-toggle skeleton's buttons — called per-render (from
 // wirePathLinks, alongside every other canvas interactive element), NOT

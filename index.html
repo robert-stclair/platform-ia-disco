@@ -140,13 +140,11 @@
     </div>
 
     <div class="debug-panel__group">
-      <div class="debug-panel__label">Products</div>
-      <div class="debug-panel__hint">Which "Add-on" products this account has signed up for — gates Configuration's product items (all 4 enabled by default)</div>
-      <div class="scope-toggle scope-toggle--debug scope-toggle--multi" role="group" aria-label="Enabled products">
-        <button class="is-active" data-product="direct-booking">Direct Booking</button>
-        <button class="is-active" data-product="channels-plus">Channels Plus</button>
-        <button class="is-active" data-product="metasearch">Metasearch</button>
-        <button class="is-active" data-product="pay">Pay</button>
+      <div class="debug-panel__label">Tier</div>
+      <div class="debug-panel__hint">SiteMinder Plus adds Direct Booking on top of the base tier. Channels Plus, Pay, Metasearch and DR+ are managed from Configuration &gt; Manage products instead.</div>
+      <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="Tier">
+        <button data-tier="siteminder">SiteMinder</button>
+        <button class="is-active" data-tier="siteminder-plus">SiteMinder Plus</button>
       </div>
     </div>
 
