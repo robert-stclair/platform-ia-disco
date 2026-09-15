@@ -1364,6 +1364,113 @@ function renderDashboardCards(cards) {
     .join('')}</div>`;
 }
 
+// Home's "Priority actions" widget — real title + real rationale text per
+// card (not skeleton), a mix of diagnostic and recommendation items shown
+// together for now. `content.items`: [{title, rationale}] — always real
+// text, no skeleton variant, since this widget only exists to demonstrate
+// the "why now" explanation pattern the CPO doc kept asking for; a
+// titleless version would defeat the point. Visually a non-functional
+// preview of the same clickable-tile language `nav-dashboard` uses
+// (chevron, hover) — `renderSketch` has no path/depth context to wire a
+// real destination here, same "shape only" convention as `dashboard-cards`.
+function renderPriorityActions(items, viewAllKey) {
+  const count = items.length;
+  return `
+    <div class="priority-actions">
+      <div class="priority-actions__header">
+        <span class="priority-actions__heading">${tr('Priority actions')} — ${count} ${tr('actions for review')}</span>
+        <a href="#" class="priority-actions__view-all">${tr('View all')} ›</a>
+      </div>
+      <div class="priority-actions__cards">
+        ${items
+          .map(
+            (item) => `
+              <div class="priority-actions__card">
+                <div class="priority-actions__card-top">
+                  <h3 class="priority-actions__card-title">${tr(item.title)}</h3>
+                  <svg class="priority-actions__card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+                <p class="priority-actions__card-rationale">${tr(item.rationale)}</p>
+              </div>
+            `
+          )
+          .join('')}
+      </div>
+    </div>
+  `;
+}
+
+// Home's performance row — GROUPED stat cards (Robert: "we have grouping
+// of cards"), not one flat row of individual metrics. Each group is a
+// small cluster of 2-3 real-labeled stats that cascades into its own
+// dedicated performance dashboard on click (the cascading-dashboard-family
+// idea from the v3 Confluence page, applied to performance content) —
+// Home shows the calm summary, the group's own dashboard carries the
+// depth. `content.groups`: [{title, stats: [{label, value}]}] — real
+// group titles and stat labels (first-pass grouping, not confirmed:
+// Rates & distribution / Occupancy & demand / Channels), values stay
+// skeleton (illustrative numbers only, per the standard "real labels,
+// skeleton data" rule).
+function renderMetricGroups(groups) {
+  return `
+    <div class="metric-groups">
+      ${groups
+        .map(
+          (group) => `
+            <a href="#" class="metric-group">
+              <div class="metric-group__header">
+                <h3 class="metric-group__title">${tr(group.title)}</h3>
+                <svg class="metric-group__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+              </div>
+              <div class="metric-group__stats">
+                ${group.stats
+                  .map(
+                    (stat) => `
+                      <div class="metric-group__stat">
+                        <span class="metric-group__stat-label">${tr(stat.label)}</span>
+                        <div class="metric-group__stat-skel"></div>
+                      </div>
+                    `
+                  )
+                  .join('')}
+              </div>
+            </a>
+          `
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+// Home's value-tracking row — "Tracking past recommendations performance."
+// Shows realized value from ACCEPTED recommendations, not a feature badge —
+// the direct answer to the CPO doc's DR+ value-awareness gap ("demonstrate
+// DR+ was making them money," not label it a tier). `recent` rows show a
+// real title + a real illustrative $ value + a status word (e.g.
+// "Confirmed" vs. "Estimated" — mirrors the strategy doc's own distinction
+// between causally-proven and directional value, without overclaiming
+// accuracy this prototype doesn't have real data for).
+function renderValueTracker(summary, recent) {
+  return `
+    <div class="value-tracker">
+      <p class="value-tracker__summary">${tr(summary)}</p>
+      <div class="value-tracker__rows">
+        ${recent
+          .map(
+            (row) => `
+              <div class="value-tracker__row">
+                <span class="value-tracker__row-title">${tr(row.title)}</span>
+                <span class="value-tracker__row-value">${tr(row.value)}</span>
+                <span class="value-tracker__row-status value-tracker__row-status--${row.status === 'Confirmed' ? 'confirmed' : 'estimated'}">${tr(row.status)}</span>
+              </div>
+            `
+          )
+          .join('')}
+      </div>
+    </div>
+  `;
+}
+
 // `display: 'cards'` (Configuration > Properties, multi-property scope) —
 // each property gets its own clickable name heading directly on THIS
 // page, immediately followed by a small dashboard-cards summary for that
@@ -1779,7 +1886,30 @@ function renderSectionsSketch(sections) {
     .join('')}</div>`;
 }
 
+// Home page (Insights > Overview's new content) — a stack of purpose-built
+// widgets, each its own row, rather than one dashboard-cards grid. First
+// scaffold of the "family of dashboards" idea from the v3 Confluence page:
+// Priority actions (mixed diagnostics + recommendations, kept combined for
+// now), a grouped Performance summary (cascades to its own dashboards),
+// and a value-tracking row for accepted recommendations. `content.rows`:
+// [{heading?, content}] — `heading` is optional, only Performance gets one
+// today since Priority actions and the value tracker carry their own
+// internal headers already.
+function renderHome(rows) {
+  return `<div class="home-page">${rows
+    .map(
+      (row) => `
+        <div class="home-page__row">
+          ${row.heading ? `<div class="home-page__row-heading">${tr(row.heading)}</div>` : ''}
+          ${renderSketch(row.content)}
+        </div>
+      `
+    )
+    .join('')}</div>`;
+}
+
 function renderSketch(content) {
+  if (content.sketch === 'home') return renderHome(content.rows);
   if (content.sketch === 'sections') return renderSectionsSketch(content.sections);
   if (content.sketch === 'media') {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
@@ -1795,6 +1925,38 @@ function renderSketch(content) {
     // Dashboard — confirmed with user: doesn't need real titles, just
     // needs to read as a dashboard-style page).
     return renderDashboardCards(content.cards);
+  }
+  if (content.sketch === 'priority-actions') {
+    // Home's top widget — real titles + real rationale text (Robert wants
+    // higher content fidelity for this iteration, not skeleton-only), 3
+    // cards shown with a "View all" link to the full list. Deliberately
+    // mixes diagnostic-flavored items (a stop-sell left open) and
+    // recommendation-flavored items (add a non-refundable rate) in one
+    // widget for now — the v3 Confluence page's "cascading dashboard
+    // family" (keeping these separate) is logged as a later refinement,
+    // not built here yet (Robert: "for now keep it combined").
+    return renderPriorityActions(content.items, content.viewAllKey);
+  }
+  if (content.sketch === 'metric-groups') {
+    // Home's performance row — grouped stat cards, each group a small
+    // cluster (not one flat row of individual metrics) that cascades into
+    // its own dedicated performance dashboard on click, rather than Home
+    // trying to carry every number itself. First scaffold of the
+    // cascading-dashboard-family idea (v3 Confluence page) applied to
+    // performance content specifically.
+    return renderMetricGroups(content.groups);
+  }
+  if (content.sketch === 'value-tracker') {
+    // "Tracking past recommendations performance" — answers the CPO/
+    // strategy-doc value-awareness gap directly: once a recommendation is
+    // accepted, show what it was actually worth, not just that DR+ exists.
+    // Deliberately NOT a "DR+ tier" badge/label (Robert reconsidered that —
+    // "its prob more about demonstrating that dr+ was making them money
+    // which is the other idea") — the row's job is to make realized value
+    // visible, not to brand the feature. `content.summary`: real headline
+    // text (accepted count + estimated $ this period); `content.recent`:
+    // [{title, value, status}] illustrative recent accepted actions.
+    return renderValueTracker(content.summary, content.recent);
   }
   if (content.sketch === 'list') {
     // `starredRows` (optional): indices that get an illustrative star icon —

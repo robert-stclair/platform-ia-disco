@@ -733,6 +733,71 @@ const ASSISTANT_ITEMS = {
   ],
 };
 
+// HOME (v3) — Insights > Overview's new content. First scaffold of the
+// "family of dashboards, cascading" idea from the v3 Confluence page:
+// Priority actions (real titles + rationale, mixing diagnostics and
+// recommendations for now — Robert: "for now keep it combined"), a
+// grouped Performance summary (each group cascades to its own dashboard,
+// not modeled yet — this is the Home-level summary only), and a value-
+// tracking row answering the CPO doc's DR+ value-awareness gap by showing
+// realized $ from ACCEPTED recommendations, not a feature/tier badge
+// (Robert: "its prob more about demonstrating that dr+ was making them
+// money"). All illustrative — real wording/shape, not real data.
+const HOME_CONTENT = {
+  type: 'sketch',
+  sketch: 'home',
+  rows: [
+    {
+      content: {
+        type: 'sketch',
+        sketch: 'priority-actions',
+        items: [
+          {
+            title: 'Add a non-refundable rate',
+            rationale: 'Your compset sells one on Booking.com — your NRF mix is currently 0%.',
+          },
+          {
+            title: 'Occupancy has passed your threshold for Thu 14 Aug',
+            rationale: "Thu 14 Aug just crossed 90% on the books — the point you've told us to flag for a pricing review.",
+          },
+          {
+            title: 'Reopen Booking.com',
+            rationale: 'Closed 9 days over sellable dates — likely an accidental stop-sell that was never reopened.',
+          },
+        ],
+      },
+    },
+    {
+      heading: 'Performance',
+      content: {
+        type: 'sketch',
+        sketch: 'metric-groups',
+        // First-pass grouping only (Robert: "its a start") — not confirmed,
+        // grouped by what a hotelier would investigate together rather than
+        // Sam's doc's own flat list (occupancy/ADR/RevPAR/pace/channel mix).
+        groups: [
+          { title: 'Rates & distribution', stats: [{ label: 'ADR' }, { label: 'RevPAR' }, { label: 'Pace vs. comp set' }] },
+          { title: 'Occupancy & demand', stats: [{ label: 'Occupancy' }, { label: 'Strongest period' }, { label: 'Weakest period' }] },
+          { title: 'Channel mix', stats: [{ label: 'Direct share' }, { label: 'OTA share' }] },
+        ],
+      },
+    },
+    {
+      heading: 'Tracking past recommendations performance',
+      content: {
+        type: 'sketch',
+        sketch: 'value-tracker',
+        summary: '4 recommendations accepted this month — an estimated $1,240 in additional revenue.',
+        recent: [
+          { title: 'Weekend surcharge, Fri 8 Aug', value: '+$180', status: 'Confirmed' },
+          { title: 'Deluxe King rate increase, 16 Oct', value: '+$25/night', status: 'Estimated' },
+          { title: 'Reopened Booking.com, 3 nights', value: '+$410', status: 'Confirmed' },
+        ],
+      },
+    },
+  ],
+};
+
 // My dashboards (Insights) — a real CRUD + starring list (Robert: "my
 // dashboardfs will be a lisr where user can do CRUD functions and
 // starring etc"), not the earlier illustrative-only starred-duplicates
@@ -773,13 +838,13 @@ const PRESET_DASHBOARD_ITEMS = [
   key: item.key,
   label: item.label,
   ...(item.active ? { active: true } : {}),
-  // Dashboard card grid (PATTERNS.md) — confirmed with user: NO titles at
-  // all, even confirmed ones — a mix of real + skeleton titles reads
-  // oddly ("gets weird"), and this is meant to read as a full page of
-  // cards, not one confirmed metric. Every card is titleless (skeleton
-  // title bar, sized larger per user's "full page of titles, make them
-  // larger" direction) — shape only, not real content.
-  content: { type: 'sketch', sketch: 'dashboard-cards', cards: item.cards },
+  // Overview is Home now (v3) — a stack of purpose-built widgets, not a
+  // dashboard-cards grid like the other 6 presets. Special-cased here
+  // rather than pulled out of PRESET_DASHBOARD_ITEMS entirely, so it keeps
+  // behaving like a normal preset everywhere else that matters (still
+  // counted in PRESET_DASHBOARD_NAMES/STARRED_DASHBOARD_NAMES, still shows
+  // in My dashboards, still the default active landing page).
+  content: item.key === 'overview' ? HOME_CONTENT : { type: 'sketch', sketch: 'dashboard-cards', cards: item.cards },
   // `scopeSwitcher: 'multi-select'` on every dashboard-shaped item in
   // this section (user: "keep property selector for all the insights
   // dashboards").

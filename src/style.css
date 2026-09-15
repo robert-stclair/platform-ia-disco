@@ -1319,6 +1319,236 @@ a { color: inherit; }
   gap: 12px;
 }
 
+/* Home page (v3, Insights > Overview) — stack of purpose-built widget
+   rows: Priority actions, Performance, value tracking. See renderHome. */
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.home-page__row-heading {
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Priority actions widget — real title + real rationale per card (higher
+   content fidelity than the skeleton-only dashboard cards elsewhere),
+   mixing diagnostic and recommendation items for now. See renderPriorityActions. */
+.priority-actions {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.priority-actions__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.priority-actions__heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.priority-actions__view-all {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.priority-actions__view-all:hover {
+  text-decoration: underline;
+}
+
+.priority-actions__cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  background: var(--surface);
+}
+
+.priority-actions__card {
+  padding: 18px 20px;
+  border-right: 1px solid var(--border);
+}
+
+.priority-actions__card:last-child {
+  border-right: none;
+}
+
+.priority-actions__card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.priority-actions__card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.priority-actions__card-chevron {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.priority-actions__card-rationale {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+/* Performance row — GROUPED stat cards (not one flat row of individual
+   metrics). Each group cascades to its own dashboard on click — Home only
+   ever shows the calm summary. See renderMetricGroups. */
+.metric-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.metric-group {
+  display: block;
+  padding: 16px 18px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.metric-group:hover {
+  border-color: var(--border-strong);
+  background: var(--surface-sunken);
+}
+
+.metric-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.metric-group__title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.metric-group__chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.metric-group__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metric-group__stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.metric-group__stat-label {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.metric-group__stat-skel {
+  width: 44px;
+  height: 12px;
+  border-radius: 4px;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
+/* Value-tracking row — "Tracking past recommendations performance."
+   Realized $ from ACCEPTED recommendations, not a feature/tier badge. See
+   renderValueTracker. */
+.value-tracker {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+
+.value-tracker__summary {
+  margin: 0 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.value-tracker__rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.value-tracker__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.value-tracker__row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.value-tracker__row-title {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.value-tracker__row-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.value-tracker__row-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--tag-bg);
+  color: var(--text-muted);
+}
+
 /* Contextual insight widgets above a `records` picker (e.g. Rate plans) —
    "we have these contextual insights around the place rather than just
    lists." Purely decorative spacing wrapper; the widgets themselves reuse
