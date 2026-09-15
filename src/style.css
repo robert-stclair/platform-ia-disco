@@ -1327,13 +1327,30 @@ a { color: inherit; }
   gap: 32px;
 }
 
-.home-page__row-heading {
+.home-page__row-heading-bar {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   margin-bottom: 14px;
+}
+
+.home-page__row-heading {
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-muted);
+}
+
+.home-page__row-view-all {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.home-page__row-view-all:hover {
+  text-decoration: underline;
 }
 
 /* Priority actions widget — real title + real rationale per card (higher

@@ -1375,11 +1375,16 @@ function renderDashboardCards(cards) {
 // real destination here, same "shape only" convention as `dashboard-cards`.
 function renderPriorityActions(items, viewAllKey) {
   const count = items.length;
+  // `viewAllKey` (e.g. 'recommendations') routes to a real top-level
+  // Insights item via the same `data-path-key` mechanism every other canvas
+  // link uses (wirePathLinks calls select(0, key) + render()) — switches
+  // the rail's selected item, doesn't just point at an inert "#".
+  const viewAllHref = viewAllKey ? `data-path-key="0:${viewAllKey}"` : '';
   return `
     <div class="priority-actions">
       <div class="priority-actions__header">
         <span class="priority-actions__heading">${tr('Priority actions')} — ${count} ${tr('actions for review')}</span>
-        <a href="#" class="priority-actions__view-all">${tr('View all')} ›</a>
+        <a href="#" class="priority-actions__view-all" ${viewAllHref}>${tr('View all')} ›</a>
       </div>
       <div class="priority-actions__cards">
         ${items
@@ -1411,13 +1416,21 @@ function renderPriorityActions(items, viewAllKey) {
 // Rates & distribution / Occupancy & demand / Channels), values stay
 // skeleton (illustrative numbers only, per the standard "real labels,
 // skeleton data" rule).
+// `group.linkTo` (optional): [itemKey, recordName] — jumps straight to a
+// SPECIFIC dashboard nested two levels deep (e.g. My dashboards >
+// Performance) via wirePathLinks' multi-segment `data-path-key` support,
+// imagining each group as a real dedicated sub-dashboard rather than an
+// inert card (Robert: "imagine they are dedicated sub-dashboard under my
+// dashboards"). Groups without `linkTo` stay non-functional, same "shape
+// only" convention as everywhere else not yet wired up.
 function renderMetricGroups(groups) {
   return `
     <div class="metric-groups">
       ${groups
-        .map(
-          (group) => `
-            <a href="#" class="metric-group">
+        .map((group) => {
+          const pathKey = group.linkTo ? `data-path-key="0:${group.linkTo[0]}:${group.linkTo[1]}"` : '';
+          return `
+            <a href="#" class="metric-group" ${pathKey}>
               <div class="metric-group__header">
                 <h3 class="metric-group__title">${tr(group.title)}</h3>
                 <svg class="metric-group__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
@@ -1435,8 +1448,8 @@ function renderMetricGroups(groups) {
                   .join('')}
               </div>
             </a>
-          `
-        )
+          `;
+        })
         .join('')}
     </div>
   `;
@@ -1641,7 +1654,17 @@ function wirePathLinks() {
   canvasEl.querySelectorAll('[data-path-key]').forEach((el) => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      const [d, key] = el.dataset.pathKey.split(':');
+      // Usually just "depth:key" (one segment). Home's Performance/
+      // Forecasting "View all" links (v3) need to jump straight to a
+      // SPECIFIC record two levels deep (My dashboards > Performance) from
+      // a page with no ancestry there at all — so this also accepts extra
+      // ":key" segments, applying select() once per depth starting at the
+      // given depth (0:my-dashboards:Performance -> select(0,
+      // 'my-dashboards') then select(1, 'Performance')). Single-segment
+      // links (the overwhelming majority) behave exactly as before.
+      const [d, ...keys] = el.dataset.pathKey.split(':');
+      const depth = Number(d);
+      const key = keys[0];
       // `data-syncs-scope` (Properties, GRP's Properties table) — clicking
       // this record is a PROXY CLICK on the global scope switcher itself,
       // not just a page navigation (Robert: "its like a proxy click on
@@ -1653,9 +1676,9 @@ function wirePathLinks() {
       // that page renders, state.scope already reflects where you are.
       if (el.dataset.syncsScope) {
         state.scope = { type: 'property', key };
-        state.scopedPathDepth = Number(d);
+        state.scopedPathDepth = depth;
       }
-      select(Number(d), key);
+      keys.forEach((k, i) => select(depth + i, k));
       render();
     });
   });
@@ -1897,14 +1920,25 @@ function renderSectionsSketch(sections) {
 // internal headers already.
 function renderHome(rows) {
   return `<div class="home-page">${rows
-    .map(
-      (row) => `
+    .map((row) => {
+      // `row.viewAll` (optional): {label, linkTo: [itemKey, recordName]} —
+      // same "jump to a specific nested dashboard" mechanism as a metric
+      // group's own `linkTo` (Performance row itself needs a "View all"
+      // alongside its individual groups' links).
+      const viewAll = row.viewAll
+        ? `<a href="#" class="home-page__row-view-all" data-path-key="0:${row.viewAll.linkTo[0]}:${row.viewAll.linkTo[1]}">${tr('View all')} ›</a>`
+        : '';
+      const heading =
+        row.heading || viewAll
+          ? `<div class="home-page__row-heading-bar">${row.heading ? `<div class="home-page__row-heading">${tr(row.heading)}</div>` : '<span></span>'}${viewAll}</div>`
+          : '';
+      return `
         <div class="home-page__row">
-          ${row.heading ? `<div class="home-page__row-heading">${tr(row.heading)}</div>` : ''}
+          ${heading}
           ${renderSketch(row.content)}
         </div>
-      `
-    )
+      `;
+    })
     .join('')}</div>`;
 }
 

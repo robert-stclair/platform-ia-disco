@@ -765,20 +765,43 @@ const HOME_CONTENT = {
             rationale: 'Closed 9 days over sellable dates — likely an accidental stop-sell that was never reopened.',
           },
         ],
+        // "View all" routes to the real Recommendations item already in
+        // this section (Robert: "view all on the rec widgets links to the
+        // rec full page") — not a separate priority-actions page, since
+        // one doesn't exist yet; Recommendations is the closest real
+        // destination until the diagnostics/recommendations split (v3
+        // Confluence page) is actually built.
+        viewAllKey: 'recommendations',
       },
     },
     {
       heading: 'Performance',
+      // Row-level "View all" (v3, Robert: "add a view all to the
+      // performance") — jumps to My dashboards' own "Performance" entry,
+      // imagined as Performance's dedicated sub-dashboard (see
+      // SAMPLE_CUSTOM_DASHBOARDS' own comment) rather than a tab elsewhere.
+      viewAll: { linkTo: ['my-dashboards', 'Performance'] },
       content: {
         type: 'sketch',
         sketch: 'metric-groups',
         // First-pass grouping only (Robert: "its a start") — not confirmed,
         // grouped by what a hotelier would investigate together rather than
         // Sam's doc's own flat list (occupancy/ADR/RevPAR/pace/channel mix).
+        // Forecasting group (v3, Robert: "add a forecasting row under
+        // performance") links straight to the existing Forecasting PRESET
+        // dashboard under My dashboards — reuses it rather than inventing a
+        // second Forecasting page. Rates & distribution / Occupancy & demand
+        // / Channel mix have no confirmed dashboard to link to yet, so they
+        // stay inert (same "shape only" convention as everywhere unwired).
         groups: [
           { title: 'Rates & distribution', stats: [{ label: 'ADR' }, { label: 'RevPAR' }, { label: 'Pace vs. comp set' }] },
           { title: 'Occupancy & demand', stats: [{ label: 'Occupancy' }, { label: 'Strongest period' }, { label: 'Weakest period' }] },
           { title: 'Channel mix', stats: [{ label: 'Direct share' }, { label: 'OTA share' }] },
+          {
+            title: 'Forecasting',
+            stats: [{ label: 'Next 30 days' }, { label: 'Next 90 days' }],
+            linkTo: ['my-dashboards', 'Forecasting'],
+          },
         ],
       },
     },
@@ -801,7 +824,7 @@ const HOME_CONTENT = {
 // My dashboards (Insights) — a real CRUD + starring list (Robert: "my
 // dashboardfs will be a lisr where user can do CRUD functions and
 // starring etc"), not the earlier illustrative-only starred-duplicates
-// approach. The 7 REAL preset dashboards (Overview/Booking performance/
+// approach. The 7 REAL preset dashboards (Home/Booking performance/
 // Forecasting/Pace/Competitor rates/Rate parity/Availability — same
 // labels as the section's own top-level items) are FIXED rows here —
 // can't be deleted, only starred/unstarred — alongside the user's own
@@ -809,8 +832,15 @@ const HOME_CONTENT = {
 // actually wired up — this is structure only, per this prototype's
 // convention). Starring is the real mechanism for which dashboards get
 // pinned/promoted elsewhere, not decoration.
+//
+// "Overview" renamed to "Home" (v3, Robert: "i think we need a better name
+// than overview") once its content became the priority-actions/performance/
+// value-tracking Home page rather than one dashboard among seven equals —
+// `key: 'overview'` kept as the internal id (PRESET_DASHBOARD_ITEMS.map()
+// special-cases on the key, not the label; renaming it would just churn
+// every reference below for no reason).
 const PRESET_DASHBOARD_NAMES = [
-  'Overview',
+  'Home',
   'Booking performance',
   'Forecasting',
   'Pace',
@@ -822,12 +852,12 @@ const PRESET_DASHBOARD_NAMES = [
 // array (not 7 hand-written literals) specifically so the Insights
 // section's `items` list and My dashboards' own list can both derive from
 // ONE shared source instead of two copies that could drift. `active:
-// true` only on the first (Overview) — same "first item is the default
+// true` only on the first (Home) — same "first item is the default
 // landing page" convention every other section uses. Card shapes are
 // arbitrary/illustrative, just varied enough that the 7 pages don't look
 // identically empty.
 const PRESET_DASHBOARD_ITEMS = [
-  { key: 'overview', label: 'Overview', active: true, cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }] },
+  { key: 'overview', label: 'Home', active: true, cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'booking-performance', label: 'Booking performance', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'forecasting', label: 'Forecasting', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'pace', label: 'Pace', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
@@ -851,8 +881,13 @@ const PRESET_DASHBOARD_ITEMS = [
   scopeSwitcher: 'multi-select',
 }));
 // EXPLORATORY — a couple of illustrative custom (non-preset) dashboards,
-// generic realistic names, not real confirmed data.
-const SAMPLE_CUSTOM_DASHBOARDS = ['Weekly owner report', 'Peak season tracker'];
+// generic realistic names, not real confirmed data. "Performance" (v3,
+// Robert: "imagine they are dedicated sub-dashboard under my dashboards")
+// is the destination Home's own Performance row "View all" jumps to — not
+// really user-authored like the other two, but modeled the same way (no
+// separate preset-vs-custom distinction needed for one illustrative link
+// target).
+const SAMPLE_CUSTOM_DASHBOARDS = ['Weekly owner report', 'Peak season tracker', 'Performance'];
 // SHARED between My dashboards' own `starredNames` and the Insights
 // section's top-level item list (Robert: "make sure the top level L2
 // panel is consistent with whats starred" — confirmed: "it shows only
@@ -860,7 +895,7 @@ const SAMPLE_CUSTOM_DASHBOARDS = ['Weekly owner report', 'Peak season tracker'];
 // Illustrative subset — 2 presets + 1 custom, not all-or-nothing — per
 // "show a scenario where user only surfaces a few, and some of their own
 // ones."
-const STARRED_DASHBOARD_NAMES = ['Overview', 'Rate parity', 'Weekly owner report'];
+const STARRED_DASHBOARD_NAMES = ['Home', 'Rate parity', 'Weekly owner report'];
 const MY_DASHBOARDS_NODE = {
   key: 'my-dashboard',
   label: 'Dashboard',
