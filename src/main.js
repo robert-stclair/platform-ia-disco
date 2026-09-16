@@ -487,7 +487,14 @@ function resolveChain(rootNode) {
         isExplicit: Boolean(explicitKey),
       });
       if (!explicitKey) break;
-      node = typeof content.detailNode === 'function' ? content.detailNode() : content.detailNode;
+      // `detailNode` thunks can optionally take the selected name as an
+      // argument (v3, Manage products — each product needs genuinely
+      // different detail content, unlike every prior `records` caller
+      // where one shared node covers every name). Every existing zero-arg
+      // thunk (buildPropertyNode/buildUserNode etc.) simply ignores the
+      // extra argument — safe, additive, not a breaking change to the
+      // established `Node | (() => Node)` contract.
+      node = typeof content.detailNode === 'function' ? content.detailNode(explicitKey) : content.detailNode;
       pathIndex += 1;
       continue;
     }
@@ -1184,7 +1191,9 @@ function renderChainBody(chain, i) {
           ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3, content.nameSplitOn, content.usageColumn, content.syncsScope)
           : content.display === 'cards'
             ? renderRecordCards(step.options, pathIndex, content.cards, content.syncsScope)
-            : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope, presetNames);
+            : content.display === 'product-cards'
+              ? renderProductCards(pathIndex, content.tierComparison, content.currentTier, content.products)
+              : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope, presetNames);
       // `content.topWidgets` (optional, e.g. Rate plans): a few dashboard-
       // cards widgets rendered ABOVE the picker — "contextual insights
       // around the place rather than just lists." Same building block
@@ -1530,17 +1539,28 @@ function renderValueTracker(summary, recent) {
 }
 
 // "Manage products" (v3) — a real card per product (value prop + billing
-// model), plus the SiteMinder/SiteMinder Plus tier comparison. Each card's
-// Activate/Remove button actually flips the underlying state live
-// (Robert: "itd be neat if we can add remove products in the ui just to
-// get the feel for it, obv without the onboarding") — same state
-// (enabledProducts/hasDrPlus/tier) the debug panel's own controls read
-// and write, via `data-toggle-product` (see wireProductCards below) rather
-// than a separate parallel mechanism. No real activation FLOW (confirmation,
-// billing capture, etc.) — just the state flip, same "structure only"
-// convention as everywhere else not yet built.
-function renderProductCards(content) {
-  const { tierComparison, currentTier, products } = content;
+// model), plus the SiteMinder/SiteMinder Plus tier comparison. Each
+// INACTIVE card gets two actions (v3, Robert: "lets have both with some vis
+// hierarchy .. activate can be stronger"): a strong "Activate" button (same
+// live state-flip as before, via `data-toggle-product`) and a plain "Learn
+// more" TEXT LINK (real `records` navigation via `data-path-key`, into that
+// product's own detail page — see buildProductDetailNode) — button vs. text
+// link IS the visual hierarchy, no size/colour trick needed. An ACTIVE
+// card just gets "Remove" (unchanged, immediate, no detail/stepper
+// needed to deactivate). `pathIndex` makes this a real `records` picker
+// now, not a standalone sketch — "Learn more" needs genuine nav depth to
+// reach a per-product page, which content.type === 'sketch' can't provide
+// (renderSketch has no path/depth context at all, confirmed when this was
+// still a sketch).
+function renderProductCards(pathIndex, tierComparison, currentTier, products) {
+  const currentTierIndex = currentTier === 'siteminder-plus' ? 1 : 0;
+  // Tier switch lives right in the comparison grid too (v3, Robert: "shall
+  // we have activate buttons on the SM / SM+ grid as well") — same
+  // `data-toggle-product="direct-booking"` mechanism the Direct Booking
+  // card's own button already uses (Direct Booking is the ONLY thing tier
+  // gates — see buildSmContentTree's own comment), not a separate toggle.
+  // The CURRENT tier's column shows a plain "Current" label; the OTHER
+  // column gets a real switch button.
   const tierTable = `
     <div class="product-tier-comparison">
       <table>
@@ -1548,7 +1568,18 @@ function renderProductCards(content) {
           <tr>
             <th></th>
             ${tierComparison.tiers
-              .map((t, i) => `<th class="${i === (currentTier === 'siteminder-plus' ? 1 : 0) ? 'is-current-tier' : ''}">${tr(t)}</th>`)
+              .map(
+                (t, i) => `
+                  <th class="${i === currentTierIndex ? 'is-current-tier' : ''}">
+                    <div class="product-tier-comparison__tier-name">${tr(t)}</div>
+                    ${
+                      i === currentTierIndex
+                        ? `<span class="product-tier-comparison__current-label">${tr('Current')}</span>`
+                        : `<button type="button" class="product-tier-comparison__switch-btn" data-toggle-product="direct-booking">${tr('Switch to this')}</button>`
+                    }
+                  </th>
+                `
+              )
               .join('')}
           </tr>
         </thead>
@@ -1579,9 +1610,16 @@ function renderProductCards(content) {
           <p class="product-card__value-prop">${tr(p.valueProp)}</p>
           <div class="product-card__footer">
             <span class="product-card__billing">${tr(p.billing)}</span>
-            <button type="button" class="product-card__action ${p.active ? 'product-card__action--remove' : 'product-card__action--activate'}" data-toggle-product="${p.key}">
-              ${p.active ? tr('Remove') : tr('Activate')}
-            </button>
+            <div class="product-card__actions">
+              ${
+                p.active
+                  ? ''
+                  : `<a href="#" class="product-card__learn-more" data-path-key="${pathIndex}:${p.name}">${tr('Learn more')}</a>`
+              }
+              <button type="button" class="product-card__action ${p.active ? 'product-card__action--remove' : 'product-card__action--activate'}" data-toggle-product="${p.key}">
+                ${p.active ? tr('Remove') : tr('Activate')}
+              </button>
+            </div>
           </div>
         </div>
       `
@@ -1636,6 +1674,38 @@ function wireProductCards() {
       render();
     });
   });
+}
+
+// Product detail page (v3) — the "Learn more" destination from a Manage
+// products card (see buildProductDetailNode). Expanded/larger version of
+// the card's own tagline/value-prop/billing plus a real `benefits` list,
+// giving the page genuine substance (Robert: "make them feel substantial
+// in that they fill the space but still wireframe") without inventing new
+// content categories (no screenshots/FAQ/testimonials). "Set up" opens the
+// shared AI-generated dynamic stepper wizard (see WIZARD_DEFINITIONS'
+// 'ai-setup-stepper') via data-wizard-open/data-wizard-context — the same
+// wizard-overlay mechanism the Rate plan > Add channel flow already uses,
+// per Robert's own instinct that this might be "the standard form
+// presentation" for a bounded task, not a one-off.
+function renderProductDetail(product) {
+  return `
+    <div class="product-detail">
+      <p class="product-detail__tagline">${tr(product.tagline)}</p>
+      <p class="product-detail__value-prop">${tr(product.valueProp)}</p>
+      <div class="product-detail__benefits">
+        <h3 class="product-detail__section-title">${tr('What you get')}</h3>
+        <ul class="product-detail__benefits-list">
+          ${product.benefits.map((b) => `<li>${tr(b)}</li>`).join('')}
+        </ul>
+      </div>
+      <div class="product-detail__footer">
+        <span class="product-detail__billing">${tr(product.billing)}</span>
+        <button type="button" class="product-detail__setup-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(product.name)}">
+          ${tr('Set up')}
+        </button>
+      </div>
+    </div>
+  `;
 }
 
 // `display: 'cards'` (Configuration > Properties, multi-property scope) —
@@ -1842,11 +1912,16 @@ function wirePathLinks() {
 // `data-wizard-open="<id>"` maps to a lookup table of wizard DEFINITIONS
 // (steps + onComplete), so new wizards register themselves in
 // WIZARD_DEFINITIONS below rather than each needing bespoke wiring here.
+// `data-wizard-context` (v3, optional) — a starting value seeded into
+// wizard.data BEFORE step 1 renders, so ONE shared wizard definition (e.g.
+// 'ai-setup-stepper', opened from any product's detail page) can still
+// reference which product triggered it, without needing a separate
+// WIZARD_DEFINITIONS entry per product.
 function wireWizardOpenButtons() {
   canvasEl.querySelectorAll('[data-wizard-open]').forEach((el) => {
     el.addEventListener('click', () => {
       const definition = WIZARD_DEFINITIONS[el.dataset.wizardOpen];
-      if (definition) openWizard(definition);
+      if (definition) openWizard(definition, { productName: el.dataset.wizardContext });
     });
   });
 }
@@ -1898,6 +1973,61 @@ const WIZARD_DEFINITIONS = {
         render: (wizard) =>
           `<h2 class="wizard-step__title">${tr('Configure mapping')}</h2>` +
           (wizard.data.channel === 'Direct Booking' ? renderDirectBookingMappingSketch() : renderRemoteMappingSketch(wizard.data.channel)),
+      },
+    ],
+    onComplete: () => {},
+  },
+  // AI-generated dynamic stepper (v3 Confluence framing) — ONE shared
+  // wizard reused by every product's "Set up" button (see
+  // buildProductDetailNode), not a bespoke wizard per product. Robert:
+  // "generic .. but maybe we show it in that full screen edit mode like we
+  // use for the rate mapping .. i am wondering if that might be the
+  // standard form presentation" — reuses this exact wizard-overlay
+  // mechanism rather than inventing a new full-page stepper style, since
+  // this IS meant to be the standard presentation for a bounded task, not
+  // just this one flow. `wizard.data.productName` (seeded via
+  // data-wizard-context, see wireWizardOpenButtons) is the only thing that
+  // varies step titles/copy by product — steps themselves stay generic/
+  // illustrative, matching the "wireframe but substantial" brief: real
+  // enough to fill the space, not real per-product content. Per the hybrid
+  // save model (project_save_model.md) this is a CONSEQUENTIAL action
+  // (activating a product) — commits via the final step's explicit
+  // Confirm, same as add-channel above, not progressively as steps are
+  // completed.
+  'ai-setup-stepper': {
+    steps: [
+      {
+        title: 'Connect your account',
+        render: (wizard) => `
+          <h2 class="wizard-step__title">${tr('Setting up')} ${tr(wizard.data.productName ?? 'this product')}</h2>
+          <p class="wizard-step__intro">${tr("We've put together a short setup based on your account — just confirm the details below.")}</p>
+          ${renderSectionsSketch([{ title: 'Account details', shape: 'field' }])}
+        `,
+      },
+      {
+        // Plain checkbox list, real property names — same
+        // `mapping-check-row` pattern renderDirectBookingMappingSketch
+        // already uses, not the real-navigation renderRecordPicker (whose
+        // data-path-key links only make sense inside canvasEl, which
+        // wirePathLinks actually queries — wizardBodyEl is a different
+        // subtree entirely). Non-interactive, matching "structure only, no
+        // real flow" convention — checked by default, not a real multi-
+        // select.
+        title: 'Choose your properties',
+        render: (wizard) => `
+          <h2 class="wizard-step__title">${tr('Which properties should this apply to?')}</h2>
+          <div class="sketch-section">${SCOPE_PROPERTIES.map(
+            (name) => `<label class="mapping-check-row"><input type="checkbox" checked /><span>${tr(name)}</span></label>`
+          ).join('')}</div>
+        `,
+      },
+      {
+        title: 'Review and confirm',
+        render: (wizard) => `
+          <h2 class="wizard-step__title">${tr('Review and confirm')}</h2>
+          <p class="wizard-step__intro">${tr('Confirming activates')} ${tr(wizard.data.productName ?? 'this product')} ${tr('for the properties you selected.')}</p>
+          ${renderSectionsSketch([{ title: 'Summary', shape: 'field' }])}
+        `,
       },
     ],
     onComplete: () => {},
@@ -2097,7 +2227,7 @@ function renderHome(rows) {
 
 function renderSketch(content) {
   if (content.sketch === 'home') return renderHome(content.rows);
-  if (content.sketch === 'product-cards') return renderProductCards(content);
+  if (content.sketch === 'product-detail') return renderProductDetail(content.product);
   if (content.sketch === 'sections') return renderSectionsSketch(content.sections);
   if (content.sketch === 'media') {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
@@ -2331,8 +2461,8 @@ function renderGridSketch({ columns, rows, rowCount = 5 }) {
 // `wizard.data` is a plain object steps read/write into as scratch state
 // for the whole flow (e.g. which channel was picked in step 1, read back
 // in step 2's mapping UI) — cleared once the wizard closes.
-function openWizard({ steps, onComplete }) {
-  state.wizard = { steps, currentStep: 0, data: {}, onComplete };
+function openWizard({ steps, onComplete }, initialData = {}) {
+  state.wizard = { steps, currentStep: 0, data: { ...initialData }, onComplete };
   renderWizard();
 }
 

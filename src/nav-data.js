@@ -18,7 +18,7 @@
 //   Content =
 //     | { type: 'tabs', tabs: Node[] }             // horizontal tab strip; each tab is a Node
 //     | { type: 'list', items: Node[] }            // vertical sub-nav list (packed away until its parent is clicked)
-//     | { type: 'records', names: string[], detailNode: Node | (() => Node), display?: 'table', tableColumns?: number, crossNav?: boolean, homeItemKey?: string, showSnippet?: boolean }
+//     | { type: 'records', names: string[], detailNode: Node | ((name: string) => Node), display?: 'table', tableColumns?: number, crossNav?: boolean, homeItemKey?: string, showSnippet?: boolean }
 //                                                   // GENERIC "clickable records list -> shared detail node" pattern
 //                                                   // (PATTERNS.md) — selecting a name shows `detailNode`'s content.
 //                                                   // Properties (-> buildPropertyNode) and Users (-> buildUserNode) are
@@ -217,6 +217,9 @@ export const PRODUCT_KEYS = ['channels-plus', 'pay', 'metasearch'];
 // page and Sam's own correction on how Metasearch/Demand+ really activates
 // (self-serve/automatic, transaction-fee-only, no sales contact — distinct
 // from DR+, which genuinely requires "contacting our sales team").
+// `benefits` (v3): a short real-text list, giving the product detail page
+// (buildProductDetailNode) genuine substance to fill — Robert: "make them
+// feel substantial in that they fill the space but still wireframe."
 const MANAGE_PRODUCTS_CATALOG = [
   {
     key: 'direct-booking',
@@ -225,6 +228,11 @@ const MANAGE_PRODUCTS_CATALOG = [
     valueProp: "Convert more of your own traffic directly, without paying a third-party commission on every booking. Included in SiteMinder Plus, alongside your website builder and direct-booking apps.",
     billing: 'Included in SiteMinder Plus',
     tier: 'siteminder-plus',
+    benefits: [
+      'A booking engine embedded on your own website, no separate login for guests',
+      'Hotel website builder and direct-booking apps included at no extra cost',
+      'Every direct booking keeps its full margin — no OTA commission',
+    ],
   },
   {
     key: 'channels-plus',
@@ -232,6 +240,11 @@ const MANAGE_PRODUCTS_CATALOG = [
     tagline: 'Reach more travellers across more OTAs.',
     valueProp: 'Distribute to 450+ channels including Trip.com and Agoda, all managed from the same place you already manage rates and inventory.',
     billing: 'Commission-based — no separate subscription',
+    benefits: [
+      'One connection to 450+ channels, not a separate integration per OTA',
+      'Rate and inventory updates sync everywhere at once',
+      'Pay only when a channel actually delivers a booking',
+    ],
   },
   {
     key: 'pay',
@@ -239,6 +252,11 @@ const MANAGE_PRODUCTS_CATALOG = [
     tagline: 'Take payments without a separate provider.',
     valueProp: 'Process guest payments directly inside SiteMinder — no reconciling a separate payment platform against your reservations.',
     billing: 'Transaction-based — no separate subscription',
+    benefits: [
+      'Guest payments captured directly against the reservation they belong to',
+      'No separate payment-provider dashboard to reconcile against',
+      'Works the same way across every channel you sell on',
+    ],
   },
   {
     key: 'metasearch',
@@ -246,6 +264,11 @@ const MANAGE_PRODUCTS_CATALOG = [
     tagline: 'Show up on Google and trivago — automatically.',
     valueProp: 'SiteMinder manages your metasearch setup, billing, bidding and campaigns end to end. No setup cost, no monthly fee — you only pay for completed stays booked directly through your own website.',
     billing: 'Transaction-based · self-serve activation',
+    benefits: [
+      'Setup, billing, bidding and campaigns all managed for you',
+      'No setup cost and no monthly fee — only completed stays are billed',
+      'Drives demand straight to your own direct-booking site, not an OTA',
+    ],
   },
   {
     key: 'dr-plus',
@@ -253,6 +276,11 @@ const MANAGE_PRODUCTS_CATALOG = [
     tagline: 'Data-driven pricing recommendations, daily.',
     valueProp: 'Continuously identifies and recommends better pricing decisions using your own data, market intelligence and demand signals — you stay in control of every change.',
     billing: 'Standalone subscription · sales-assisted setup',
+    benefits: [
+      'Daily pricing recommendations from your own data plus market signals',
+      'Every recommendation explained — accept, adjust or ignore, always your call',
+      'Tracks the realized value of every accepted recommendation over time',
+    ],
   },
   // Multi-Property (v3) — used to be a 3rd, mutually-exclusive account type
   // (accountType === 'MP'); now a genuine add-on like the others (Robert:
@@ -268,6 +296,11 @@ const MANAGE_PRODUCTS_CATALOG = [
     tagline: 'Manage a portfolio, not just one property.',
     valueProp: 'Brands and clusters for grouping your properties, shared group rate plans pushed across a portfolio, and portfolio-wide reporting — built for chains and management companies, not single-property owners.',
     billing: 'Standalone subscription',
+    benefits: [
+      'Group properties into brands and clusters for portfolio-wide management',
+      'Push one group rate plan template across every property it applies to',
+      'Portfolio-wide reporting alongside each property\'s own view',
+    ],
   },
 ];
 
@@ -289,6 +322,20 @@ const TIER_COMPARISON = {
   ],
 };
 
+// Manage products' "Learn more" destination (v3, Robert: "lets have both
+// with some vis hierarchy .. Learn more .. goes to a product detail page
+// .. that has a button that links to the sort of AI generate stepper").
+// One node shape shared by every product — content varies per product via
+// the `product` object passed straight from MANAGE_PRODUCTS_CATALOG (see
+// the detailNode thunk on Manage products' own content, which resolves
+// this per selected name).
+function buildProductDetailNode(product) {
+  return {
+    key: `product-detail-${product.key}`,
+    label: product.name,
+    content: { type: 'sketch', sketch: 'product-detail', product },
+  };
+}
 
 // The rail was constant across every account type until LH's "Front desk"
 // item (CHANGE-QUEUE.md item 5) — the first case of the rail itself
@@ -2230,12 +2277,24 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
         // marked owned rather than removed from view entirely, plus the
         // SiteMinder/SiteMinder Plus tier comparison since Direct Booking's
         // real story is "upgrade the tier," not "activate this one thing."
+        // Converted from a plain `sketch` to a real `records` picker (v3,
+        // Robert: "lets have both with some vis hierarchy .. Learn more ..
+        // goes to a product detail page") — each card's "Learn more" needs
+        // genuine nav depth to reach that product's own detail page, which
+        // a `sketch` can't provide (renderSketch has no path/depth context
+        // at all). `names` are the products' display NAMES (not keys) —
+        // `records`' picker mechanism keys off name, matching every other
+        // caller. `detailNode` is a function of the selected name (see
+        // wirePathLinks' extended detailNode contract) since each product
+        // needs genuinely different detail content, unlike every prior
+        // `records` caller where one shared node covers every name.
         {
           key: 'manage-products',
           label: 'Manage products',
           content: {
-            type: 'sketch',
-            sketch: 'product-cards',
+            type: 'records',
+            display: 'product-cards',
+            names: MANAGE_PRODUCTS_CATALOG.map((p) => p.name),
             tierComparison: TIER_COMPARISON,
             currentTier: hasDirectBooking ? 'siteminder-plus' : 'siteminder',
             products: MANAGE_PRODUCTS_CATALOG.map((p) => ({
@@ -2249,6 +2308,7 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
                       ? hasMultiProperty
                       : enabledProducts.includes(p.key),
             })),
+            detailNode: (name) => buildProductDetailNode(MANAGE_PRODUCTS_CATALOG.find((p) => p.name === name)),
           },
         },
       ],

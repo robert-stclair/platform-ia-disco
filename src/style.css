@@ -377,6 +377,13 @@ a { color: inherit; }
   color: var(--text);
 }
 
+.wizard-step__intro {
+  margin: -12px 0 20px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 .debug-panel__header {
   display: flex;
   align-items: center;
@@ -1601,19 +1608,35 @@ a { color: inherit; }
   color: var(--text);
 }
 
-.product-tier-comparison thead th.is-current-tier {
-  color: var(--text);
-  position: relative;
+.product-tier-comparison__tier-name {
+  margin-bottom: 6px;
 }
 
-.product-tier-comparison thead th.is-current-tier::after {
-  content: 'current';
-  display: block;
+.product-tier-comparison__current-label {
+  display: inline-block;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
+}
+
+.product-tier-comparison__switch-btn {
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.product-tier-comparison__switch-btn:hover {
+  background: var(--surface-sunken);
 }
 
 .product-tier-comparison__feature {
@@ -1694,8 +1717,7 @@ a { color: inherit; }
 
 .product-card__footer {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 10px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
@@ -1704,6 +1726,26 @@ a { color: inherit; }
 .product-card__billing {
   font-size: 11.5px;
   color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.product-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.product-card__learn-more {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.product-card__learn-more:hover {
+  color: var(--text);
 }
 
 .product-card__action {
@@ -1725,6 +1767,81 @@ a { color: inherit; }
 
 .product-card__action--remove {
   color: var(--text-muted);
+}
+
+/* Product detail page (v3) — "Learn more" destination. Expanded version of
+   the card's own content, real enough to fill the space (Robert: "make
+   them feel substantial .. but still wireframe"). See renderProductDetail. */
+.product-detail {
+  max-width: 640px;
+}
+
+.product-detail__tagline {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.product-detail__value-prop {
+  margin: 0 0 28px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.product-detail__section-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.product-detail__benefits-list {
+  margin: 0 0 32px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-detail__benefits-list li {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.product-detail__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.product-detail__billing {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.product-detail__setup-btn {
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  background: var(--text);
+  color: var(--surface);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.product-detail__setup-btn:hover {
+  opacity: 0.85;
 }
 
 /* Contextual insight widgets above a `records` picker (e.g. Rate plans) —
