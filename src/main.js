@@ -181,6 +181,7 @@ function savePrototypeSettings() {
         enabledProducts: state.enabledProducts,
         tier: state.tier,
         hasDrPlus: state.hasDrPlus,
+        hasMultiProperty: state.hasMultiProperty,
       })
     );
   } catch {
@@ -192,7 +193,7 @@ function savePrototypeSettings() {
 const savedPrototypeSettings = loadPrototypeSettings();
 
 const state = {
-  accountType: savedPrototypeSettings.accountType ?? 'SM', // 'SM' | 'LH' | 'MP' — independent of propertyCount; only SM has real content so far
+  accountType: savedPrototypeSettings.accountType ?? 'SM', // 'SM' | 'LH' — independent of propertyCount; only SM has real content so far. MP used to be a 3rd value here — now `hasMultiProperty` below, an add-on like the others (Robert: "lets make Multi-Property an add on like the others").
   propertyCount: savedPrototypeSettings.propertyCount ?? 'single', // 'single' | 'multiple' — independent of accountType
   section: 'insights',
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
@@ -227,6 +228,16 @@ const state = {
   enabledProducts: savedPrototypeSettings.enabledProducts ?? [...PRODUCT_KEYS],
   tier: savedPrototypeSettings.tier ?? 'siteminder-plus', // 'siteminder' | 'siteminder-plus'
   hasDrPlus: savedPrototypeSettings.hasDrPlus ?? true,
+  // Multi-Property (v3) — was accountType === 'MP', a 3rd mutually-exclusive
+  // account type; now a genuine add-on toggle, same treatment as DR+
+  // (Robert: "lets make Multi-Property an add on like the others"). Gates
+  // Brands/Clusters, Group rate plans, and Direct Booking's API/Group
+  // landing page items — everything that used to check accountType ===
+  // 'MP' directly now checks this instead. Defaults to false (Multi-
+  // Property is the one product NOT on by default, unlike the others —
+  // it's the more unusual case, an SM/LH account with a portfolio) so a
+  // fresh load doesn't show Brands/Clusters/Group rate plans unprompted.
+  hasMultiProperty: savedPrototypeSettings.hasMultiProperty ?? false,
   // Prototype-panel toggle: 'EN' | 'DE'. Swaps nav labels via `tr()` (see its
   // definition near the top of this file, alongside DE_LABELS) — a LAYOUT
   // stress test, not real i18n: no pluralization/interpolation, and the
@@ -390,7 +401,7 @@ function resolveChain(rootNode) {
     const content = node.content;
 
     if (content.type === 'tabs') {
-      const tabs = content.tabs.filter((t) => !t.mpOnly || state.accountType === 'MP');
+      const tabs = content.tabs.filter((t) => !t.mpOnly || state.hasMultiProperty);
       const explicitKey = state.path[pathIndex];
       let selected = (explicitKey && tabs.find((t) => t.key === explicitKey)) || tabs.find((t) => t.active) || tabs[0] || null;
       chain.push({
@@ -647,7 +658,7 @@ function renderScopeSwitcher(mode) {
       (name) => `<option value="property:${name}" ${!forceAll && state.scope.type === 'property' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
     ).join('')}</optgroup>`
   );
-  if (state.accountType === 'MP') {
+  if (state.hasMultiProperty) {
     groups.push(
       `<optgroup label="Brands">${SCOPE_BRANDS.map(
         (name) =>
@@ -901,8 +912,8 @@ function renderPanel(data) {
     // of hardcoding 1.
     if (isOpen) {
       const childPathIndex = 1;
-      // `mpOnly` items (e.g. Brands/Clusters) only show for the MP account type.
-      const children = item.content.items.filter((s) => !s.mpOnly || state.accountType === 'MP');
+      // `mpOnly` items (e.g. Brands/Clusters) only show when Multi-Property is active.
+      const children = item.content.items.filter((s) => !s.mpOnly || state.hasMultiProperty);
       const explicitChildKey = state.path[0] === item.key ? state.path[childPathIndex] : null;
       html += `<ul class="nav-sublist">${children
         .map(
@@ -1585,11 +1596,12 @@ function renderProductCards(content) {
 }
 
 // Activate/Remove buttons (v3) — same state the debug panel's Tier/In-
-// product sign-ups/DR+ controls read and write (state.tier/enabledProducts/
-// hasDrPlus), so this page and the debug panel are two views onto one
-// source of truth, never a separate parallel toggle. Direct Booking flips
-// state.tier itself (it's the only thing tier gates — see buildSmContentTree's
-// own comment), not enabledProducts.
+// product sign-ups/DR+/Multi-Property controls read and write
+// (state.tier/enabledProducts/hasDrPlus/hasMultiProperty), so this page and
+// the debug panel are two views onto one source of truth, never a separate
+// parallel toggle. Direct Booking flips state.tier itself (it's the only
+// thing tier gates — see buildSmContentTree's own comment), not
+// enabledProducts.
 function wireProductCards() {
   canvasEl.querySelectorAll('[data-toggle-product]').forEach((el) => {
     el.addEventListener('click', () => {
@@ -1599,6 +1611,22 @@ function wireProductCards() {
         syncTierButtons();
       } else if (key === 'dr-plus') {
         state.hasDrPlus = !state.hasDrPlus;
+      } else if (key === 'multi-property') {
+        state.hasMultiProperty = !state.hasMultiProperty;
+        // Activating Multi-Property force-switches propertyCount to
+        // 'multiple' if it isn't already (Robert: "adding it automatically
+        // toggles the proto setting to multiple properties if its not
+        // already") — a Multi-Property portfolio implies more than one
+        // property by definition; this prototype doesn't model the
+        // inconsistent combination of hasMultiProperty + single property.
+        // Deliberately does NOT revert propertyCount back to 'single' when
+        // DEACTIVATING Multi-Property — a portfolio account can shrink to
+        // managing it as single-property-equivalent without losing its
+        // already-entered multi-property data/context.
+        if (state.hasMultiProperty && state.propertyCount !== 'multiple') {
+          state.propertyCount = 'multiple';
+          syncPropertyCountButtons();
+        }
       } else {
         state.enabledProducts = state.enabledProducts.includes(key)
           ? state.enabledProducts.filter((k) => k !== key)
@@ -2383,7 +2411,8 @@ function render() {
     state.scope,
     state.enabledProducts,
     state.hasDrPlus,
-    state.tier === 'siteminder-plus'
+    state.tier === 'siteminder-plus',
+    state.hasMultiProperty
   );
   const data = content?.[state.section];
   if (!data) {
@@ -2607,6 +2636,18 @@ function syncTierButtons() {
   });
 }
 
+// Same reasoning as syncTierButtons — activating Multi-Property from a
+// Manage products card (see wireProductCards) auto-switches
+// state.propertyCount to 'multiple' (Robert: "adding it automatically
+// toggles the proto setting to multiple properties if its not already"),
+// so the debug panel's own Property count buttons need to be kept in sync
+// from that entry point too, not just their own direct click handler.
+function syncPropertyCountButtons() {
+  document.querySelectorAll('[data-property-count]').forEach((b) => {
+    b.classList.toggle('is-active', b.dataset.propertyCount === state.propertyCount);
+  });
+}
+
 // Tier (v3) — select-one, like Account type/Property count above. Drives
 // Direct Booking's Configuration visibility directly via
 // `state.tier === 'siteminder-plus'` passed straight into getContent (real
@@ -2634,9 +2675,7 @@ document.querySelectorAll('[data-tier]').forEach((el) => {
 document.querySelectorAll('[data-account-type]').forEach((b) => {
   b.classList.toggle('is-active', b.dataset.accountType === state.accountType);
 });
-document.querySelectorAll('[data-property-count]').forEach((b) => {
-  b.classList.toggle('is-active', b.dataset.propertyCount === state.propertyCount);
-});
+syncPropertyCountButtons();
 document.querySelectorAll('[data-system-count]').forEach((b) => {
   b.classList.toggle('is-active', (b.dataset.systemCount === 'multiple') === state.multipleSystems);
 });

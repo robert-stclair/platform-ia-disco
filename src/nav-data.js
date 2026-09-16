@@ -254,6 +254,21 @@ const MANAGE_PRODUCTS_CATALOG = [
     valueProp: 'Continuously identifies and recommends better pricing decisions using your own data, market intelligence and demand signals — you stay in control of every change.',
     billing: 'Standalone subscription · sales-assisted setup',
   },
+  // Multi-Property (v3) — used to be a 3rd, mutually-exclusive account type
+  // (accountType === 'MP'); now a genuine add-on like the others (Robert:
+  // "lets make Multi-Property an add on like the others"). Activating it
+  // (see wireProductCards in main.js) also force-switches propertyCount to
+  // 'multiple' if it isn't already — Robert: "adding it automatically
+  // toggles the proto setting to multiple properties if its not already" —
+  // since a Multi-Property portfolio implies more than one property by
+  // definition, this prototype doesn't model an inconsistent combination.
+  {
+    key: 'multi-property',
+    name: 'Multi-Property',
+    tagline: 'Manage a portfolio, not just one property.',
+    valueProp: 'Brands and clusters for grouping your properties, shared group rate plans pushed across a portfolio, and portfolio-wide reporting — built for chains and management companies, not single-property owners.',
+    billing: 'Standalone subscription',
+  },
 ];
 
 // Tier comparison grid (v3, Robert: "you could also have the pricing grid
@@ -1055,7 +1070,7 @@ const SAMPLE_YIELD_RULES = ['Weekend surcharge', 'Last-minute discount', 'Length
 // to be 'all' — `propertyCount` and `scope` are independent state, so
 // toggling propertyCount to Single never touched scope.type. Caught live:
 // Reservations (and this function) kept expanding after switching to
-// Single in the debug panel. `showProperties` (accountType === 'MP' ||
+// Single in the debug panel. `showProperties` (hasMultiProperty ||
 // propertyCount === 'multiple') is the correct combined signal for
 // "is there more than one property to even consider" — checked FIRST,
 // before the scope-specific check.
@@ -1579,15 +1594,16 @@ export const SCOPE_CLUSTERS = ['East Coast', 'West Coast', 'Inland'];
 // no separate flat L2 item.
 //
 // The Properties section (Configuration's first item) is shown whenever
-// accountType === 'MP' OR propertyCount === 'multiple' — either condition on
-// its own is sufficient (an MP account with just one property still gets it;
-// a non-MP account with many properties also gets it). When neither is true,
-// Configuration's first item collapses to a plain "Property settings" —
-// the "one IA, not two" property-scope-collapses decision.
+// hasMultiProperty OR propertyCount === 'multiple' — either condition on
+// its own is sufficient (a Multi-Property account with just one property
+// still gets it; a plain account with many properties also gets it). When
+// neither is true, Configuration's first item collapses to a plain
+// "Property settings" — the "one IA, not two" property-scope-collapses
+// decision.
 //
 // Properties/Brands/Clusters are TABS (not a panel sublist) inside the
-// "Properties" item — Brands and Clusters are gated further, MP only
-// (mpOnly: true), filtered out of the tab strip unless accountType==='MP'.
+// "Properties" item — Brands and Clusters are gated further, Multi-Property
+// only (mpOnly: true), filtered out of the tab strip unless hasMultiProperty.
 function buildConfigurationPropertiesItem(showProperties, scope) {
   if (!showProperties) {
     // Renamed from "Property settings" to "Property" (CHANGE-QUEUE.md item
@@ -1663,11 +1679,12 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
 // {label, active} objects. A leaf item with nothing to click into (e.g.
 // "Inventory") is still a Node, just with content: null.
 //
-// `accountType` (new) is needed specifically for Group rate plans (MP
-// only) — that's a real "MP only" distinction (Confluence "IA node tree
-// v2"), NOT the same as `showProperties` (which is also true for a plain
-// SM account with propertyCount: 'multiple', and Group rate plans should
-// NOT show for that case — only true MP accounts get it).
+// `hasMultiProperty` (v3 — was `accountType === 'MP'`, now a genuine add-on
+// like the others) gates Group rate plans and Brands/Clusters — a real
+// "Multi-Property only" distinction (Confluence "IA node tree v2"), NOT the
+// same as `showProperties` (which is also true for a plain SM/LH account
+// with propertyCount: 'multiple' — Group rate plans should NOT show for
+// that case, only accounts that actually activated Multi-Property get it).
 //
 // `hasDirectBooking` (v3, real packaging) gates Direct Booking's
 // Configuration item — true only on SiteMinder Plus (state.tier in
@@ -1678,10 +1695,10 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
 // kept as a SEPARATE parameter since DR+ is genuinely a standalone add-on
 // subscription (confirmed against siteminder.com/pricing), independent of
 // tier and of the other 3 sign-ups. When any of these is NOT active, it
-// gets no Configuration item at all — it shows up on "Add products"
+// gets no Configuration item at all — it shows up on "Manage products"
 // instead (v3 principle: don't bloat the IA with upsell stubs for unowned
 // products).
-function buildSmContentTree(showProperties, scope, accountType, enabledProducts, hasDrPlus, hasDirectBooking) {
+function buildSmContentTree(showProperties, scope, accountType, enabledProducts, hasDrPlus, hasDirectBooking, hasMultiProperty) {
   return {
     insights: {
       // REBUILT (Robert flagged the previous structure as "messy," then:
@@ -1929,12 +1946,12 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
         // does"). Real, deterministic sample names via
         // SAMPLE_GROUP_RATE_PLANS — same shared-detail-node convention as
         // Rate plans/Yield rules (see buildGroupRatePlanNode's comment).
-        // Gated on true accountType === 'MP', NOT `showProperties` (which
-        // is also true for a plain SM account with propertyCount:
-        // 'multiple' — Group rate plans should NOT show for that case,
-        // only real MP accounts get it; see buildSmContentTree's own
-        // comment on why accountType had to be threaded through).
-        ...(accountType === 'MP'
+        // Gated on `hasMultiProperty`, NOT `showProperties` (which is also
+        // true for a plain SM/LH account with propertyCount: 'multiple' —
+        // Group rate plans should NOT show for that case, only accounts
+        // that actually activated Multi-Property get it; see
+        // buildSmContentTree's own comment).
+        ...(hasMultiProperty
           ? [
               {
                 key: 'group-rate-plans',
@@ -2223,7 +2240,14 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
             currentTier: hasDirectBooking ? 'siteminder-plus' : 'siteminder',
             products: MANAGE_PRODUCTS_CATALOG.map((p) => ({
               ...p,
-              active: p.key === 'direct-booking' ? hasDirectBooking : p.key === 'dr-plus' ? hasDrPlus : enabledProducts.includes(p.key),
+              active:
+                p.key === 'direct-booking'
+                  ? hasDirectBooking
+                  : p.key === 'dr-plus'
+                    ? hasDrPlus
+                    : p.key === 'multi-property'
+                      ? hasMultiProperty
+                      : enabledProducts.includes(p.key),
             })),
           },
         },
@@ -2233,16 +2257,18 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
 }
 
 // Two independent settings axes control what renders:
-//   - accountType: 'SM' | 'LH' | 'MP' — MP reuses SM's structure (per
-//     decision) but always shows Properties. LH ALSO reuses SM's structure
-//     unchanged (CHANGE-QUEUE.md item 5 — LH gets full parity with SM);
-//     LH's only account-type-specific difference is the extra "Front desk"
-//     rail item (see getRailItems), not different Insights/Distribution/
+//   - accountType: 'SM' | 'LH' — LH reuses SM's structure unchanged
+//     (CHANGE-QUEUE.md item 5 — LH gets full parity with SM); LH's only
+//     account-type-specific difference is the extra "Front desk" rail item
+//     (see getRailItems), not different Insights/Distribution/
 //     Transactions/Configuration content. If real LH-specific content
 //     differences are confirmed later, add them here explicitly — don't
-//     let this comment go stale.
+//     let this comment go stale. MP used to be a 3rd value here — it's now
+//     `hasMultiProperty` below, a genuine add-on (v3, Robert: "lets make
+//     Multi-Property an add on like the others"), not a mutually-exclusive
+//     account identity. An SM or LH account can independently have it.
 //   - propertyCount: 'single' | 'multiple' — independent of account type;
-//     also drives Properties, alongside accountType === 'MP'.
+//     also drives Properties, alongside hasMultiProperty.
 //   - scope: the property/cluster/brand switcher's current value (see
 //     state.scope in main.js) — threaded through so scope-aware row sets
 //     (Rate plans' expansion, once other items need it) can react live.
@@ -2258,9 +2284,15 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
 //   - hasDirectBooking: whether this account is on SiteMinder Plus (v3,
 //     real packaging) — gates Configuration's Direct Booking item.
 //     Optional; defaults to true, same reasoning as the other two.
-export function getContent(accountType, propertyCount, scope, enabledProducts = PRODUCT_KEYS, hasDrPlus = true, hasDirectBooking = true) {
-  const showProperties = accountType === 'MP' || propertyCount === 'multiple';
-  const tree = buildSmContentTree(showProperties, scope, accountType, enabledProducts, hasDrPlus, hasDirectBooking);
+//   - hasMultiProperty: whether this account has activated the Multi-
+//     Property add-on (v3) — gates Brands/Clusters, Group rate plans, and
+//     Direct Booking's API/Group landing page items. Optional; defaults to
+//     false — unlike the other products, Multi-Property is NOT on by
+//     default (it's the unusual case: an SM/LH account managing a
+//     portfolio), so a fresh load doesn't show MP-only content unprompted.
+export function getContent(accountType, propertyCount, scope, enabledProducts = PRODUCT_KEYS, hasDrPlus = true, hasDirectBooking = true, hasMultiProperty = false) {
+  const showProperties = hasMultiProperty || propertyCount === 'multiple';
+  const tree = buildSmContentTree(showProperties, scope, accountType, enabledProducts, hasDrPlus, hasDirectBooking, hasMultiProperty);
   // My account — not a rail section (getRailItems is unaffected), reached
   // via the rail's user avatar instead. Same regardless of account type/
   // property count, so it's added here rather than inside
