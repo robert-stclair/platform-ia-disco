@@ -1575,7 +1575,17 @@ function renderProductCards(pathIndex, tierComparison, currentTier, products) {
                     ${
                       i === currentTierIndex
                         ? `<span class="product-tier-comparison__current-label">${tr('Current')}</span>`
-                        : `<button type="button" class="product-tier-comparison__switch-btn" data-toggle-product="direct-booking">${tr('Switch to this')}</button>`
+                        : i === 1
+                          ? // Switching TO SiteMinder Plus is an activation
+                            // (real packaging: it's what unlocks Direct
+                            // Booking) — same AI setup stepper as the
+                            // Direct Booking card's own Activate button,
+                            // not an instant flip.
+                            `<button type="button" class="product-tier-comparison__switch-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr('Direct Booking')}" data-wizard-toggle-key="direct-booking">${tr('Switch to this')}</button>`
+                          : // Switching back to base SiteMinder is a
+                            // downgrade/removal — instant, same as Remove,
+                            // no wizard needed to deactivate.
+                            `<button type="button" class="product-tier-comparison__switch-btn" data-toggle-product="direct-booking">${tr('Switch to this')}</button>`
                     }
                   </th>
                 `
@@ -1616,9 +1626,11 @@ function renderProductCards(pathIndex, tierComparison, currentTier, products) {
                   ? ''
                   : `<a href="#" class="product-card__learn-more" data-path-key="${pathIndex}:${p.name}">${tr('Learn more')}</a>`
               }
-              <button type="button" class="product-card__action ${p.active ? 'product-card__action--remove' : 'product-card__action--activate'}" data-toggle-product="${p.key}">
-                ${p.active ? tr('Remove') : tr('Activate')}
-              </button>
+              ${
+                p.active
+                  ? `<button type="button" class="product-card__action product-card__action--remove" data-toggle-product="${p.key}">${tr('Remove')}</button>`
+                  : `<button type="button" class="product-card__action product-card__action--activate" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(p.name)}" data-wizard-toggle-key="${p.key}">${tr('Activate')}</button>`
+              }
             </div>
           </div>
         </div>
@@ -1633,44 +1645,63 @@ function renderProductCards(pathIndex, tierComparison, currentTier, products) {
   `;
 }
 
-// Activate/Remove buttons (v3) — same state the debug panel's Tier/In-
-// product sign-ups/DR+/Multi-Property controls read and write
-// (state.tier/enabledProducts/hasDrPlus/hasMultiProperty), so this page and
-// the debug panel are two views onto one source of truth, never a separate
-// parallel toggle. Direct Booking flips state.tier itself (it's the only
-// thing tier gates — see buildSmContentTree's own comment), not
-// enabledProducts.
+// Shared by BOTH directions — Remove (instant, wireProductCards below) and
+// Activate (via the AI setup stepper's onComplete, WIZARD_DEFINITIONS'
+// 'ai-setup-stepper') — so there's one place that knows how each product
+// key maps onto real state, not two copies that could drift. Same state
+// the debug panel's Tier/DR+ controls read and write
+// (state.tier/enabledProducts/hasDrPlus/hasMultiProperty) — this page and
+// the debug panel are two views onto one source of truth. `activate: true`
+// turns a product ON unconditionally; `activate: false` turns it OFF
+// unconditionally — NEITHER toggles, since the caller already knows which
+// direction it wants (Activate only ever appears on an inactive card,
+// Remove only ever on an active one).
+function setProductActive(key, activate) {
+  if (key === 'direct-booking') {
+    // Direct Booking is the only thing tier gates (see buildSmContentTree's
+    // own comment) — flips the WHOLE tier, not a per-product flag. Tier is
+    // no longer a debug-panel control at all (v3, Robert: "we can prob
+    // remove sm/sm+ from the proto settings now as well" — activation now
+    // always flows through Manage products/the AI stepper).
+    state.tier = activate ? 'siteminder-plus' : 'siteminder';
+  } else if (key === 'dr-plus') {
+    state.hasDrPlus = activate;
+  } else if (key === 'multi-property') {
+    state.hasMultiProperty = activate;
+    // Activating Multi-Property force-switches propertyCount to 'multiple'
+    // if it isn't already (Robert: "adding it automatically toggles the
+    // proto setting to multiple properties if its not already") — a
+    // Multi-Property portfolio implies more than one property by
+    // definition; this prototype doesn't model the inconsistent
+    // combination of hasMultiProperty + single property. Deliberately does
+    // NOT revert propertyCount back to 'single' when DEACTIVATING Multi-
+    // Property — a portfolio account can shrink to managing it as single-
+    // property-equivalent without losing its already-entered multi-
+    // property data/context.
+    if (state.hasMultiProperty && state.propertyCount !== 'multiple') {
+      state.propertyCount = 'multiple';
+      syncPropertyCountButtons();
+    }
+  } else {
+    state.enabledProducts = activate ? [...new Set([...state.enabledProducts, key])] : state.enabledProducts.filter((k) => k !== key);
+  }
+  savePrototypeSettings();
+}
+
+function activateProduct(key) {
+  setProductActive(key, true);
+}
+
+// Remove button (v3) — still an instant, in-place deactivation (Robert:
+// "itd be neat if we can add remove products in the ui just to get the
+// feel for it, obv without the onboarding") — no stepper needed to
+// deactivate, only to activate (see the Activate button's own
+// data-wizard-open, wired through wireWizardOpenButtons instead of this
+// function entirely).
 function wireProductCards() {
   canvasEl.querySelectorAll('[data-toggle-product]').forEach((el) => {
     el.addEventListener('click', () => {
-      const key = el.dataset.toggleProduct;
-      if (key === 'direct-booking') {
-        state.tier = state.tier === 'siteminder-plus' ? 'siteminder' : 'siteminder-plus';
-        syncTierButtons();
-      } else if (key === 'dr-plus') {
-        state.hasDrPlus = !state.hasDrPlus;
-      } else if (key === 'multi-property') {
-        state.hasMultiProperty = !state.hasMultiProperty;
-        // Activating Multi-Property force-switches propertyCount to
-        // 'multiple' if it isn't already (Robert: "adding it automatically
-        // toggles the proto setting to multiple properties if its not
-        // already") — a Multi-Property portfolio implies more than one
-        // property by definition; this prototype doesn't model the
-        // inconsistent combination of hasMultiProperty + single property.
-        // Deliberately does NOT revert propertyCount back to 'single' when
-        // DEACTIVATING Multi-Property — a portfolio account can shrink to
-        // managing it as single-property-equivalent without losing its
-        // already-entered multi-property data/context.
-        if (state.hasMultiProperty && state.propertyCount !== 'multiple') {
-          state.propertyCount = 'multiple';
-          syncPropertyCountButtons();
-        }
-      } else {
-        state.enabledProducts = state.enabledProducts.includes(key)
-          ? state.enabledProducts.filter((k) => k !== key)
-          : [...state.enabledProducts, key];
-      }
-      savePrototypeSettings();
+      setProductActive(el.dataset.toggleProduct, false);
       render();
     });
   });
@@ -1921,7 +1952,16 @@ function wireWizardOpenButtons() {
   canvasEl.querySelectorAll('[data-wizard-open]').forEach((el) => {
     el.addEventListener('click', () => {
       const definition = WIZARD_DEFINITIONS[el.dataset.wizardOpen];
-      if (definition) openWizard(definition, { productName: el.dataset.wizardContext });
+      if (!definition) return;
+      // `data-wizard-toggle-key` (v3, Manage products' own "Activate"
+      // button — Robert: "activate should go to the stepper setup,
+      // currently it just toggles in place") — the product key this
+      // specific wizard OPEN should actually activate on completion. Seeded
+      // into wizard.data alongside productName so the shared
+      // 'ai-setup-stepper' definition's onComplete can read it — the real
+      // state-flip now happens on wizard completion, not on the button
+      // click itself.
+      openWizard(definition, { productName: el.dataset.wizardContext, toggleKey: el.dataset.wizardToggleKey });
     });
   });
 }
@@ -2030,7 +2070,24 @@ const WIZARD_DEFINITIONS = {
         `,
       },
     ],
-    onComplete: () => {},
+    // Two real bugs, both here (Robert: "setup stepper should land back on
+    // the products page not the 'learn more' page" / "activate should go
+    // to the stepper setup, currently it just toggles in place"):
+    //   1. The actual state-flip now happens HERE, on completion — not on
+    //      the Activate button's own click (see the card's own
+    //      data-wizard-toggle-key, seeded into wizard.data as `toggleKey`
+    //      by wireWizardOpenButtons) — same activateProduct() helper
+    //      wireProductCards' Remove path also uses, so both directions go
+    //      through one shared function.
+    //   2. `select(0, 'manage-products')` drops back to the picker level —
+    //      completing the wizard from a product's detail page (depth 1)
+    //      must NOT leave state.path pointed at that now-activated
+    //      product's detail page; it returns to Manage products' own card
+    //      grid so the newly-activated card is visible in its new state.
+    onComplete: (data) => {
+      if (data.toggleKey) activateProduct(data.toggleKey);
+      select(0, 'manage-products');
+    },
   },
 };
 
@@ -2752,22 +2809,8 @@ document.querySelectorAll('[data-language]').forEach((el) => {
   });
 });
 
-// Extracted so BOTH the Tier debug-panel buttons themselves AND
-// wireProductCards' Direct Booking card (which also flips state.tier — see
-// below) can keep the debug panel's own highlighting in sync, rather than
-// only the direct click handler updating it. Without this, toggling Direct
-// Booking from Manage products would silently leave the debug panel
-// showing the wrong tier highlighted until the next full page load —
-// exactly the sync bug Robert caught with the old separate-controls setup,
-// just relocated rather than fixed, had this not been shared.
-function syncTierButtons() {
-  document.querySelectorAll('[data-tier]').forEach((b) => {
-    b.classList.toggle('is-active', b.dataset.tier === state.tier);
-  });
-}
-
-// Same reasoning as syncTierButtons — activating Multi-Property from a
-// Manage products card (see wireProductCards) auto-switches
+// Activating Multi-Property from a
+// Manage products card (see setProductActive) auto-switches
 // state.propertyCount to 'multiple' (Robert: "adding it automatically
 // toggles the proto setting to multiple properties if its not already"),
 // so the debug panel's own Property count buttons need to be kept in sync
@@ -2777,25 +2820,6 @@ function syncPropertyCountButtons() {
     b.classList.toggle('is-active', b.dataset.propertyCount === state.propertyCount);
   });
 }
-
-// Tier (v3) — select-one, like Account type/Property count above. Drives
-// Direct Booking's Configuration visibility directly via
-// `state.tier === 'siteminder-plus'` passed straight into getContent (real
-// packaging, confirmed against siteminder.com/pricing). Kept in the debug
-// panel (Robert: "just keep the tier thing in the settings for now") —
-// unlike Channels Plus/Pay/Metasearch/DR+ ("In-product sign-ups," v3),
-// which were ALSO briefly debug-panel toggles but are now controlled ONLY
-// from Configuration > Manage products' own Activate/Remove buttons (see
-// wireProductCards) — no separate debug control, no [data-product]/
-// [data-dr-plus] buttons in index.html at all anymore.
-document.querySelectorAll('[data-tier]').forEach((el) => {
-  el.addEventListener('click', () => {
-    state.tier = el.dataset.tier;
-    syncTierButtons();
-    savePrototypeSettings();
-    render();
-  });
-});
 
 // Sync the debug panel's own button highlighting to whatever was loaded
 // from localStorage (see savedPrototypeSettings above) — otherwise a
@@ -2812,7 +2836,6 @@ document.querySelectorAll('[data-system-count]').forEach((b) => {
 document.querySelectorAll('[data-language]').forEach((b) => {
   b.classList.toggle('is-active', b.dataset.language === state.language);
 });
-syncTierButtons();
 
 // Wires the theme-toggle skeleton's buttons — called per-render (from
 // wirePathLinks, alongside every other canvas interactive element), NOT
