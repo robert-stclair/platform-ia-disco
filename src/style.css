@@ -563,13 +563,19 @@ a { color: inherit; }
   font-weight: 700;
 }
 
-/* Static, always-on — same convention as the L2 panel-item badge
-   (.nav-list-item__badge): illustrative "something's here," no real
-   count/dismiss mechanism exists in this prototype. */
+/* LIVE aggregation, not static — shows when ANY of this rail section's own
+   panel items currently need attention (sectionHasAttention in main.js),
+   and disappears once every one of them has been visited. Same dot as the
+   L2 panel-item badge (.nav-list-item__badge), just rail-positioned.
+   Pushed up and OUT past the icon's own corner (was inset at top/right:8px,
+   sitting inside the 32px selected-state highlight box) — Robert: "if you
+   push the dot up and out it will sit better against the selected state,"
+   since a dot sitting inside that box on the active item read as floating
+   inside the highlight rather than marking the icon. */
 .rail-item__badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 2px;
+  right: 2px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -940,17 +946,17 @@ a { color: inherit; }
   );
 }
 
-/* EXPLORATORY, non-functional — illustrative "something needs attention"
-   badge (Health check, Recommendations, Dynamic pricing). A plain dot, not
-   a count — no real number exists yet, and a dot avoids implying a
-   precision this prototype doesn't have. DELIBERATE EXCEPTION to this
-   project's greyscale-only rule — user: "make the dot red - it doesn't
-   really parse as black." Uses the `--alert` token (defined once, scoped
-   to just this element — not a general accent color for the app). STATIC —
-   a dismiss-on-visit interaction was explored and dropped ("maybe it's too
-   much to bother with") since nothing in this prototype tracks real
-   resolved/unresolved state; the real-product "clears once addressed"
-   intent is documented in CONTEXT.md, not simulated here. */
+/* Illustrative "something needs attention" badge (Health check,
+   Recommendations, Dynamic pricing) — a plain dot, not a count, no real
+   number exists. NOW LIVE (v3, Robert: "the badge should bubble up the
+   hierarchy and disappear when the user clicks into something"): driven by
+   state.attention (main.js), bubbles from a sublist child up to its folder
+   parent and up again to the rail item (.rail-item__badge), and clears the
+   moment the user actually routes to the item that owns it. DELIBERATE
+   EXCEPTION to this project's greyscale-only rule — user: "make the dot red
+   - it doesn't really parse as black." Uses the `--alert` token (defined
+   once, scoped to just this element — not a general accent color for the
+   app). */
 .nav-list-item__badge {
   width: 8px;
   height: 8px;
@@ -989,7 +995,10 @@ a { color: inherit; }
 }
 
 .nav-sublist a {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding: 6px 10px;
   font-size: 13px;
   color: var(--text-muted);
@@ -1163,7 +1172,9 @@ a { color: inherit; }
 }
 
 .record-cards-group__title {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 14px;
   font-size: 15px;
   font-weight: 700;
@@ -1492,31 +1503,36 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
+/* Row of rough chart shapes, no per-stat label (Robert: "a top level label
+   for the card but no sub level label .. keep it a bit fisher price"). */
 .metric-group__stats {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: flex-end;
+  gap: 14px;
 }
 
-.metric-group__stat {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+/* Wireframe chart shape (renderWireframeChart/renderMetricGroups in
+   main.js) — line/area/bar/pie mixed across a group's stats, purely
+   illustrative (no real axes, labels, or data) and deliberately CRUDE —
+   hand-wobbled points, not smooth/precise ones. Light grey and low
+   opacity on purpose (Robert: "very simple light grey rough wireframes of
+   charts," after a first pass read as too high-fidelity) — reads as rough
+   scaffolding, not finished content. Greyscale only via `color` (project
+   rule) — every chart SVG paints with `currentColor`. */
+.metric-group__stat-chart {
+  flex: 1;
+  min-width: 0;
+  height: 72px;
+  color: var(--border-strong);
+  opacity: 0.9;
 }
 
-.metric-group__stat-label {
-  font-size: 12.5px;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-}
-
-.metric-group__stat-skel {
-  width: 44px;
-  height: 12px;
-  border-radius: 4px;
-  background: var(--border-strong);
-  opacity: 0.6;
+/* Pie needs a square aspect, not the wide rectangle the line/bar/area
+   charts use — sized down and capped so it doesn't stretch inside the flex
+   row's shared height. */
+.metric-group__stat-chart--pie {
+  flex: 0 0 72px;
+  width: 72px;
 }
 
 /* Value-tracking row — "Tracking past recommendations performance."
@@ -2766,6 +2782,19 @@ a.wf-list__row:hover {
     stroke: currentColor;
     fill: none;
     stroke-width: 1.7;
+  }
+
+  /* Same live rail-aggregation badge as the desktop rail's
+     .rail-item__badge — pushed to the row's trailing edge via auto margin
+     since .mobile-drawer__item has no space-between layout of its own
+     (its label is a bare text node, not a wrapped span). */
+  .mobile-drawer__item-badge {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--alert);
+    margin-left: auto;
   }
 
   .mobile-drawer__divider {

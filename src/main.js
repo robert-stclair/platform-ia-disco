@@ -192,6 +192,13 @@ function savePrototypeSettings() {
 
 const savedPrototypeSettings = loadPrototypeSettings();
 
+// The 3 node keys that seed state.attention — exactly the items that used
+// to carry nav-data.js's static `badge: true` flag (Health check,
+// Recommendations, Dynamic pricing). Kept as one list so main.js is the
+// single source of truth for "what's currently illustrating a live issue,"
+// not scattered flags on the tree data itself.
+const ATTENTION_KEYS = ['health-check', 'recommendations', 'dynamic-pricing', 'room-types'];
+
 const state = {
   accountType: savedPrototypeSettings.accountType ?? 'SM', // 'SM' | 'LH' — independent of propertyCount; only SM has real content so far. MP used to be a 3rd value here — now `hasMultiProperty` below, an add-on like the others (Robert: "lets make Multi-Property an add on like the others").
   propertyCount: savedPrototypeSettings.propertyCount ?? 'single', // 'single' | 'multiple' — independent of accountType
@@ -280,6 +287,19 @@ const state = {
   // `null` when no wizard is open. See `openWizard`/`closeWizard`/
   // `renderWizard` below for the mechanism.
   wizard: null, // { steps: WizardStep[], currentStep: number, data: object, onComplete: (data) => void } | null
+  // LIVE "something needs attention" tracking (replaces the old static
+  // `badge: true` flag in nav-data.js — Robert: "lets look at badging and
+  // somewhat bring it to life - the badge should bubble up the hierarchy
+  // and disappear when the user clicks into something"). A Set of node
+  // keys that currently have an unresolved issue; ATTENTION_KEYS below
+  // seeds it with the same 3 items that used to carry the static dot
+  // (Health check/Recommendations/Dynamic pricing) — same illustrative
+  // "no real count/data" nature as before, just genuinely stateful now.
+  // Deliberately NOT persisted via savedPrototypeSettings — this exists to
+  // demonstrate the clear-on-visit interaction, so every fresh load should
+  // start with something to clear, not resume already-cleared from a prior
+  // session.
+  attention: new Set(ATTENTION_KEYS),
 };
 
 // Does NOT touch state.scope — the property/cluster/brand switcher is a
@@ -340,6 +360,92 @@ applyTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'system');
 
 function getSystemsForCurrentProperty() {
   return state.multipleSystems ? MULTIPLE_SYSTEMS : DEFAULT_SYSTEMS;
+}
+
+// ---------------------------------------------------------------------------
+// Live badge bubbling (Robert: "the badge should bubble up the hierarchy and
+// disappear when the user clicks into something"). Deliberately narrow —
+// exactly 3 illustrative stories exist (ATTENTION_KEYS): Insights >
+// Recommendations, Distribution > Health check + Dynamic pricing (both flat
+// L2 panel items — no nesting to bubble through at all), and Configuration
+// > Room types, which has TWO shapes depending on account state: the flat
+// single-property case (Property, a 'nav-dashboard' tile grid directly),
+// and the deeper Multi-Property case (Properties > a property card >
+// buildPropertyNode's own 'nav-dashboard') — Robert: "you need to bubble up
+// room types badge" once he hit the Multi-Property/Properties-tab shape.
+//
+// `itemHasAttention` descends into 'list' (sublist children), 'nav-
+// dashboard' (tile grid), and 'records' — but ONLY when the records
+// content is explicitly marked `bubblesAttention: true` (see
+// buildConfigurationPropertiesItem's `properties-list` in nav-data.js).
+// This is an OPT-IN flag, not "any records picker with a detailNode
+// bubbles" — that more general rule was tried first and immediately caused
+// a worse bug than the one it fixed: buildPropertyNode(...) is reused as
+// the shared detailNode by THREE different records pickers (Configuration's
+// own Properties list, Group rate plans' "Properties" tab, and a user's
+// cross-nav "Properties" tab) — walking all of them generically bubbled
+// Room types' badge onto Group rate plans too, with no visible reason why
+// (Robert: "not sure why there is a badge against group rate plans"). Only
+// the ONE deliberate story (Configuration > Properties) opts in; the other
+// two reuses of the same node do not carry the badge, on purpose — for a
+// wireframe whose whole job is "get the idea across" with a small,
+// deliberate set of stories (Robert: "let's not have too many anyway for
+// this"), explicit > general here.
+//
+// `visited` guards the one real CYCLE this graph contains (buildPropertyNode
+// <-> buildUserNode, via each one's own cross-nav Properties/Users tile) —
+// without it, descending into a `bubblesAttention` records picker whose
+// detailNode eventually loops back on itself would recurse forever
+// (previously hit as a live "Maximum call stack size exceeded" crash).
+// Rail-level aggregation (sectionHasAttention) is the same idea one level
+// further out: a rail section badges if ANY of its panel items (by this
+// same rule) do.
+function itemHasAttention(item, visited = new Set()) {
+  if (visited.has(item.key)) return false;
+  visited.add(item.key);
+  if (state.attention.has(item.key)) return true;
+  const content = item.content;
+  if (content?.type === 'list') {
+    return content.items.some((child) => itemHasAttention(child, visited));
+  }
+  if (content?.type === 'nav-dashboard') {
+    return content.tiles.some((tile) => itemHasAttention(tile, visited));
+  }
+  // 'tabs' (e.g. Configuration > Properties' own Properties/Brands/Clusters
+  // strip) — a plain pass-through, needed so a `bubblesAttention` records
+  // tab nested one level inside a tabs wrapper (properties-list, below)
+  // is even reachable at all. Safe to leave unconditional (unlike the old
+  // records branch) — a tab is only ever a small, fixed, hand-authored
+  // array on ONE specific item, not a general graph edge, so this can't
+  // reintroduce the Group-rate-plans-style fan-out.
+  if (content?.type === 'tabs') {
+    return content.tabs.some((tab) => itemHasAttention(tab, visited));
+  }
+  if (content?.type === 'records' && content.bubblesAttention && content.detailNode) {
+    const detail = typeof content.detailNode === 'function' ? content.detailNode() : content.detailNode;
+    return Boolean(detail) && itemHasAttention(detail, visited);
+  }
+  return false;
+}
+
+function sectionHasAttention(sectionData) {
+  if (!sectionData?.items) return false;
+  return sectionData.items.some((item) => !item.heading && !item.divider && itemHasAttention(item));
+}
+
+// Clears one key's attention. ONLY called from an explicit click handler
+// (data-item-key / data-path-key), never from the default/fallback
+// resolution renderPanel uses to pick what shows on first load — landing on
+// Insights by default doesn't "proxy click" every item that happens to
+// render first; Recommendations only clears once someone actually clicks
+// it. Same explicit-vs-fallback distinction the breadcrumb trail already
+// makes (resolveChain's `isExplicit`). Removing the leaf key is enough:
+// parent/rail badges are recomputed fresh from state.attention on every
+// render (itemHasAttention/sectionHasAttention above), so bubbling up and
+// clearing are really the same derived computation, not two things to keep
+// in sync.
+function clearAttention(key) {
+  state.attention.delete(key);
 }
 
 // Resolve which item is selected among a list of sibling nodes at a given
@@ -584,18 +690,26 @@ function resolveChain(rootNode) {
 
 // ---------------------------------------------------------------------------
 
-function renderRail() {
+function renderRail(content) {
   const brandKey = state.accountType === 'LH' ? 'LH' : 'SM';
   railBrandEl.innerHTML = BRAND_MARKS[brandKey];
   railBrandEl.title = PRODUCT_TIER_LABELS[state.accountType];
   const items = getRailItems(state.accountType);
-  railEl.innerHTML = items.map(
-    (item) => `
+  railEl.innerHTML = items.map((item) => {
+    // Rail-level bubbling (Robert: "see how we have badges on dynamic
+    // pricing and health check - therefore there should be one on the
+    // distribution rail item") — a section badges if ANY of its own panel
+    // items do, by the same itemHasAttention rule the L2 panel uses.
+    const badge = sectionHasAttention(content?.[item.key])
+      ? `<span class="rail-item__badge" aria-hidden="true"></span>`
+      : '';
+    return `
       <button class="rail-item${item.key === state.section ? ' is-active' : ''}" data-section="${item.key}" title="${tr(item.label)}" aria-label="${tr(item.label)}">
         <span class="rail-item__icon">${RAIL_ICONS[item.icon] ?? ''}</span>
+        ${badge}
       </button>
-    `
-  ).join('');
+    `;
+  }).join('');
 
   railEl.querySelectorAll('.rail-item').forEach((el) => {
     el.addEventListener('click', () => {
@@ -883,18 +997,16 @@ function renderPanel(data) {
     // couple of Insights' promoted items show a star to illustrate "this
     // was promoted from My insights because the user starred it."
     const star = item.starred ? `<span class="nav-list-item__star" aria-hidden="true"></span>` : '';
-    // `badge` — illustrative "something needs attention" dot (Health check,
-    // Recommendations, Dynamic pricing — CONTEXT.md's notification
-    // candidate-model). A plain dot, not a count — no real number exists
-    // yet. Deliberately scoped to the L2 panel item only, not the rail
-    // icon — user's explicit choice, avoiding the larger unsolved question
-    // of rail-level badge aggregation. STATIC (always shows, no dismiss
-    // interaction) — a dismiss-on-visit behavior was explored and dropped:
-    // "maybe it's too much to bother with" — nothing in this prototype
-    // tracks real resolved/unresolved state to make a dismiss meaningful.
-    // The real-product intent (a badge clears once its underlying issue is
-    // addressed) is captured in CONTEXT.md, not simulated here.
-    const badge = item.badge ? `<span class="nav-list-item__badge" aria-hidden="true"></span>` : '';
+    // `badge` — illustrative "something needs attention" dot, now LIVE
+    // (state.attention, seeded via ATTENTION_KEYS) rather than a static
+    // flag: bubbles up from a sublist child to its folder parent
+    // (itemHasAttention) and up again to the rail (sectionHasAttention,
+    // renderRail) — Robert: "the badge should bubble up the hierarchy and
+    // disappear when the user clicks into something." Clears the moment
+    // the user actually routes to the item that owns it — see the
+    // data-item-key/data-path-key click handlers below, which call
+    // clearAttention before re-rendering.
+    const badge = itemHasAttention(item) ? `<span class="nav-list-item__badge" aria-hidden="true"></span>` : '';
     // `actionIcon` — a leading icon marking this item as an ACTION row
     // (e.g. "+ Add products") rather than a settings-page destination like
     // its siblings — a third panel-list pattern alongside folder/heading
@@ -923,10 +1035,10 @@ function renderPanel(data) {
       const children = item.content.items.filter((s) => !s.mpOnly || state.hasMultiProperty);
       const explicitChildKey = state.path[0] === item.key ? state.path[childPathIndex] : null;
       html += `<ul class="nav-sublist">${children
-        .map(
-          (s) =>
-            `<li><a href="#" data-path-key="${childPathIndex}:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${tr(s.label)}</a></li>`
-        )
+        .map((s) => {
+          const childBadge = state.attention.has(s.key) ? `<span class="nav-list-item__badge" aria-hidden="true"></span>` : '';
+          return `<li><a href="#" data-path-key="${childPathIndex}:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${tr(s.label)}${childBadge}</a></li>`;
+        })
         .join('')}</ul>`;
     }
   });
@@ -944,12 +1056,15 @@ function renderPanel(data) {
       const key = el.dataset.itemKey;
       const item = items.find((i) => i.key === key);
       if (item?.content?.type === 'list') {
-        // Expand/collapse only — does not touch the route/canvas.
+        // Expand/collapse only — does not touch the route/canvas. Not a
+        // "visit" of the folder itself, so its own badge (if any) does NOT
+        // clear here — only actually routing to something clears a badge.
         state.expandedKey = state.expandedKey === key ? null : key;
       } else {
-        // Real navigation.
+        // Real navigation — this IS a visit, clear its badge if it had one.
         select(0, key);
         state.expandedKey = null;
+        clearAttention(key);
       }
       render();
     });
@@ -964,6 +1079,7 @@ function renderPanel(data) {
       const [depth, key] = el.dataset.pathKey.split(':');
       state.path = [expandedItem.key];
       state.path[Number(depth)] = key;
+      clearAttention(key);
       render();
     });
   });
@@ -1190,7 +1306,13 @@ function renderChainBody(chain, i) {
         content.display === 'table'
           ? renderRecordTable(step.options, pathIndex, content.tableColumns ?? 3, content.nameSplitOn, content.usageColumn, content.syncsScope)
           : content.display === 'cards'
-            ? renderRecordCards(step.options, pathIndex, content.cards, content.syncsScope)
+            ? renderRecordCards(
+                step.options,
+                pathIndex,
+                content.cards,
+                content.syncsScope,
+                content.bubblesAttention ? content.detailNode : null
+              )
             : content.display === 'product-cards'
               ? renderProductCards(pathIndex, content.tierComparison, content.currentTier, content.products)
               : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope, presetNames);
@@ -1459,6 +1581,88 @@ function renderPriorityActions(items, viewAllKey) {
   `;
 }
 
+// Wireframe data-viz for Home's metric-group stats (v3, Robert: "lets make
+// the homepage data widgets look like wireframe dat-viz ie pie chsrts line
+// charts etc .. mix it up" then, on the first pass looking too finished:
+// "those mock data widgets are to high fi .. keep it a bit 'fisher price'
+// very simple light grey rough wirefcerames of charts" — no per-stat text
+// label either, just the chart shape under the card's own title). Replaces
+// the old plain grey `.metric-group__stat-skel` bar with a small SVG chart
+// shape — still entirely illustrative (no real data/axes/numbers), but
+// deliberately CRUDE: a few hand-wobbled points, not a smooth/precise
+// chart — a toy sketch of "there's a chart here," not a real rendering.
+// Greyscale only (project rule), and noticeably lighter than a normal icon
+// (see `.metric-group__stat-chart`'s low opacity) so it reads as rough
+// scaffolding, not finished content.
+//
+// One generator per chart family, cycling DETERMINISTICALLY by index (not
+// random) so the same stat always renders the same shape across re-renders
+// — "mix it up" means varied across a group's several stats, not flickering
+// on every render. `wobble(seed, i)` is the shared "hand-drawn" jitter used
+// by every line-based shape.
+function wobble(seed, i) {
+  return (((seed + i * 31 + 7) % 17) - 8) * 1.6;
+}
+
+function renderWireframeBars(seed) {
+  const n = 4 + (seed % 2);
+  const bars = Array.from({ length: n }, (_, i) => {
+    const h = 30 + ((seed + i * 29) % 55) + wobble(seed, i);
+    const barW = 100 / n;
+    return `<rect x="${i * barW + barW * 0.22}" y="${100 - h}" width="${barW * 0.56}" height="${h}" />`;
+  }).join('');
+  return `<svg class="metric-group__stat-chart" viewBox="0 0 100 100" preserveAspectRatio="none" fill="currentColor" aria-hidden="true">${bars}</svg>`;
+}
+
+function renderWireframeLine(seed) {
+  const points = [0, 1, 2, 3, 4].map((i) => `${(i / 4) * 100},${Math.max(10, Math.min(90, 55 + wobble(seed, i)))}`);
+  return `
+    <svg class="metric-group__stat-chart" viewBox="0 0 100 100" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <polyline points="${points.join(' ')}" />
+    </svg>
+  `;
+}
+
+function renderWireframeArea(seed) {
+  const points = [0, 1, 2, 3, 4].map((i) => `${(i / 4) * 100},${Math.max(15, Math.min(85, 50 + wobble(seed, i)))}`);
+  const fillPath = `0,100 ${points.join(' ')} 100,100`;
+  return `
+    <svg class="metric-group__stat-chart" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <polygon points="${fillPath}" fill="currentColor" opacity="0.5" />
+      <polyline points="${points.join(' ')}" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
+  `;
+}
+
+// A crude hand-drawn "pie" — one wedge cut from a circle, not a precise
+// data-driven donut (no smooth stroke-dasharray arc): a slightly wobbled
+// polygon slice, reading as "kid's drawing of a pie chart."
+function renderWireframePie(seed) {
+  const startAngle = -90 + (seed % 40) - 20;
+  const sweep = 90 + (seed % 3) * 40;
+  const endAngle = startAngle + sweep;
+  const toXY = (deg) => {
+    const rad = (deg * Math.PI) / 180;
+    return [50 + 42 * Math.cos(rad), 50 + 42 * Math.sin(rad)];
+  };
+  const [x1, y1] = toXY(startAngle);
+  const [x2, y2] = toXY(endAngle);
+  const largeArc = sweep > 180 ? 1 : 0;
+  return `
+    <svg class="metric-group__stat-chart metric-group__stat-chart--pie" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" stroke-width="3" />
+      <path d="M50,50 L${x1.toFixed(1)},${y1.toFixed(1)} A42,42 0 ${largeArc} 1 ${x2.toFixed(1)},${y2.toFixed(1)} Z" fill="currentColor" />
+    </svg>
+  `;
+}
+
+const WIREFRAME_CHART_RENDERERS = [renderWireframeBars, renderWireframeLine, renderWireframeArea, renderWireframePie];
+
+function renderWireframeChart(index) {
+  const renderer = WIREFRAME_CHART_RENDERERS[index % WIREFRAME_CHART_RENDERERS.length];
+  return renderer(index);
+}
+
 // Home's performance row — GROUPED stat cards (Robert: "we have grouping
 // of cards"), not one flat row of individual metrics. Each group is a
 // small cluster of 2-3 real-labeled stats that cascades into its own
@@ -1467,9 +1671,12 @@ function renderPriorityActions(items, viewAllKey) {
 // Home shows the calm summary, the group's own dashboard carries the
 // depth. `content.groups`: [{title, stats: [{label, value}]}] — real
 // group titles and stat labels (first-pass grouping, not confirmed:
-// Rates & distribution / Occupancy & demand / Channels), values stay
-// skeleton (illustrative numbers only, per the standard "real labels,
-// skeleton data" rule).
+// Rates & distribution / Occupancy & demand / Channels) — NO per-stat text
+// label anymore (Robert: "a top level label for the card but no sub level
+// label"), just the group's own card title plus its stats' rough wireframe
+// CHART shapes (renderWireframeChart above), stacked in a row. `stat.label`
+// still exists on the data (kept for a future real build), just isn't
+// rendered here.
 // `group.linkTo` (optional): [itemKey, recordName] — jumps straight to a
 // SPECIFIC dashboard nested two levels deep (e.g. My dashboards >
 // Performance) via wirePathLinks' multi-segment `data-path-key` support,
@@ -1478,6 +1685,7 @@ function renderPriorityActions(items, viewAllKey) {
 // dashboards"). Groups without `linkTo` stay non-functional, same "shape
 // only" convention as everywhere else not yet wired up.
 function renderMetricGroups(groups) {
+  let chartIndex = 0;
   return `
     <div class="metric-groups">
       ${groups
@@ -1490,16 +1698,7 @@ function renderMetricGroups(groups) {
                 <svg class="metric-group__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
               </div>
               <div class="metric-group__stats">
-                ${group.stats
-                  .map(
-                    (stat) => `
-                      <div class="metric-group__stat">
-                        <span class="metric-group__stat-label">${tr(stat.label)}</span>
-                        <div class="metric-group__stat-skel"></div>
-                      </div>
-                    `
-                  )
-                  .join('')}
+                ${group.stats.map(() => renderWireframeChart(chartIndex++)).join('')}
               </div>
             </a>
           `;
@@ -1749,12 +1948,25 @@ function renderProductDetail(product) {
 // sketches already use ([{title?, shape:'chart'|'stat'}]), repeated
 // identically under each property — illustrative, not per-property real
 // data.
-function renderRecordCards(names, depth, cards, syncsScope) {
+//
+// `attentionDetailNode` (optional — only passed when the caller's content
+// has `bubblesAttention: true`, see renderChainBody's `records` branch) —
+// Robert: "don't we need a badge against the property?" Without this, the
+// "Properties" tab/rail icon lit up but every property card looked
+// identical — a user would have no way to tell WHICH property to open.
+// Every property shares the SAME detail node object (buildPropertyNode),
+// so the check is name-independent: if it has attention, EVERY card shows
+// the dot (a real product would obviously check per-property data, not one
+// shared illustrative node — this prototype has no such data to check).
+function renderRecordCards(names, depth, cards, syncsScope, attentionDetailNode) {
+  const badge = attentionDetailNode && itemHasAttention(attentionDetailNode)
+    ? `<span class="nav-list-item__badge" aria-hidden="true"></span>`
+    : '';
   return names
     .map(
       (name) => `
         <div class="record-cards-group">
-          <a href="#" class="record-cards-group__title" data-path-key="${depth}:${name}" ${syncsScope ? 'data-syncs-scope="true"' : ''}>${name}</a>
+          <a href="#" class="record-cards-group__title" data-path-key="${depth}:${name}" ${syncsScope ? 'data-syncs-scope="true"' : ''}>${name}${badge}</a>
           ${renderDashboardCards(cards)}
         </div>
       `
@@ -1847,7 +2059,14 @@ function renderNavDashboard(tiles, depth) {
       // something to look at," not what it is. The real explanation moved
       // to a banner on the tile's OWN destination page instead (see
       // renderChainBody's nav-dashboard branch) — click through for detail.
-      const tipDot = t.tip ? `<span class="nav-dashboard__tile-dot" aria-hidden="true"></span>` : '';
+      //
+      // The DOT itself is now LIVE (state.attention, same mechanism as the
+      // rail/panel badges — Robert: "since we have a badge on room types
+      // that should also follow this behaviour") — `t.tip` still supplies
+      // the explanatory text (unaffected, always shown once you click
+      // through), but whether the dot shows/bubbles/clears is state, not
+      // just "does this tile happen to have tip text."
+      const tipDot = state.attention.has(t.key) ? `<span class="nav-dashboard__tile-dot" aria-hidden="true"></span>` : '';
       return `
         <a href="#" class="nav-dashboard__tile" data-path-key="${depth}:${routeKey}">
           <div class="nav-dashboard__tile-metric-skel"></div>
@@ -1933,6 +2152,12 @@ function wirePathLinks() {
         state.scope = { type: 'property', key };
         state.scopedPathDepth = depth;
       }
+      // Clears attention on whatever any of these keys route to (e.g. a
+      // nav-dashboard tile like Room types) — a no-op for keys that were
+      // never flagged (most of them; ATTENTION_KEYS is a short illustrative
+      // list, not every node), so safe to call unconditionally for every
+      // canvas link this generic mechanism handles.
+      keys.forEach((k) => clearAttention(k));
       keys.forEach((k, i) => select(depth + i, k));
       render();
     });
@@ -2588,10 +2813,11 @@ wizardNextEl.addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 
 function render() {
-  renderRail();
-  // Falls through to an honest empty panel/canvas for any section with no
-  // data for the current state (e.g. an undefined rail item for a given
-  // account type) — no placeholders, just nothing rendered.
+  // Computed before renderRail (which needs the full tree, not just the
+  // current section, to aggregate each rail item's own badge — see
+  // sectionHasAttention). Falls through to an honest empty panel/canvas for
+  // any section with no data for the current state (e.g. an undefined rail
+  // item for a given account type) — no placeholders, just nothing rendered.
   const content = getContent(
     state.accountType,
     state.propertyCount,
@@ -2601,6 +2827,7 @@ function render() {
     state.tier === 'siteminder-plus',
     state.hasMultiProperty
   );
+  renderRail(content);
   const data = content?.[state.section];
   if (!data) {
     panelEl.innerHTML = '';
@@ -2695,17 +2922,33 @@ mobileDrawerBackdropEl.addEventListener('click', closeMobileDrawer);
 // desktop rail buttons.
 function renderMobileDrawer() {
   const items = getRailItems(state.accountType);
+  // Same rail-level bubbling as the desktop rail (renderRail) — recomputed
+  // here rather than threaded in, since the drawer opens from its own
+  // gesture (the hamburger), independent of the main render() cycle.
+  const content = getContent(
+    state.accountType,
+    state.propertyCount,
+    state.scope,
+    state.enabledProducts,
+    state.hasDrPlus,
+    state.tier === 'siteminder-plus',
+    state.hasMultiProperty
+  );
   const sectionRows = items
-    .map(
-      (item) => `
+    .map((item) => {
+      const badge = sectionHasAttention(content?.[item.key])
+        ? `<span class="mobile-drawer__item-badge" aria-hidden="true"></span>`
+        : '';
+      return `
         <li>
           <button class="mobile-drawer__item${item.key === state.section ? ' is-active' : ''}" data-drawer-section="${item.key}">
             <span class="mobile-drawer__item-icon" aria-hidden="true">${RAIL_ICONS[item.icon] ?? ''}</span>
             ${tr(item.label)}
+            ${badge}
           </button>
         </li>
-      `
-    )
+      `;
+    })
     .join('');
   const utilityRows = [
     { key: 'assistant', label: 'AI assistant' },

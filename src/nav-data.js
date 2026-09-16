@@ -1593,10 +1593,9 @@ const PAY_LIST = {
 const HEALTH_CHECK_ITEM = {
   key: 'health-check',
   label: 'Health check',
-  // EXPLORATORY, non-functional — illustrative "something needs attention"
-  // dot (CONTEXT.md's notification candidate-model). A plain dot, not a
-  // count — no real data behind it yet.
-  badge: true,
+  // Badge is now LIVE, not a static flag — see ATTENTION_KEYS/state.attention
+  // in main.js. This key is one of the seeded "something needs attention"
+  // items; whether it actually shows a dot depends on state, not this node.
   content: {
     type: 'sketch',
     sketch: 'dashboard-cards',
@@ -1706,6 +1705,23 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
             // rather than stale (Robert: "the switcher stays active
             // since its actually useful").
             syncsScope: true,
+            // `bubblesAttention: true` (v3, Robert: "you need to bubble up
+            // room types badge" — Multi-Property mode nests Room types one
+            // level deeper than the flat single-property case: Configuration
+            // > Properties > a property card > Room types) — an explicit,
+            // narrow opt-in for itemHasAttention's `records` case, NOT a
+            // blanket "any records picker with a detailNode bubbles" rule.
+            // buildPropertyNode(...) is also reused by Group rate plans'
+            // OWN "Properties" tab (grp-properties, below) and by Users'
+            // cross-nav Properties tab (user-properties, above) — a
+            // blanket rule bubbled through BOTH of those too, since they
+            // resolve to the exact same shared node, lighting up Group rate
+            // plans with no visible reason why (Robert: "not sure why there
+            // is a badge against group rate plans"). Only the ACTUAL
+            // "Configuration > Properties" story should carry the badge
+            // pathway — flip this on elsewhere only for a deliberate new
+            // story, not because it happens to share a detail node.
+            bubblesAttention: true,
           },
         },
         // `scopeSwitcher: 'force-all'` — Brands/Clusters ARE all-properties
@@ -1852,8 +1868,8 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
         // be good - or maybe that's a later stage thing - I am fine with
         // reuse." Groupings/categorized recommendations logged as a later-
         // stage idea, NOT built — don't add grouping structure without
-        // picking this back up. `badge: true` — same illustrative
-        // "something needs attention" dot as Health check.
+        // picking this back up. Badge is LIVE (state.attention, main.js) —
+        // same seeded set as Health check/Dynamic pricing.
         //
         // Gained a "Performance" tab (v3, Robert: "a tab under
         // recommendations page called performance") — Home's value-tracking
@@ -1863,7 +1879,6 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
         {
           key: 'recommendations',
           label: 'Recommendations',
-          badge: true,
           content: {
             type: 'tabs',
             tabs: [
@@ -2037,16 +2052,14 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
         // can use the LH calendar style") — same 7-weekday-column, 5-row
         // shape Front desk's calendar uses, but embedded in a NORMAL
         // Distribution page (L2 panel stays visible), not full-width/
-        // noPanel like Front desk's own usage. `badge: true` — same
-        // illustrative "something needs attention" dot as Health check/
-        // Recommendations (CONTEXT.md's notification candidate-model).
+        // noPanel like Front desk's own usage. Badge is LIVE (state.attention,
+        // main.js) — same seeded set as Health check/Recommendations.
         //
         // `scopeSwitcher: 'force-single'`: same reasoning as Inventory —
         // per-property calendar, no all-properties/cluster view exists.
         {
           key: 'dynamic-pricing',
           label: 'Dynamic pricing',
-          badge: true,
           content: { type: 'sketch', sketch: 'calendar' },
           scopeSwitcher: 'force-single',
         },
