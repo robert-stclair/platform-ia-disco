@@ -1602,6 +1602,21 @@ a { color: inherit; }
   gap: 32px;
 }
 
+/* Non-admin role gate (v3, Robert: "let's tackle the user type next") —
+   informational, not an alert: a plain neutral surface, NOT the red
+   `--alert`/`--alert-tint` tokens (.tile-tip-banner) — those are reserved
+   for "something needs fixing," and a non-admin viewing this page isn't a
+   problem to resolve. */
+.role-banner {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+}
+
 .product-tier-comparison table {
   width: 100%;
   border-collapse: collapse;
@@ -1653,6 +1668,15 @@ a { color: inherit; }
 
 .product-tier-comparison__switch-btn:hover {
   background: var(--surface-sunken);
+}
+
+.product-tier-comparison__switch-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.product-tier-comparison__switch-btn:disabled:hover {
+  background: var(--surface);
 }
 
 .product-tier-comparison__feature {
@@ -1781,6 +1805,15 @@ a { color: inherit; }
   background: var(--surface-sunken);
 }
 
+.product-card__action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.product-card__action:disabled:hover {
+  background: var(--surface);
+}
+
 .product-card__action--remove {
   color: var(--text-muted);
 }
@@ -1858,6 +1891,15 @@ a { color: inherit; }
 
 .product-detail__setup-btn:hover {
   opacity: 0.85;
+}
+
+.product-detail__setup-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.product-detail__setup-btn:disabled:hover {
+  opacity: 0.4;
 }
 
 /* Contextual insight widgets above a `records` picker (e.g. Rate plans) —

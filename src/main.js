@@ -182,6 +182,7 @@ function savePrototypeSettings() {
         tier: state.tier,
         hasDrPlus: state.hasDrPlus,
         hasMultiProperty: state.hasMultiProperty,
+        isAdmin: state.isAdmin,
       })
     );
   } catch {
@@ -245,6 +246,21 @@ const state = {
   // it's the more unusual case, an SM/LH account with a portfolio) so a
   // fresh load doesn't show Brands/Clusters/Group rate plans unprompted.
   hasMultiProperty: savedPrototypeSettings.hasMultiProperty ?? false,
+  // User role (v3, Robert: "let's tackle the user type next - let's add
+  // admin and non-admin to the proto settings") — the first real work
+  // against the "Permissions and visible function" open problem (role-based
+  // access within an account, e.g. admin vs. property-level user), which is
+  // orthogonal to product entitlement (what's unlocked by tier/add-ons,
+  // already handled by Manage products) — see the Confluence open-problems
+  // register. Defaults to true (admin) so existing behavior is unchanged
+  // unless a prototype tester deliberately switches to non-admin. First
+  // surface: Manage products shows a banner and disables Activate (Learn
+  // more stays clickable) for non-admin — Robert: "for non-admin they would
+  // see everything but not be able to click activate." Deliberately NOT
+  // extended to the Users page yet — flagged as its own open question
+  // ("not sure if we show that page at all, or show it with disabled
+  // options .. i guess that's a permissions visibility decision").
+  isAdmin: savedPrototypeSettings.isAdmin ?? true,
   // Prototype-panel toggle: 'EN' | 'DE'. Swaps nav labels via `tr()` (see its
   // definition near the top of this file, alongside DE_LABELS) — a LAYOUT
   // stress test, not real i18n: no pluralization/interpolation, and the
@@ -1751,7 +1767,21 @@ function renderValueTracker(summary, recent) {
 // reach a per-product page, which content.type === 'sketch' can't provide
 // (renderSketch has no path/depth context at all, confirmed when this was
 // still a sketch).
+//
+// Role gate (v3, Robert: "let's tackle the user type next .. for non-admin
+// they would see everything but not be able to click activate (can still
+// click learn more)") — the first real "Permissions and visible function"
+// work (role-based access, orthogonal to product entitlement). A non-admin
+// sees a banner up top and every state-changing control disabled — Activate
+// AND Remove (his framing was "make changes to your account," which covers
+// removing a product too, not just adding one) AND the tier-switch buttons
+// — while "Learn more" stays a real, clickable link either way (browsing a
+// product's own detail page isn't "making a change"). Reads `state.isAdmin`
+// directly rather than threading it through another parameter — same
+// convention this file already uses for other cross-cutting state
+// (itemHasAttention reads `state.attention` the same way).
 function renderProductCards(pathIndex, tierComparison, currentTier, products) {
+  const isAdmin = state.isAdmin;
   const currentTierIndex = currentTier === 'siteminder-plus' ? 1 : 0;
   // Tier switch lives right in the comparison grid too (v3, Robert: "shall
   // we have activate buttons on the SM / SM+ grid as well") — same
@@ -1780,11 +1810,11 @@ function renderProductCards(pathIndex, tierComparison, currentTier, products) {
                             // Booking) — same AI setup stepper as the
                             // Direct Booking card's own Activate button,
                             // not an instant flip.
-                            `<button type="button" class="product-tier-comparison__switch-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr('Direct Booking')}" data-wizard-toggle-key="direct-booking">${tr('Switch to this')}</button>`
+                            `<button type="button" class="product-tier-comparison__switch-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr('Direct Booking')}" data-wizard-toggle-key="direct-booking" ${isAdmin ? '' : 'disabled'}>${tr('Switch to this')}</button>`
                           : // Switching back to base SiteMinder is a
                             // downgrade/removal — instant, same as Remove,
                             // no wizard needed to deactivate.
-                            `<button type="button" class="product-tier-comparison__switch-btn" data-toggle-product="direct-booking">${tr('Switch to this')}</button>`
+                            `<button type="button" class="product-tier-comparison__switch-btn" data-toggle-product="direct-booking" ${isAdmin ? '' : 'disabled'}>${tr('Switch to this')}</button>`
                     }
                   </th>
                 `
@@ -1827,8 +1857,8 @@ function renderProductCards(pathIndex, tierComparison, currentTier, products) {
               }
               ${
                 p.active
-                  ? `<button type="button" class="product-card__action product-card__action--remove" data-toggle-product="${p.key}">${tr('Remove')}</button>`
-                  : `<button type="button" class="product-card__action product-card__action--activate" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(p.name)}" data-wizard-toggle-key="${p.key}">${tr('Activate')}</button>`
+                  ? `<button type="button" class="product-card__action product-card__action--remove" data-toggle-product="${p.key}" ${isAdmin ? '' : 'disabled'}>${tr('Remove')}</button>`
+                  : `<button type="button" class="product-card__action product-card__action--activate" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(p.name)}" data-wizard-toggle-key="${p.key}" ${isAdmin ? '' : 'disabled'}>${tr('Activate')}</button>`
               }
             </div>
           </div>
@@ -1836,8 +1866,18 @@ function renderProductCards(pathIndex, tierComparison, currentTier, products) {
       `
     )
     .join('');
+  // Message-only, no named admins (Robert raised naming names, then talked
+  // himself out of it: "maybe we can even show names? or maybe that's too
+  // much" — no admin-directory concept exists anywhere else in this
+  // prototype to draw real names from, so inventing one just for this one
+  // banner isn't worth it). Copy stays close to Robert's own original line
+  // — clear over clever, once he saw the alternatives.
+  const roleBanner = isAdmin
+    ? ''
+    : `<div class="role-banner">${tr('To make changes to your account, please speak to one of your administrators.')}</div>`;
   return `
     <div class="manage-products">
+      ${roleBanner}
       ${tierTable}
       <div class="product-cards">${cards}</div>
     </div>
@@ -1918,8 +1958,21 @@ function wireProductCards() {
 // per Robert's own instinct that this might be "the standard form
 // presentation" for a bounded task, not a one-off.
 function renderProductDetail(product) {
+  // `data-wizard-toggle-key` was missing here (a real, pre-existing bug —
+  // Robert: "oh you are right - i thought it was working last time we
+  // looked") — without it, wizard.data.toggleKey is undefined on
+  // completion, so onComplete's `if (data.toggleKey) activateProduct(...)`
+  // silently skips the activation step: the wizard finishes, returns to
+  // Manage products, but the product never actually turns on. The card's
+  // own Activate button always had this wired correctly; this page's
+  // "Set up" (reached via Learn more, or a direct/deep link — Robert: "we
+  // might deep link to it") did not.
+  const roleBanner = state.isAdmin
+    ? ''
+    : `<div class="role-banner">${tr('To make changes to your account, please speak to one of your administrators.')}</div>`;
   return `
     <div class="product-detail">
+      ${roleBanner}
       <p class="product-detail__tagline">${tr(product.tagline)}</p>
       <p class="product-detail__value-prop">${tr(product.valueProp)}</p>
       <div class="product-detail__benefits">
@@ -1930,7 +1983,7 @@ function renderProductDetail(product) {
       </div>
       <div class="product-detail__footer">
         <span class="product-detail__billing">${tr(product.billing)}</span>
-        <button type="button" class="product-detail__setup-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(product.name)}">
+        <button type="button" class="product-detail__setup-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(product.name)}" data-wizard-toggle-key="${product.key}" ${state.isAdmin ? '' : 'disabled'}>
           ${tr('Set up')}
         </button>
       </div>
@@ -3052,6 +3105,17 @@ document.querySelectorAll('[data-language]').forEach((el) => {
   });
 });
 
+document.querySelectorAll('[data-user-role]').forEach((el) => {
+  el.addEventListener('click', () => {
+    state.isAdmin = el.dataset.userRole === 'admin';
+    document.querySelectorAll('[data-user-role]').forEach((b) => {
+      b.classList.toggle('is-active', b === el);
+    });
+    savePrototypeSettings();
+    render();
+  });
+});
+
 // Activating Multi-Property from a
 // Manage products card (see setProductActive) auto-switches
 // state.propertyCount to 'multiple' (Robert: "adding it automatically
@@ -3078,6 +3142,9 @@ document.querySelectorAll('[data-system-count]').forEach((b) => {
 });
 document.querySelectorAll('[data-language]').forEach((b) => {
   b.classList.toggle('is-active', b.dataset.language === state.language);
+});
+document.querySelectorAll('[data-user-role]').forEach((b) => {
+  b.classList.toggle('is-active', (b.dataset.userRole === 'admin') === state.isAdmin);
 });
 
 // Wires the theme-toggle skeleton's buttons — called per-render (from

@@ -121,6 +121,15 @@
     </div>
 
     <div class="debug-panel__group">
+      <div class="debug-panel__label">User role</div>
+      <div class="debug-panel__hint">Non-admin: Manage products shows a banner and disables Activate (Learn more still works)</div>
+      <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="User role">
+        <button class="is-active" data-user-role="admin">Admin</button>
+        <button data-user-role="non-admin">Non-admin</button>
+      </div>
+    </div>
+
+    <div class="debug-panel__group">
       <div class="debug-panel__label">Number of properties</div>
       <div class="debug-panel__hint">Independent of account type</div>
       <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="Property count">
