@@ -1920,6 +1920,42 @@ a { color: inherit; }
   opacity: 0.4;
 }
 
+/* Release note detail page (v3) — reached from a Notifications inbox row
+   (see renderReleaseNote). Real headline/body/link — the one exception to
+   Notifications' otherwise titleless-skeleton content, same width cap and
+   type scale as .product-detail for visual consistency with the app's
+   other "detail page reached from a list" pattern. */
+.release-note {
+  max-width: 640px;
+}
+
+.release-note__headline {
+  margin: 0 0 12px;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.release-note__body {
+  margin: 0 0 20px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.release-note__link {
+  display: inline-block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.release-note__link:hover {
+  color: var(--text-secondary);
+}
+
 /* Contextual insight widgets above a `records` picker (e.g. Rate plans) —
    "we have these contextual insights around the place rather than just
    lists." Purely decorative spacing wrapper; the widgets themselves reuse
@@ -2377,6 +2413,21 @@ a.wf-list__row:hover {
   border-radius: 4px;
   background: var(--border-strong);
   opacity: 0.6;
+}
+
+/* Release notes' own real-headline row (renderRecordsInboxPanel) — the one
+   deliberate exception to this inbox's titleless-skeleton rule, since a
+   release note's whole job is to be read. */
+.wf-list__row-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.wf-list--inbox .wf-list__row.is-active .wf-list__row-title,
+.wf-list--inbox a.wf-list__row:hover .wf-list__row-title {
+  color: var(--text);
 }
 
 .wf-list--inbox .wf-list__row-snippet-skel {

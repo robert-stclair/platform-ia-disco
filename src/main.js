@@ -927,13 +927,23 @@ function renderRecordsInboxPanel(data) {
   // routing/selection via `data-inbox-name`), it just never renders as
   // visible text — a skeleton bar stands in for the title, same as the
   // snippet line already does for the preview.
+  //
+  // Release notes are the one deliberate exception (`content
+  // .releaseNoteHeadlines`, a Set — see NOTIFICATIONS_ITEMS' own comment):
+  // their whole job is to be read, so the row shows its real headline
+  // instead of a skeleton bar. Every other row (password expiry, mentions,
+  // etc.) is completely unaffected.
   const html = `<ul class="wf-list${content.showSnippet ? ' wf-list--snippets' : ''} wf-list--inbox">${content.names
     .map((name) => {
+      const isReleaseNote = content.releaseNoteHeadlines?.has(name);
       const snippet = content.showSnippet ? `<div class="wf-list__row-snippet-skel"></div>` : '';
+      const title = isReleaseNote
+        ? `<div class="wf-list__row-title">${tr(name)}</div>`
+        : `<div class="wf-list__row-title-skel"></div>`;
       return `
         <li>
           <a href="#" class="wf-list__row${name === selectedName ? ' is-active' : ''}" data-inbox-name="${name}">
-            <div class="wf-list__row-title-skel"></div>
+            ${title}
             ${snippet}
           </a>
         </li>
@@ -1197,6 +1207,7 @@ function renderCanvas(data) {
     canvasEl.innerHTML = `${renderCanvasHeader(rootItem.label, null, scopeSwitcherMode)}<div class="sketch">${detail.bodyHtml}</div>`;
     wireScopeSwitcher();
     wirePathLinks();
+    wireCrossSectionLinks();
     wireThemeToggle();
     wireWizardOpenButtons();
     return;
@@ -2001,6 +2012,25 @@ function renderProductDetail(product) {
   `;
 }
 
+// Release note detail page (v3, reached by opening one from the
+// Notifications inbox — see RELEASE_NOTES/buildReleaseNoteNode in
+// nav-data.js). Real headline + real body copy, unlike every other
+// notification's shared titleless-skeleton NOTIFICATION_DETAIL_NODE — a
+// release note's whole job is to be read. `note.linkTo` is a genuine
+// CROSS-SECTION jump (e.g. Notifications -> Configuration > Manage
+// products), which the existing data-path-key mechanism can't do (it only
+// ever changes state.path, never state.section) — `data-cross-section-to`
+// is wired separately, see wireCrossSectionLinks below.
+function renderReleaseNote(note) {
+  return `
+    <div class="release-note">
+      <h2 class="release-note__headline">${tr(note.headline)}</h2>
+      <p class="release-note__body">${tr(note.body)}</p>
+      <a href="#" class="release-note__link" data-cross-section-to="${note.linkTo[0]}:${note.linkTo[1]}">${tr(note.linkLabel)} →</a>
+    </div>
+  `;
+}
+
 // `display: 'cards'` (Configuration > Properties, multi-property scope) —
 // each property gets its own clickable name heading directly on THIS
 // page, immediately followed by a small dashboard-cards summary for that
@@ -2222,6 +2252,28 @@ function wirePathLinks() {
       // canvas link this generic mechanism handles.
       keys.forEach((k) => clearAttention(k));
       keys.forEach((k, i) => select(depth + i, k));
+      render();
+    });
+  });
+}
+
+// Cross-SECTION jump (v3, release notes' own link — Robert: "with actual
+// inline links as well"). `data-path-key`/`select()` only ever change
+// state.path WITHIN the current section — they have no way to also switch
+// state.section, so a link from Notifications to Configuration's Manage
+// products genuinely needed its own small mechanism, not a reuse of that
+// one. `data-cross-section-to="section:itemKey"` sets both state.section
+// AND state.path[0] together, then renders — the same two pieces of state
+// a normal rail-item click (switchToUtilitySection) changes, just with a
+// specific destination item instead of always resetting to the section's
+// own default.
+function wireCrossSectionLinks() {
+  canvasEl.querySelectorAll('[data-cross-section-to]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const [section, itemKey] = el.dataset.crossSectionTo.split(':');
+      state.section = section;
+      state.path = [itemKey];
       render();
     });
   });
@@ -2573,6 +2625,7 @@ function renderHome(rows) {
 function renderSketch(content) {
   if (content.sketch === 'home') return renderHome(content.rows);
   if (content.sketch === 'product-detail') return renderProductDetail(content.product);
+  if (content.sketch === 'release-note') return renderReleaseNote(content.note);
   if (content.sketch === 'sections') return renderSectionsSketch(content.sections);
   if (content.sketch === 'media') {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;

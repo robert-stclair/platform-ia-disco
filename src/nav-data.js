@@ -806,6 +806,68 @@ const SAMPLE_NOTIFICATIONS = [
   'A new login was detected on your account',
 ];
 
+// Release notes AS a notification type (v3, Robert: "maybe its just a type
+// of notification?" — after first sketching a whole separate "what's new"
+// surface, then dialing back once the fit was pointed out: these are
+// account/product-level concerns exactly like password-expiry or a
+// mentioned comment, not property/portfolio ones, so they belong in the
+// SAME inbox, not a parallel mechanism). Copy is deliberately modest and
+// concrete — Robert's own direction after reviewing the "Platform 2.0 —
+// concept press release" Confluence doc: "thats too visionary .. dial back
+// to some genuine new features we have launched in a hypothetical future
+// state." Matches MANAGE_PRODUCTS_CATALOG's own plain benefit-statement
+// voice (e.g. DR+'s "Continuously identifies and recommends better pricing
+// decisions..."), not press-release language — no "reimagining," no named
+// [Product Lead] quotes, just what shipped and why it's useful.
+//
+// Unlike SAMPLE_NOTIFICATIONS (deliberately titleless-skeleton everywhere —
+// "I don't want words in there, just skeleton lines"), a release note's
+// whole job is to be READ: real headline, real body, and (per Robert: "with
+// actual inline links as well") a real link to where the feature actually
+// lives — `linkTo: [section, itemKey]` is a genuine CROSS-SECTION jump
+// (Notifications -> Configuration, say), which the existing data-path-key
+// mechanism can't do (it only ever changes state.path, never state.section)
+// — see wireCrossSectionLinks in main.js for the small mechanism this
+// needed on top of that.
+const RELEASE_NOTES = [
+  {
+    headline: 'DR+ now explains every recommendation before you accept it',
+    body: 'Each pricing recommendation now shows the specific signal behind it — a compset move, a demand spike, a pace gap — instead of just a suggested number. Accept, adjust, or ignore each one individually; nothing changes on its own.',
+    linkLabel: 'Set up DR+',
+    linkTo: ['configuration', 'manage-products'],
+  },
+  {
+    headline: 'Distribution: yield rules now show which properties are using them',
+    body: "Every yield rule's own page now lists how many properties currently have it applied, so you can see its real reach before changing or retiring it — no more checking property-by-property.",
+    linkLabel: 'View yield rules',
+    linkTo: ['distribution', 'yield-rules'],
+  },
+  {
+    headline: 'Rate plans: see how many properties use each one before you touch it',
+    body: "Every rate plan's own page now shows a real usage count across your portfolio, the same way yield rules already do — so you can check a rate plan's reach before editing or retiring it, not after.",
+    linkLabel: 'View rate plans',
+    // `rate-plans` is always present (unconditional, unlike
+    // `group-rate-plans` which only exists when hasMultiProperty is on) —
+    // deliberately chosen so this link works regardless of debug-panel
+    // state, since a release note demoing a broken link would defeat the
+    // point.
+    linkTo: ['distribution', 'rate-plans'],
+  },
+];
+
+// Real per-note detail node — real headline, real body, and a real
+// cross-section link (see wireCrossSectionLinks in main.js), unlike
+// NOTIFICATION_DETAIL_NODE's shared titleless skeleton. `key` is prefixed
+// so it can't collide with a real SAMPLE_NOTIFICATIONS string that happened
+// to match a release note's own headline.
+function buildReleaseNoteNode(note) {
+  return {
+    key: `release-note-${note.headline}`,
+    label: note.headline,
+    content: { type: 'sketch', sketch: 'release-note', note },
+  };
+}
+
 const NOTIFICATIONS_ITEMS = {
   // `customPanel: 'records-inbox'` — a genuinely different L2 shape from
   // every other section: an EMAIL-CLIENT split, not the usual "L2 = list of
@@ -829,7 +891,26 @@ const NOTIFICATIONS_ITEMS = {
       // every other `records` caller uses: "have the summaries stacked in
       // the L2 panel and the detail in the main panel - just like an email
       // browser might have it."
-      content: { type: 'records', names: SAMPLE_NOTIFICATIONS, detailNode: NOTIFICATION_DETAIL_NODE, showSnippet: true },
+      //
+      // Release notes (RELEASE_NOTES) are mixed straight into the same
+      // `names` list, identified by their real headline text — a release
+      // note's own detail node (buildReleaseNoteNode) is real-copy, unlike
+      // every other row's shared titleless-skeleton NOTIFICATION_DETAIL_NODE
+      // (see RELEASE_NOTES' own comment for why this one type needed to
+      // break that rule). `releaseNoteHeadlines` (a Set) is what
+      // renderRecordsInboxPanel checks to show a real headline INSTEAD of a
+      // skeleton bar for just these rows, in the L2 list too — not just on
+      // the detail page.
+      content: {
+        type: 'records',
+        names: [...SAMPLE_NOTIFICATIONS, ...RELEASE_NOTES.map((n) => n.headline)],
+        detailNode: (name) => {
+          const note = RELEASE_NOTES.find((n) => n.headline === name);
+          return note ? buildReleaseNoteNode(note) : NOTIFICATION_DETAIL_NODE;
+        },
+        releaseNoteHeadlines: new Set(RELEASE_NOTES.map((n) => n.headline)),
+        showSnippet: true,
+      },
       // `scopeSwitcher: 'multi-select'` (user: "notifications could prob
       // have the switcher as well") — added for consistency with every
       // other section, though note the tension this creates: the comment
