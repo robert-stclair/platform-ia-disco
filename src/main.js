@@ -198,7 +198,7 @@ const savedPrototypeSettings = loadPrototypeSettings();
 // Recommendations, Dynamic pricing). Kept as one list so main.js is the
 // single source of truth for "what's currently illustrating a live issue,"
 // not scattered flags on the tree data itself.
-const ATTENTION_KEYS = ['health-check', 'recommendations', 'dynamic-pricing', 'room-types'];
+const ATTENTION_KEYS = ['health-check', 'recommendations', 'dynamic-pricing', 'room-types', 'notifications'];
 
 const state = {
   accountType: savedPrototypeSettings.accountType ?? 'SM', // 'SM' | 'LH' — independent of propertyCount; only SM has real content so far. MP used to be a 3rd value here — now `hasMultiProperty` below, an add-on like the others (Robert: "lets make Multi-Property an add on like the others").
@@ -338,6 +338,7 @@ const railBrandEl = document.getElementById('railBrand');
 const railUserEl = document.getElementById('railUser');
 const railAssistantEl = document.getElementById('railAssistant');
 const railNotificationsEl = document.getElementById('railNotifications');
+const railNotificationsBadgeEl = document.getElementById('railNotificationsBadge');
 const panelEl = document.getElementById('secondaryPanel');
 const canvasEl = document.getElementById('canvas');
 const mobileTopbarTitleEl = document.getElementById('mobileTopbarTitle');
@@ -739,6 +740,14 @@ function renderRail(content) {
   railUserEl.classList.toggle('is-active', state.section === 'my-account');
   railAssistantEl.classList.toggle('is-active', state.section === 'assistant');
   railNotificationsEl.classList.toggle('is-active', state.section === 'notifications');
+  // Notifications' own badge (v3, Robert: "can you make the badge work if
+  // i have clicked all those notifications? .. or actually just if i click
+  // the rail icon will do") — same live state.attention mechanism as every
+  // other rail badge, just on the one rail button that isn't in
+  // getRailItems' own list (it's a fixed utility button in index.html, not
+  // a section), so it needs its own explicit toggle here rather than
+  // falling out of the `items.map()` loop above for free.
+  railNotificationsBadgeEl.hidden = !state.attention.has('notifications');
 }
 
 // Switches to any section by key — state.section + resetPath + render, the
@@ -752,6 +761,10 @@ function switchToUtilitySection(key) {
   if (state.section === key) return;
   state.section = key;
   resetPath();
+  // Clears Notifications' own badge on visit (harmless no-op for
+  // 'my-account'/'assistant', which are never in state.attention) — same
+  // "safe to call unconditionally" convention wirePathLinks already uses.
+  clearAttention(key);
   render();
 }
 
@@ -3071,15 +3084,20 @@ function renderMobileDrawer() {
     { key: 'notifications', label: 'Notifications' },
     { key: 'my-account', label: 'My account' },
   ]
-    .map(
-      (u) => `
+    .map((u) => {
+      // Same live badge as the desktop rail's own railNotificationsBadgeEl —
+      // 'notifications' is the only one of these 3 keys ever in
+      // state.attention, so this is a no-op badge for the other two.
+      const badge = state.attention.has(u.key) ? `<span class="mobile-drawer__item-badge" aria-hidden="true"></span>` : '';
+      return `
         <li>
           <button class="mobile-drawer__item${u.key === state.section ? ' is-active' : ''}" data-drawer-section="${u.key}">
             ${tr(u.label)}
+            ${badge}
           </button>
         </li>
-      `
-    )
+      `;
+    })
     .join('');
   mobileDrawerListEl.innerHTML = sectionRows + `<li class="mobile-drawer__divider"></li>` + utilityRows;
   mobileDrawerListEl.querySelectorAll('[data-drawer-section]').forEach((el) => {
