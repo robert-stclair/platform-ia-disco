@@ -1814,9 +1814,18 @@ a { color: inherit; }
   background: var(--surface-sunken);
 }
 
+/* Activate and Remove need to read as EQUALLY disabled here (Robert:
+   "activate looks less disabled than remove for some reason") — Activate's
+   enabled-state color is `--text` (full dark, "activate can be stronger"
+   visual-hierarchy call) while Remove's is already `--text-muted`
+   (.product-card__action--remove); the same opacity applied to two
+   different starting colors doesn't land the same, so `color` is pinned
+   explicitly here rather than relying on opacity alone to flatten the
+   difference. */
 .product-card__action:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  color: var(--text-muted);
+  opacity: 0.6;
 }
 
 .product-card__action:disabled:hover {
