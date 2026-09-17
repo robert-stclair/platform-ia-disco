@@ -1606,15 +1606,24 @@ a { color: inherit; }
    informational, not an alert: a plain neutral surface, NOT the red
    `--alert`/`--alert-tint` tokens (.tile-tip-banner) — those are reserved
    for "something needs fixing," and a non-admin viewing this page isn't a
-   problem to resolve. */
+   problem to resolve.
+   FULL-WIDTH, its own strip directly under .canvas-header (rendered by
+   render() itself, not inside renderProductCards/renderProductDetail's own
+   markup) — Robert: "bit messy - do you think we should have a full width
+   banner under the header row?" — a first version lived inside
+   `.product-detail`'s 640px column and read as one more paragraph of page
+   content rather than a page-level notice. Horizontal padding matches
+   `.canvas-header`'s own 24px so the banner's text lines up with the
+   breadcrumb/title above it, even though the banner itself spans edge to
+   edge. */
 .role-banner {
   font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  flex-shrink: 0;
 }
 
 .product-tier-comparison table {

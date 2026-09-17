@@ -1215,7 +1215,24 @@ function renderCanvas(data) {
   // old two-row switcherHtml + breadcrumbHtml stack. See
   // renderCanvasHeader's own comment for how the title/breadcrumb share
   // one slot.
-  canvasEl.innerHTML = renderCanvasHeader(rootItem.label, trail, scopeSwitcherMode) + `<div class="sketch">${bodyHtml}</div>`;
+  //
+  // Non-admin role banner (v3) — rendered HERE, full-width, its own strip
+  // between the header and `.sketch`, NOT inside renderProductCards/
+  // renderProductDetail's own markup (Robert: "bit messy - do you think we
+  // should have a full width banner under the header row?" — the first
+  // version was capped to .product-detail's 640px column, reading as one
+  // more paragraph of page content rather than a page-level notice, same
+  // visual language as the app's other full-bleed header-adjacent bars).
+  // `rootItem.key === 'manage-products'` covers BOTH the card grid and any
+  // of its product detail pages — resolveChain walks from this same
+  // rootItem either way, so one check here covers both without threading a
+  // flag through renderProductCards/renderProductDetail individually.
+  const roleBanner =
+    rootItem.key === 'manage-products' && !state.isAdmin
+      ? `<div class="role-banner">${tr('To make changes to your account, please speak to one of your administrators.')}</div>`
+      : '';
+  canvasEl.innerHTML =
+    renderCanvasHeader(rootItem.label, trail, scopeSwitcherMode) + roleBanner + `<div class="sketch">${bodyHtml}</div>`;
   wireScopeSwitcher();
   wirePathLinks();
   wireBreadcrumb();
@@ -1866,18 +1883,8 @@ function renderProductCards(pathIndex, tierComparison, currentTier, products) {
       `
     )
     .join('');
-  // Message-only, no named admins (Robert raised naming names, then talked
-  // himself out of it: "maybe we can even show names? or maybe that's too
-  // much" — no admin-directory concept exists anywhere else in this
-  // prototype to draw real names from, so inventing one just for this one
-  // banner isn't worth it). Copy stays close to Robert's own original line
-  // — clear over clever, once he saw the alternatives.
-  const roleBanner = isAdmin
-    ? ''
-    : `<div class="role-banner">${tr('To make changes to your account, please speak to one of your administrators.')}</div>`;
   return `
     <div class="manage-products">
-      ${roleBanner}
       ${tierTable}
       <div class="product-cards">${cards}</div>
     </div>
@@ -1967,12 +1974,15 @@ function renderProductDetail(product) {
   // own Activate button always had this wired correctly; this page's
   // "Set up" (reached via Learn more, or a direct/deep link — Robert: "we
   // might deep link to it") did not.
-  const roleBanner = state.isAdmin
-    ? ''
-    : `<div class="role-banner">${tr('To make changes to your account, please speak to one of your administrators.')}</div>`;
+  //
+  // The role banner itself is NOT rendered here — see render()'s own
+  // `roleBanner` (Robert: "bit messy - do you think we should have a full
+  // width banner under the header row?") — this page's `.product-detail`
+  // column is only 640px wide, so a banner rendered inside it read as one
+  // more paragraph of content rather than a page-level notice. render()
+  // renders it once, full-width, for both this page and the card grid.
   return `
     <div class="product-detail">
-      ${roleBanner}
       <p class="product-detail__tagline">${tr(product.tagline)}</p>
       <p class="product-detail__value-prop">${tr(product.valueProp)}</p>
       <div class="product-detail__benefits">
