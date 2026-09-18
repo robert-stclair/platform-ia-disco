@@ -1030,6 +1030,12 @@ const HOME_CONTENT = {
       // Forecasting page. 3 separate cards (Robert: "make forecasting a few
       // digets" / "widgets") — matches Performance row's own rhythm of
       // distinct cards rather than one wide card with 3 stacked stats.
+      // `drPlusBadge: true` (v3, Robert: revisits the "DR+ tier badge"
+      // idea logged as rejected above on the value-tracker row — this time
+      // as a small colored tag next to the row heading, not a value-prop
+      // replacement) — forecasting (pace/projections) is genuinely DR+-
+      // powered content, worth attributing.
+      drPlusBadge: true,
       viewAll: { linkTo: ['my-dashboards', 'Forecasting'] },
       content: {
         type: 'sketch',
@@ -1047,6 +1053,11 @@ const HOME_CONTENT = {
       // performance") — jumps to Recommendations' new "Performance" tab,
       // which shows the fuller accepted-recommendation value history behind
       // this row's own 3-item summary.
+      // `drPlusBadge: true` (v3) — Robert revisited the earlier "not a DR+
+      // tier badge/label" decision (see this row's own content comment
+      // below): a small tag next to the heading, alongside the row's own
+      // real-$ value copy, not instead of it.
+      drPlusBadge: true,
       viewAll: { linkTo: ['recommendations', 'performance'] },
       content: {
         type: 'sketch',

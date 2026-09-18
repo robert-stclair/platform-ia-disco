@@ -2749,9 +2749,16 @@ function renderHome(rows) {
       // its individual groups' links). Renders as the same bare chevron
       // Priority actions uses, not repeated "View all" text.
       const viewAll = row.viewAll ? renderViewAllChevron(`0:${row.viewAll.linkTo[0]}:${row.viewAll.linkTo[1]}`) : '';
+      // `row.drPlusBadge` (v3, Forecasting/Tracking past recommendations
+      // performance) — a small colored tag, not the muted greyscale
+      // `.product-card__owned-badge` pill everywhere else uses: DR+ is the
+      // one deliberate brand-color exception alongside `--alert` (see
+      // `--dr-plus` token), scoped narrowly to this one badge rather than
+      // a general accent color for the app.
+      const drPlusBadge = row.drPlusBadge ? `<span class="home-page__dr-plus-badge">${tr('DR+')}</span>` : '';
       const heading =
         row.heading || viewAll
-          ? `<div class="home-page__row-heading-bar">${row.heading ? `<div class="home-page__row-heading">${tr(row.heading)}</div>` : '<span></span>'}${viewAll}</div>`
+          ? `<div class="home-page__row-heading-bar">${row.heading ? `<div class="home-page__row-heading">${tr(row.heading)}${drPlusBadge}</div>` : '<span></span>'}${viewAll}</div>`
           : '';
       return `
         <div class="home-page__row">
