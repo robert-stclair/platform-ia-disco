@@ -190,14 +190,17 @@ const BASE_RAIL_ITEMS = [
 
 // Guest messaging (v3, Robert: "when they have it lets add a rail item
 // which is the guest messaging feature .. give it a good icon for hotel
-// chat with guest and can just look like some sort of wireframe chat UI")
-// — a genuine top-level rail item, not nested under Operations' existing
-// "Guest communications" stub (BASE_RAIL_ITEMS' own comment) — a bigger IA
-// statement than a Config-only add-on card, but that's the explicit ask.
-// Only shown once Guest Engagement is active (enabledProducts includes
-// 'guest-engagement') — same "no item at all until active" convention as
-// Channels Plus/Metasearch's own Configuration items.
-const GUEST_MESSAGING_RAIL_ITEM = { key: 'guest-messaging', label: 'Guest messaging', icon: 'guestMessaging' };
+// chat with guest and can just look like some sort of wireframe chat UI"
+// — then: "put the rail item down the bottom near the notification") —
+// NOT one of the main section icons (getRailItems/BASE_RAIL_ITEMS below
+// stay untouched) — it lives in the rail's own utility group instead,
+// alongside AI assistant/Notifications, same "separate mode switch, not a
+// section" treatment those two already get (see renderRailUtility in
+// main.js). `key: 'guest-messaging'` still needs a real getContent tree
+// entry (see getContent's own comment) since it routes through
+// state.section/switchToUtilitySection exactly like 'assistant'/
+// 'notifications' do.
+export const GUEST_MESSAGING_KEY = 'guest-messaging';
 
 // Direct Booking is tier-gated (v3, real packaging confirmed against
 // siteminder.com/pricing) — comes with SiteMinder Plus, driven directly by
@@ -386,17 +389,13 @@ function buildProductDetailNode(product) {
 // item (CHANGE-QUEUE.md item 5) — the first case of the rail itself
 // varying by account type, not just what's inside L2/L3. LH gets Front
 // desk prepended, first/topmost, ahead of the same four items everyone
-// else gets. `hasGuestEngagement` (v3, optional, defaults false — same
-// "don't accidentally show it" reasoning as getContent's own hasDrPlus/
-// hasMultiProperty defaults would use for an ADD-ON, if this weren't a
-// plain boolean) inserts Guest messaging right before Configuration.
-export function getRailItems(accountType, hasGuestEngagement = false) {
-  const items = accountType === 'LH' ? [{ key: 'front-desk', label: 'Front desk', icon: 'frontDesk' }, ...BASE_RAIL_ITEMS] : [...BASE_RAIL_ITEMS];
-  if (hasGuestEngagement) {
-    const configIndex = items.findIndex((i) => i.key === 'configuration');
-    items.splice(configIndex, 0, GUEST_MESSAGING_RAIL_ITEM);
+// else gets. Guest messaging is NOT one of these — see GUEST_MESSAGING_KEY's
+// own comment; it lives in the rail's utility group instead.
+export function getRailItems(accountType) {
+  if (accountType === 'LH') {
+    return [{ key: 'front-desk', label: 'Front desk', icon: 'frontDesk' }, ...BASE_RAIL_ITEMS];
   }
-  return items;
+  return BASE_RAIL_ITEMS;
 }
 
 // EXPLORATORY — sample property names for the generic `records` pattern
@@ -2639,16 +2638,18 @@ export function getContent(accountType, propertyCount, scope, enabledProducts = 
     };
   }
   // Guest messaging (v3, Robert: "when they have it lets add a rail item
-  // which is the guest messaging feature") — same "added here, not inside
-  // buildSmContentTree" treatment as Front desk above, and the same
-  // `noPanel: true` full-width single-page shape (a chat UI wants the
-  // whole canvas, same reasoning as Front desk's calendar). Gated on
-  // enabledProducts, matching getRailItems' own `hasGuestEngagement` gate
-  // (see the rail-items call sites in main.js) — both must agree on the
-  // same real state or the rail item and its content would silently
-  // desync (a rail item pointing at content that doesn't exist).
+  // which is the guest messaging feature .. put the rail item down the
+  // bottom near the notification") — reached via the rail's OWN utility
+  // group (see renderRailUtility in main.js), not a rail SECTION — same
+  // "added here, not inside buildSmContentTree" treatment as My account/
+  // Notifications/AI assistant above, and the same `noPanel: true` full-
+  // width single-page shape Front desk's calendar uses (a chat UI wants
+  // the whole canvas). Gated on enabledProducts, matching
+  // renderRailUtility's own check — both must agree on the same real
+  // state or the utility button would point at content that doesn't
+  // exist.
   if (enabledProducts.includes('guest-engagement')) {
-    tree['guest-messaging'] = {
+    tree[GUEST_MESSAGING_KEY] = {
       noPanel: true,
       items: [{ key: 'chat', label: 'Guest messaging', active: true, content: { type: 'sketch', sketch: 'guest-chat' } }],
     };

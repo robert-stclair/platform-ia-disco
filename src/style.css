@@ -663,6 +663,15 @@ a { color: inherit; }
   position: relative;
 }
 
+/* Guest messaging's own hide/show (v3, gated on Guest Engagement being
+   active — see renderRail's railGuestMessagingEl.hidden toggle) needs an
+   explicit override: .rail-item's own `display: flex` above already beats
+   the `[hidden]` UA-stylesheet rule (display: none) on specificity, same
+   fix .wizard__btn--secondary[hidden] uses elsewhere in this file. */
+.rail-item[hidden] {
+  display: none;
+}
+
 .rail-item::before {
   content: '';
   position: absolute;

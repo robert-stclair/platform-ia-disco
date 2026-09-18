@@ -9,6 +9,7 @@ import {
   ALL_DISTRIBUTION_CHANNELS,
   PRODUCT_KEYS,
   MANAGE_PRODUCTS_CATALOG,
+  GUEST_MESSAGING_KEY,
 } from './nav-data.js';
 import { RAIL_ICONS, BRAND_MARKS } from './icons.js';
 
@@ -337,6 +338,7 @@ function resetPath() {
 const railEl = document.getElementById('rail');
 const railBrandEl = document.getElementById('railBrand');
 const railUserEl = document.getElementById('railUser');
+const railGuestMessagingEl = document.getElementById('railGuestMessaging');
 const railAssistantEl = document.getElementById('railAssistant');
 const railNotificationsEl = document.getElementById('railNotifications');
 const railNotificationsBadgeEl = document.getElementById('railNotificationsBadge');
@@ -712,7 +714,7 @@ function renderRail(content) {
   const brandKey = state.accountType === 'LH' ? 'LH' : 'SM';
   railBrandEl.innerHTML = BRAND_MARKS[brandKey];
   railBrandEl.title = PRODUCT_TIER_LABELS[state.accountType];
-  const items = getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement'));
+  const items = getRailItems(state.accountType);
   railEl.innerHTML = items.map((item) => {
     // Rail-level bubbling (Robert: "see how we have badges on dynamic
     // pricing and health check - therefore there should be one on the
@@ -739,6 +741,14 @@ function renderRail(content) {
   });
 
   railUserEl.classList.toggle('is-active', state.section === 'my-account');
+  // Guest messaging (v3) — hidden entirely until Guest Engagement is
+  // active, same "no item at all" convention as every other add-on-gated
+  // item, derived from the RESOLVED content tree (content?.[key]) rather
+  // than re-checking state.enabledProducts directly — one source of truth
+  // for "does this exist right now," matching how sectionHasAttention
+  // above already reads content, not raw state.
+  railGuestMessagingEl.hidden = !content?.[GUEST_MESSAGING_KEY];
+  railGuestMessagingEl.classList.toggle('is-active', state.section === GUEST_MESSAGING_KEY);
   railAssistantEl.classList.toggle('is-active', state.section === 'assistant');
   railNotificationsEl.classList.toggle('is-active', state.section === 'notifications');
   // Notifications' own badge (v3, Robert: "can you make the badge work if
@@ -756,8 +766,8 @@ function renderRail(content) {
 // for its original purpose (My account/Notifications/AI assistant, which
 // aren't in getRailItems' own list, unlike a normal rail-item click's
 // handler), but reused generically by the mobile drawer for ALL sections
-// (both getRailItems' own items AND the 3 utility ones) since it's exactly
-// the same mechanism either way.
+// (both getRailItems' own items AND the utility ones — Guest messaging
+// included) since it's exactly the same mechanism either way.
 function switchToUtilitySection(key) {
   if (state.section === key) return;
   state.section = key;
@@ -770,6 +780,13 @@ function switchToUtilitySection(key) {
 }
 
 railUserEl.addEventListener('click', () => switchToUtilitySection('my-account'));
+// Icon injected once here (static content, not re-rendered per frame,
+// unlike the main rail's own dynamically-built buttons) — same
+// RAIL_ICONS lookup those use, so Guest messaging's icon stays defined in
+// one place (icons.js) rather than hardcoded as inline SVG in index.html
+// like Assistant/Notifications' own icons are.
+railGuestMessagingEl.querySelector('.rail-item__icon').innerHTML = RAIL_ICONS.guestMessaging;
+railGuestMessagingEl.addEventListener('click', () => switchToUtilitySection(GUEST_MESSAGING_KEY));
 railAssistantEl.addEventListener('click', () => switchToUtilitySection('assistant'));
 railNotificationsEl.addEventListener('click', () => switchToUtilitySection('notifications'));
 
@@ -3262,6 +3279,7 @@ const UTILITY_SECTION_LABELS = {
   'my-account': 'My account',
   notifications: 'Notifications',
   assistant: 'AI assistant',
+  [GUEST_MESSAGING_KEY]: 'Guest messaging',
 };
 
 function renderMobileChrome(data) {
@@ -3277,7 +3295,7 @@ function renderMobileChrome(data) {
   mobileBackEl.hidden = !showBack;
   mobileMenuEl.hidden = showBack;
 
-  const items = getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement'));
+  const items = getRailItems(state.accountType);
   const currentItem = items.find((i) => i.key === state.section);
   mobileTopbarTitleEl.textContent = tr(currentItem?.label ?? UTILITY_SECTION_LABELS[state.section] ?? '');
 }
@@ -3309,7 +3327,7 @@ mobileDrawerBackdropEl.addEventListener('click', closeMobileDrawer);
 // section-switch mechanism `switchToUtilitySection` already uses for their
 // desktop rail buttons.
 function renderMobileDrawer() {
-  const items = getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement'));
+  const items = getRailItems(state.accountType);
   // Same rail-level bubbling as the desktop rail (renderRail) — recomputed
   // here rather than threaded in, since the drawer opens from its own
   // gesture (the hamburger), independent of the main render() cycle.
@@ -3339,6 +3357,11 @@ function renderMobileDrawer() {
     })
     .join('');
   const utilityRows = [
+    // Guest messaging (v3) — same "no item at all until Guest Engagement
+    // is active" gate as the desktop rail's own railGuestMessagingEl
+    // `hidden` toggle (see renderRail), derived from the same resolved
+    // content tree.
+    ...(content?.[GUEST_MESSAGING_KEY] ? [{ key: GUEST_MESSAGING_KEY, label: 'Guest messaging' }] : []),
     { key: 'assistant', label: 'AI assistant' },
     { key: 'notifications', label: 'Notifications' },
     { key: 'my-account', label: 'My account' },
@@ -3389,7 +3412,7 @@ document.querySelectorAll('[data-account-type]').forEach((el) => {
     // toggle. "make sure if i open the proto controls and change a
     // setting you update for the current view/route" (user's direction) —
     // changing a setting should react IN PLACE, not relocate the user.
-    if (!getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement')).some((i) => i.key === state.section)) {
+    if (!getRailItems(state.accountType).some((i) => i.key === state.section)) {
       state.section = 'insights';
       resetPath();
     }
