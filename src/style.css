@@ -1576,6 +1576,46 @@ a { color: inherit; }
   width: 72px;
 }
 
+/* Locked metric-group card (v3, Forecasting's DR+-only "Pace vs. comp
+   set") — the real chart preview stays visible underneath, just dimmed,
+   with a centered sell-line + "Learn more" overlay on top (Robert: "lets
+   be a bit more sell than just a lock"). Scoped to `.metric-group__stats`
+   specifically, not the whole card, so the title/DR+ tag in the header
+   stay fully legible. */
+.metric-group__preview {
+  position: relative;
+}
+
+.metric-group__preview .metric-group__stats {
+  opacity: 0.35;
+  filter: grayscale(0.3);
+}
+
+.metric-group__lock-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-align: center;
+  padding: 0 8px;
+}
+
+.metric-group__lock-teaser {
+  margin: 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.metric-group__lock-learn-more {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--dr-plus);
+}
+
 /* Value-tracking row — "Tracking past recommendations performance."
    Realized $ from ACCEPTED recommendations, not a feature/tier badge. See
    renderValueTracker. */
@@ -1655,21 +1695,26 @@ a { color: inherit; }
   color: var(--dr-plus);
 }
 
-/* Locked state — same real card/row, dimmed, cursor signals it opens Set
-   up DR+ rather than navigating through to content this account doesn't
-   have real data for. */
+/* Locked state — same real card/row, cursor signals it opens Set up DR+
+   rather than navigating through to content this account doesn't have
+   real data for. Priority actions cards/value-tracker rows dim as a
+   whole; metric-group cards dim only their chart PREVIEW (see
+   .metric-group__preview below) so the title/tag stay fully legible next
+   to the sell-line overlay. */
 .is-dr-plus-locked {
   cursor: pointer;
+}
+
+.priority-actions__card.is-dr-plus-locked {
   opacity: 0.6;
 }
 
-.is-dr-plus-locked:hover {
+.priority-actions__card.is-dr-plus-locked:hover {
   opacity: 0.8;
 }
 
 .priority-actions__card-lock,
-.metric-group.is-dr-plus-locked .metric-group__chevron,
-.value-tracker__row-lock {
+.metric-group.is-dr-plus-locked .metric-group__chevron {
   width: 14px;
   height: 14px;
   flex-shrink: 0;

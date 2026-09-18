@@ -1767,10 +1767,14 @@ function renderWireframeChart(index) {
 // only" convention as everywhere else not yet wired up.
 // `hasDrPlus` (optional): when a group carries `drPlusOnly: true` and the
 // account has no DR+, it renders locked instead of its normal clickable
-// nav-link shape — a `<div data-wizard-open>` (opens Set up DR+) rather
-// than an `<a data-path-key>` (would navigate to the real dashboard it
-// doesn't actually have real data for). See the shared DR+-gating comment
-// above renderPriorityActions.
+// nav-link shape — the real chart preview dimmed behind a centered overlay
+// (Robert: "lets be a bit more sell than just a lock - put some little
+// line in the middle of the widget with a learn more link" — a bare lock
+// icon read as too flat) with `group.teaser`'s sell line + a "Learn more"
+// link, the whole card still a `<div data-wizard-open>` (opens Set up
+// DR+) rather than an `<a data-path-key>` (would navigate to the real
+// dashboard it doesn't actually have real data for). See the shared
+// DR+-gating comment above renderPriorityActions.
 function renderMetricGroups(groups, hasDrPlus) {
   let chartIndex = 0;
   return `
@@ -1785,7 +1789,13 @@ function renderMetricGroups(groups, hasDrPlus) {
           const stats = `<div class="metric-group__stats">${group.stats.map(() => renderWireframeChart(chartIndex++)).join('')}</div>`;
           const header = `<div class="metric-group__header"><h3 class="metric-group__title">${tr(group.title)}${drPlusTag}</h3>${icon}</div>`;
           if (locked) {
-            return `<div class="metric-group is-dr-plus-locked" ${renderDrPlusLockAttrs()}>${header}${stats}</div>`;
+            const overlay = `
+              <div class="metric-group__lock-overlay">
+                <p class="metric-group__lock-teaser">${tr(group.teaser ?? 'Unlock this with DR+')}</p>
+                <span class="metric-group__lock-learn-more">${tr('Learn more')} →</span>
+              </div>
+            `;
+            return `<div class="metric-group is-dr-plus-locked" ${renderDrPlusLockAttrs()}>${header}<div class="metric-group__preview">${stats}${overlay}</div></div>`;
           }
           const pathKey = group.linkTo ? `data-path-key="0:${group.linkTo[0]}:${group.linkTo[1]}"` : '';
           return `<a href="#" class="metric-group" ${pathKey}>${header}${stats}</a>`;
@@ -1803,25 +1813,27 @@ function renderMetricGroups(groups, hasDrPlus) {
 // "Confirmed" vs. "Estimated" — mirrors the strategy doc's own distinction
 // between causally-proven and directional value, without overclaiming
 // accuracy this prototype doesn't have real data for).
-// `hasDrPlus` (optional): a `row.drPlusOnly` entry without DR+ renders
-// locked — dimmed, its status pill replaced by a lock icon, the whole row
-// clickable to open Set up DR+ (this row has no other navigation to lose,
-// unlike renderMetricGroups' own linked cards). See the shared DR+-gating
-// comment above renderPriorityActions.
-function renderValueTracker(summary, recent, hasDrPlus) {
+// `hasDrPlus` (optional): a `row.drPlusOnly` entry is DROPPED entirely
+// without DR+, not shown locked (Robert: "we wouldnt show the perf
+// tracking for DR+ items since they wouldnt have been able to accept
+// them" — unlike Forecasting's locked-but-visible cards, a recommendation
+// that was never generated for this account couldn't have been accepted
+// either way, so there's no real preview to show). `summaryNoDrPlus`
+// (optional): the honest reduced headline once those rows are filtered
+// out — falls back to `summary` if not given.
+function renderValueTracker(summary, recent, hasDrPlus, summaryNoDrPlus) {
+  const rows = hasDrPlus ? recent : recent.filter((row) => !row.drPlusOnly);
+  const headline = hasDrPlus ? summary : (summaryNoDrPlus ?? summary);
   return `
     <div class="value-tracker">
-      <p class="value-tracker__summary">${tr(summary)}</p>
+      <p class="value-tracker__summary">${tr(headline)}</p>
       <div class="value-tracker__rows">
-        ${recent
+        ${rows
           .map((row) => {
-            const locked = row.drPlusOnly && !hasDrPlus;
             const drPlusTag = row.drPlusOnly ? renderDrPlusTag() : '';
-            const status = locked
-              ? renderLockIcon('value-tracker__row-lock')
-              : `<span class="value-tracker__row-status value-tracker__row-status--${row.status === 'Confirmed' ? 'confirmed' : 'estimated'}">${tr(row.status)}</span>`;
+            const status = `<span class="value-tracker__row-status value-tracker__row-status--${row.status === 'Confirmed' ? 'confirmed' : 'estimated'}">${tr(row.status)}</span>`;
             return `
-              <div class="value-tracker__row${locked ? ' is-dr-plus-locked' : ''}" ${locked ? renderDrPlusLockAttrs() : ''}>
+              <div class="value-tracker__row">
                 <span class="value-tracker__row-title">${tr(row.title)}${drPlusTag}</span>
                 <span class="value-tracker__row-value">${tr(row.value)}</span>
                 ${status}
@@ -2866,7 +2878,7 @@ function renderSketch(content) {
     // headline text (accepted count + estimated $ this period);
     // `content.recent`: [{title, value, status}] illustrative recent
     // accepted actions.
-    return renderValueTracker(content.summary, content.recent, content.hasDrPlus);
+    return renderValueTracker(content.summary, content.recent, content.hasDrPlus, content.summaryNoDrPlus);
   }
   if (content.sketch === 'list') {
     // `starredRows` (optional): indices that get an illustrative star icon —

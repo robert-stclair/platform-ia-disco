@@ -1082,6 +1082,11 @@ function buildHomeContent(hasDrPlus) {
               // from DR+'s own market-intelligence signals, not baseline
               // PMS/booking data the other two cards use.
               drPlusOnly: true,
+              // `teaser` (v3, Robert: "lets be a bit more sell than just a
+              // lock - put some little line in the middle of the widget
+              // with a learn more link") — short sell copy overlaid on the
+              // dimmed chart preview, not just a bare lock icon.
+              teaser: 'See how you compare to your comp set',
             },
           ],
         },
@@ -1093,21 +1098,31 @@ function buildHomeContent(hasDrPlus) {
         // which shows the fuller accepted-recommendation value history
         // behind this row's own 3-item summary. Always shown — an account
         // without DR+ still accepts/tracks its OWN (non-DR+) recommendations
-        // via the diagnostics in Priority actions; only the DR+-sourced
-        // entries below are individually tagged/locked.
+        // via the diagnostics in Priority actions. Unlike Forecasting's
+        // locked-but-visible cards, DR+-sourced entries here are DROPPED
+        // entirely rather than shown locked (Robert: "we wouldnt show the
+        // perf tracking for DR+ items since they wouldnt have been able to
+        // accept them") — a locked row implies "this could have happened,"
+        // but a recommendation that was never generated for this account
+        // couldn't have been accepted either way, so there's nothing real
+        // to preview. `summaryNoDrPlus`: the honest reduced headline once
+        // the DR+ rows are filtered out (see renderValueTracker) — the
+        // full `summary`'s "4 recommendations .. $1,240" count/total would
+        // otherwise overstate what's left.
         viewAll: { linkTo: ['recommendations', 'performance'] },
         content: {
           type: 'sketch',
           sketch: 'value-tracker',
           hasDrPlus,
           summary: '4 recommendations accepted this month — an estimated $1,240 in additional revenue.',
+          summaryNoDrPlus: '1 recommendation accepted this month — an estimated $410 in additional revenue.',
           recent: [
             // Revenue/pricing recommendations — DR+'s own pricing-rec
             // engine (Robert: "tag any revenue ones as DR+").
             { title: 'Weekend surcharge, Fri 8 Aug', value: '+$180', status: 'Confirmed', drPlusOnly: true },
             { title: 'Deluxe King rate increase, 16 Oct', value: '+$25/night', status: 'Estimated', drPlusOnly: true },
             // Reopening a channel is availability/distribution, not a
-            // pricing/revenue action — left untagged.
+            // pricing/revenue action — left untagged, always shown.
             { title: 'Reopened Booking.com, 3 nights', value: '+$410', status: 'Confirmed' },
           ],
         },
