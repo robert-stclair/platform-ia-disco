@@ -1260,6 +1260,7 @@ function renderCanvas(data) {
     renderCanvasHeader(rootItem.label, trail, scopeSwitcherMode) + roleBanner + `<div class="sketch">${bodyHtml}</div>`;
   wireScopeSwitcher();
   wirePathLinks();
+  wireCrossSectionLinks();
   wireBreadcrumb();
   wireThemeToggle();
   wireWizardOpenButtons();
@@ -1608,21 +1609,17 @@ function renderViewAllChevron(pathKey) {
 // Priority actions, Forecasting's metric groups, and the value-tracker's
 // recent rows: an item with `drPlusOnly: true` always gets the small
 // colored DR+ tag (renderHome's own row-level badge is a SEPARATE, coarser
-// signal — this is per-item); on an account WITHOUT DR+ it additionally
-// renders locked — same real title/shape, dimmed, small lock icon, click
-// opens the same 'ai-setup-stepper' wizard Manage products' Activate
-// button uses (via `data-wizard-open`, seeded with DR+'s own catalog
-// entry) instead of whatever that item would normally navigate to. "They
-// see what it can do but it's locked" — a real, specific, inspectable
-// item, not a separate ad unit or empty placeholder.
+// signal — this is per-item). On an account WITHOUT DR+, Priority actions/
+// the value-tracker DROP their DR+-only items entirely (see
+// renderPriorityActions/renderValueTracker); only Forecasting's metric
+// groups render locked instead — see renderMetricGroups' own comment for
+// why its "Learn more" goes to DR+'s real Manage products detail page
+// (Robert: "make the dr plus upsell link to a learn more page not
+// straight into the wizard"), not the setup wizard directly.
 const DR_PLUS_PRODUCT = MANAGE_PRODUCTS_CATALOG.find((p) => p.key === 'dr-plus');
 
 function renderDrPlusTag() {
   return `<span class="dr-plus-tag">${tr('DR+')}</span>`;
-}
-
-function renderDrPlusLockAttrs() {
-  return `data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(DR_PLUS_PRODUCT.name)}" data-wizard-toggle-key="${DR_PLUS_PRODUCT.key}"`;
 }
 
 // Renamed from "Priority actions" (v3, Robert: "change priority actions to
@@ -1782,9 +1779,11 @@ function renderWireframeChart(index) {
 // (Robert: "lets be a bit more sell than just a lock - put some little
 // line in the middle of the widget with a learn more link" — a bare lock
 // icon read as too flat) with `group.teaser`'s sell line + a "Learn more"
-// link, the whole card still a `<div data-wizard-open>` (opens Set up
-// DR+) rather than an `<a data-path-key>` (would navigate to the real
-// dashboard it doesn't actually have real data for). See the shared
+// link. Clicking it goes to DR+'s own Manage products detail page (Robert:
+// "make the dr plus upsell link to a learn more page not straight into the
+// wizard" — a first pass opened the setup wizard directly) via
+// `data-cross-section-to`, same real page Manage products' own "Learn
+// more" text link opens, not the wizard-overlay shortcut. See the shared
 // DR+-gating comment above renderPriorityActions.
 function renderMetricGroups(groups, hasDrPlus) {
   let chartIndex = 0;
@@ -1806,7 +1805,7 @@ function renderMetricGroups(groups, hasDrPlus) {
                 <span class="metric-group__lock-learn-more">${tr('Learn more')} →</span>
               </div>
             `;
-            return `<div class="metric-group is-dr-plus-locked" ${renderDrPlusLockAttrs()}>${header}<div class="metric-group__preview">${stats}${overlay}</div></div>`;
+            return `<a href="#" class="metric-group is-dr-plus-locked" data-cross-section-to="configuration:manage-products:${tr(DR_PLUS_PRODUCT.name)}">${header}<div class="metric-group__preview">${stats}${overlay}</div></a>`;
           }
           const pathKey = group.linkTo ? `data-path-key="0:${group.linkTo[0]}:${group.linkTo[1]}"` : '';
           return `<a href="#" class="metric-group" ${pathKey}>${header}${stats}</a>`;
@@ -2368,14 +2367,18 @@ function wirePathLinks() {
 // AND state.path[0] together, then renders — the same two pieces of state
 // a normal rail-item click (switchToUtilitySection) changes, just with a
 // specific destination item instead of always resetting to the section's
-// own default.
+// own default. An optional third `:recordName` segment (v3, Home's DR+
+// "Learn more" link — see renderMetricGroups) additionally selects that
+// record within the destination item, same "extra segments" convention
+// wirePathLinks' own multi-segment data-path-key already uses — lands
+// straight on Manage products' DR+ detail page, not just its card grid.
 function wireCrossSectionLinks() {
   canvasEl.querySelectorAll('[data-cross-section-to]').forEach((el) => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
-      const [section, itemKey] = el.dataset.crossSectionTo.split(':');
+      const [section, itemKey, recordName] = el.dataset.crossSectionTo.split(':');
       state.section = section;
-      state.path = [itemKey];
+      state.path = recordName ? [itemKey, recordName] : [itemKey];
       render();
     });
   });
