@@ -2162,6 +2162,129 @@ a { color: inherit; }
   border: 1px solid var(--border);
 }
 
+/* Guest messaging (v3, Guest Engagement's own rail item) — a two-pane
+   wireframe chat UI. See renderSketch's `guest-chat` case. */
+.guest-chat {
+  display: flex;
+  height: 100%;
+  min-height: 520px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.guest-chat__threads {
+  width: 280px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--surface-sunken);
+  overflow-y: auto;
+}
+
+.guest-chat__thread {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: default;
+}
+
+.guest-chat__thread.is-active {
+  background: var(--surface);
+}
+
+.guest-chat__thread-avatar {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--border-strong);
+  opacity: 0.6;
+}
+
+.guest-chat__thread-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.guest-chat__thread-name-skel {
+  width: 70%;
+  height: 10px;
+  border-radius: 4px;
+  background: var(--border-strong);
+  opacity: 0.7;
+}
+
+.guest-chat__thread-preview-skel {
+  width: 90%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-strong);
+  opacity: 0.4;
+}
+
+.guest-chat__conversation {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.guest-chat__conversation-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.guest-chat__conversation-header .guest-chat__thread-name-skel {
+  width: 160px;
+}
+
+.guest-chat__messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.guest-chat__bubble {
+  height: 34px;
+  border-radius: 14px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+.guest-chat__bubble--in {
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.guest-chat__bubble--out {
+  align-self: flex-end;
+  background: var(--dr-plus-tint);
+  border-color: transparent;
+  border-bottom-right-radius: 4px;
+}
+
+.guest-chat__input-skel {
+  flex-shrink: 0;
+  margin: 16px 20px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
 .wf-list {
   list-style: none;
   margin: 24px 0;

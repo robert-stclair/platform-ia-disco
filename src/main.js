@@ -712,7 +712,7 @@ function renderRail(content) {
   const brandKey = state.accountType === 'LH' ? 'LH' : 'SM';
   railBrandEl.innerHTML = BRAND_MARKS[brandKey];
   railBrandEl.title = PRODUCT_TIER_LABELS[state.accountType];
-  const items = getRailItems(state.accountType);
+  const items = getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement'));
   railEl.innerHTML = items.map((item) => {
     // Rail-level bubbling (Robert: "see how we have badges on dynamic
     // pricing and health check - therefore there should be one on the
@@ -2944,6 +2944,58 @@ function renderSketch(content) {
     // (calendar's case).
     return renderGridSketch(content);
   }
+  if (content.sketch === 'guest-chat') {
+    // Guest messaging (v3, Guest Engagement add-on's own rail item — see
+    // getRailItems/getContent's `guest-messaging` tree entry) — "can just
+    // look like some sort of wireframe chat UI" (Robert). A two-pane
+    // messaging shell: a thread list (one row per guest conversation, one
+    // active) alongside an open conversation (alternating guest/property
+    // bubbles + a skeleton input bar), same skeleton-until-confirmed
+    // convention as chat-start above — no real guest names, message
+    // copy, or property-side content decided yet, just enough structure
+    // to read unmistakably as "a chat app," not a generic list+detail
+    // page. `noPanel: true` on this section (see getContent) gives it the
+    // full canvas width this two-pane shape needs.
+    const threadRows = Array(5)
+      .fill(null)
+      .map(
+        (_, i) => `
+          <div class="guest-chat__thread${i === 0 ? ' is-active' : ''}">
+            <div class="guest-chat__thread-avatar"></div>
+            <div class="guest-chat__thread-body">
+              <div class="guest-chat__thread-name-skel"></div>
+              <div class="guest-chat__thread-preview-skel"></div>
+            </div>
+          </div>
+        `
+      )
+      .join('');
+    // Alternating bubble widths/sides (hand-varied, not a repeating
+    // pattern) so the thread reads as a real back-and-forth rather than a
+    // mechanically alternating stack.
+    const bubbles = [
+      { side: 'in', width: 62 },
+      { side: 'out', width: 40 },
+      { side: 'in', width: 75 },
+      { side: 'in', width: 48 },
+      { side: 'out', width: 55 },
+    ]
+      .map((b) => `<div class="guest-chat__bubble guest-chat__bubble--${b.side}" style="width: ${b.width}%"></div>`)
+      .join('');
+    return `
+      <div class="guest-chat">
+        <div class="guest-chat__threads">${threadRows}</div>
+        <div class="guest-chat__conversation">
+          <div class="guest-chat__conversation-header">
+            <div class="guest-chat__thread-avatar"></div>
+            <div class="guest-chat__thread-name-skel"></div>
+          </div>
+          <div class="guest-chat__messages">${bubbles}</div>
+          <div class="guest-chat__input-skel"></div>
+        </div>
+      </div>
+    `;
+  }
   if (content.sketch === 'chat-start') {
     // AI assistant's fresh-chat landing — a centered greeting, a few
     // skeleton "suggested prompt" chips, and a skeleton input bar pinned to
@@ -3225,7 +3277,7 @@ function renderMobileChrome(data) {
   mobileBackEl.hidden = !showBack;
   mobileMenuEl.hidden = showBack;
 
-  const items = getRailItems(state.accountType);
+  const items = getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement'));
   const currentItem = items.find((i) => i.key === state.section);
   mobileTopbarTitleEl.textContent = tr(currentItem?.label ?? UTILITY_SECTION_LABELS[state.section] ?? '');
 }
@@ -3257,7 +3309,7 @@ mobileDrawerBackdropEl.addEventListener('click', closeMobileDrawer);
 // section-switch mechanism `switchToUtilitySection` already uses for their
 // desktop rail buttons.
 function renderMobileDrawer() {
-  const items = getRailItems(state.accountType);
+  const items = getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement'));
   // Same rail-level bubbling as the desktop rail (renderRail) — recomputed
   // here rather than threaded in, since the drawer opens from its own
   // gesture (the hamburger), independent of the main render() cycle.
@@ -3337,7 +3389,7 @@ document.querySelectorAll('[data-account-type]').forEach((el) => {
     // toggle. "make sure if i open the proto controls and change a
     // setting you update for the current view/route" (user's direction) —
     // changing a setting should react IN PLACE, not relocate the user.
-    if (!getRailItems(state.accountType).some((i) => i.key === state.section)) {
+    if (!getRailItems(state.accountType, state.enabledProducts.includes('guest-engagement')).some((i) => i.key === state.section)) {
       state.section = 'insights';
       resetPath();
     }
