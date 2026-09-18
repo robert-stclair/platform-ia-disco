@@ -1385,8 +1385,11 @@ function renderChainBody(chain, i) {
       const widgetsHtml = content.topWidgets
         ? `<div class="records-page__widgets">${renderSketch(content.topWidgets)}</div>`
         : '';
+      // Rendered BELOW the picker, not above (Robert: "low traffic" —
+      // demoting it below the property list/cards it acts on, rather than
+      // a prominent header action).
       const newButtonHtml = renderNewButton(content);
-      return { trail: [], bodyHtml: newButtonHtml + widgetsHtml + pickerHtml };
+      return { trail: [], bodyHtml: widgetsHtml + pickerHtml + newButtonHtml };
     }
     // `content.crossNav` (buildUserNode's Properties tab / buildPropertyNode's
     // Users tile — two `records` pickers that point at EACH OTHER): marks
@@ -2229,6 +2232,9 @@ function renderNewButton(content) {
 }
 
 function renderNavDashboardPage(content, tiles, depth) {
+  // Rendered BELOW the tile grid, not above (Robert: "low traffic" —
+  // demoting it below the tiles it acts on, rather than a prominent header
+  // action) — matches the `records` cards/list page's own placement.
   const newButtonHtml = renderNewButton(content);
   const titleHtml = content.title ? `<h2 class="nav-dashboard-page__title">${tr(content.title)}</h2>` : '';
   const tileGrid = renderNavDashboard(tiles, depth);
@@ -2242,7 +2248,7 @@ function renderNavDashboardPage(content, tiles, depth) {
       `
     )
     .join('');
-  return `<div class="nav-dashboard-page">${newButtonHtml}${titleHtml}${tileGrid}${extraSections}</div>`;
+  return `<div class="nav-dashboard-page">${titleHtml}${tileGrid}${extraSections}${newButtonHtml}</div>`;
 }
 
 function wirePathLinks() {
