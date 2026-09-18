@@ -1695,25 +1695,19 @@ a { color: inherit; }
   color: var(--dr-plus);
 }
 
-/* Locked state — same real card/row, cursor signals it opens Set up DR+
-   rather than navigating through to content this account doesn't have
-   real data for. Priority actions cards/value-tracker rows dim as a
-   whole; metric-group cards dim only their chart PREVIEW (see
-   .metric-group__preview below) so the title/tag stay fully legible next
-   to the sell-line overlay. */
+/* Locked state (Forecasting's own DR+-only cards only — Robert: "lets not
+   show recommendations with the locked treatment - it might get too much
+   - ok to do it for the forecasting"; Priority actions/value-tracker drop
+   their DR+-only items entirely instead, see renderPriorityActions/
+   renderValueTracker) — cursor signals the card opens Set up DR+ rather
+   than navigating through to content this account doesn't have real data
+   for. Dims only the chart PREVIEW (see .metric-group__preview below), not
+   the whole card, so the title/tag stay fully legible next to the
+   sell-line overlay. */
 .is-dr-plus-locked {
   cursor: pointer;
 }
 
-.priority-actions__card.is-dr-plus-locked {
-  opacity: 0.6;
-}
-
-.priority-actions__card.is-dr-plus-locked:hover {
-  opacity: 0.8;
-}
-
-.priority-actions__card-lock,
 .metric-group.is-dr-plus-locked .metric-group__chevron {
   width: 14px;
   height: 14px;

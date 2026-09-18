@@ -1000,7 +1000,13 @@ function buildHomeContent(hasDrPlus) {
               title: 'Add a non-refundable rate',
               rationale: 'Your compset sells one on Booking.com — your NRF mix is currently 0%.',
               // Revenue/pricing recommendation — DR+'s own pricing-rec
-              // engine, not a plain operational diagnostic.
+              // engine, not a plain operational diagnostic. Robert: "lets
+              // not show recommendations with the locked treatment - it
+              // might get too much - ok to do it for the forecasting" —
+              // unlike Forecasting's locked-but-visible cards, a
+              // DR+-sourced recommendation is DROPPED entirely on a
+              // no-DR+ account (see renderPriorityActions), same
+              // reasoning/treatment as the value-tracker's own DR+ rows.
               drPlusOnly: true,
             },
             {

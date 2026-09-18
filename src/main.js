@@ -1625,8 +1625,20 @@ function renderDrPlusLockAttrs() {
   return `data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(DR_PLUS_PRODUCT.name)}" data-wizard-toggle-key="${DR_PLUS_PRODUCT.key}"`;
 }
 
+// Renamed from "Priority actions" (v3, Robert: "change priority actions to
+// 'Dynamic actions' without the 3 to review") — drops the "— N actions for
+// review" count suffix too. Row-level DR+ badge (Robert: "lets just badge
+// that too when DR+ is active") — a coarser signal than the per-item tags
+// below, shown whenever the account HAS DR+ (the row mixes DR+-sourced and
+// plain diagnostic cards, so this says "some of what's below is DR+," not
+// "everything here requires it"). `hasDrPlus`: a `drPlusOnly` item is
+// DROPPED entirely without DR+ (Robert: "lets not show recommendations
+// with the locked treatment - it might get too much - ok to do it for the
+// forecasting") — unlike Forecasting's locked-but-visible cards, this row
+// doesn't lock individual items, matching the value-tracker's own
+// DR+-row-dropping treatment.
 function renderPriorityActions(items, viewAllKey, hasDrPlus) {
-  const count = items.length;
+  const visibleItems = hasDrPlus ? items : items.filter((item) => !item.drPlusOnly);
   // `viewAllKey` (e.g. 'recommendations') routes to a real top-level
   // Insights item via the same `data-path-key` mechanism every other canvas
   // link uses (wirePathLinks calls select(0, key) + render()) — switches
@@ -1635,18 +1647,17 @@ function renderPriorityActions(items, viewAllKey, hasDrPlus) {
   return `
     <div class="priority-actions">
       <div class="priority-actions__header">
-        <span class="priority-actions__heading">${tr('Priority actions')} — ${count} ${tr('actions for review')}</span>
+        <span class="priority-actions__heading">${tr('Dynamic actions')}${hasDrPlus ? renderDrPlusTag() : ''}</span>
         ${viewAllHtml}
       </div>
       <div class="priority-actions__cards">
-        ${items
+        ${visibleItems
           .map((item) => {
-            const locked = item.drPlusOnly && !hasDrPlus;
             return `
-              <div class="priority-actions__card${locked ? ' is-dr-plus-locked' : ''}" ${locked ? renderDrPlusLockAttrs() : ''}>
+              <div class="priority-actions__card">
                 <div class="priority-actions__card-top">
-                  <h3 class="priority-actions__card-title">${tr(item.title)}${item.drPlusOnly ? renderDrPlusTag() : ''}</h3>
-                  ${locked ? renderLockIcon('priority-actions__card-lock') : '<svg class="priority-actions__card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>'}
+                  <h3 class="priority-actions__card-title">${tr(item.title)}</h3>
+                  <svg class="priority-actions__card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
                 </div>
                 <p class="priority-actions__card-rationale">${tr(item.rationale)}</p>
               </div>
