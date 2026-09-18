@@ -202,7 +202,19 @@ const BASE_RAIL_ITEMS = [
 // self-serve/automatic — deferred, not built). Keys match Configuration's
 // own product item keys exactly — see buildSmContentTree's
 // configuration.items below.
-export const PRODUCT_KEYS = ['channels-plus', 'pay', 'metasearch'];
+// `guest-engagement` (v3, Robert: "guest engagement .. its actually another
+// add on so we can implement that in the manage products") — added here
+// ONLY (a real Manage products card, activate/remove like the other 3),
+// deliberately WITHOUT a Configuration rail item yet, unlike Channels
+// Plus/Pay/Metasearch — those three each get one real item the moment
+// they're active (see buildSmContentTree below). Guest Engagement's own
+// feature set (digital check-in, guest profiles, upselling, guest
+// directory, feedback/surveys, automated guest communications) likely
+// doesn't belong behind one flat Config item the way those three do —
+// Robert: "its features might need to get distributed across our new IA" —
+// so where each feature actually lives is a separate, not-yet-decided
+// question, not modeled here.
+export const PRODUCT_KEYS = ['channels-plus', 'pay', 'metasearch', 'guest-engagement'];
 
 // "Manage products" (v3, renamed from "Add products" — Robert: "shall we
 // call it add or manage products" -> Manage) — the centralised
@@ -300,6 +312,28 @@ export const MANAGE_PRODUCTS_CATALOG = [
       'Group properties into brands and clusters for portfolio-wide management',
       'Push one group rate plan template across every property it applies to',
       'Portfolio-wide reporting alongside each property\'s own view',
+    ],
+  },
+  // Guest Engagement (v3, Robert: "another add on .. features might need to
+  // get distributed across our new IA .. do you have a view into its
+  // current structure?") — first real presence in this prototype: a
+  // Manage products card only, same activate/remove treatment as
+  // Channels Plus/Pay/Metasearch (see PRODUCT_KEYS). `benefits` condensed
+  // from Robert's own 6-feature list (digital check-in, guest profiles,
+  // upselling, guest directory, feedback/surveys, automated guest
+  // communications) to the 3 that most directly answer "why would a
+  // hotelier turn this on" — full list stays live in that PRODUCT_KEYS
+  // comment for whoever tackles the actual IA distribution next.
+  {
+    key: 'guest-engagement',
+    name: 'Guest Engagement',
+    tagline: 'Reach guests before, during and after their stay.',
+    valueProp: 'A unified guest profile, automated pre-arrival and in-stay messaging, digital check-in and an in-stay directory — plus upselling and post-stay feedback, all working from the same guest and reservation data.',
+    billing: 'Standalone subscription',
+    benefits: [
+      'Digital check-in with custom forms and automated pre-arrival emails',
+      'One guest profile combining activity, history and PMS/reservation data',
+      'Upselling, a guest directory and feedback surveys, all from the same profile',
     ],
   },
 ];
