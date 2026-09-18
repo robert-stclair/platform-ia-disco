@@ -8,6 +8,7 @@ import {
   SCOPE_CLUSTERS,
   ALL_DISTRIBUTION_CHANNELS,
   PRODUCT_KEYS,
+  MANAGE_PRODUCTS_CATALOG,
 } from './nav-data.js';
 import { RAIL_ICONS, BRAND_MARKS } from './icons.js';
 
@@ -1384,16 +1385,7 @@ function renderChainBody(chain, i) {
       const widgetsHtml = content.topWidgets
         ? `<div class="records-page__widgets">${renderSketch(content.topWidgets)}</div>`
         : '';
-      // `content.newButtonLabel` (My dashboards/My widgets) — a plain,
-      // NON-functional "+ New X" button above the picker (Robert: "you
-      // dont need to worry about new that would be a button on the list
-      // page" — just the structural affordance, no creation flow wired
-      // up). Same visual language as Rate plan → Channels' own "Add
-      // channel" button, but deliberately not a data-wizard-open trigger
-      // — nothing decided yet about what creating one of these involves.
-      const newButtonHtml = content.newButtonLabel
-        ? `<button class="records-page__new-btn" type="button"><span aria-hidden="true">+</span>${tr(content.newButtonLabel)}</button>`
-        : '';
+      const newButtonHtml = renderNewButton(content);
       return { trail: [], bodyHtml: newButtonHtml + widgetsHtml + pickerHtml };
     }
     // `content.crossNav` (buildUserNode's Properties tab / buildPropertyNode's
@@ -2214,7 +2206,30 @@ function renderTileTipBanner(tip) {
 // `content.title` (optional): heading shown above the tile grid.
 // `content.extraSections` (optional): [{ title, content: { type:'sketch', ... } }],
 // rendered below the tile grid, each with its own `.nav-dashboard-page__section-title`.
+// `content.newButtonLabel` (My dashboards/My widgets, Properties, single-
+// property's own collapsed "Property" page) — a "+ New X" button above the
+// page's main content. Plain and non-functional by default (Robert: "you
+// dont need to worry about new that would be a button on the list page" —
+// just the structural affordance, no creation flow wired up for most
+// callers) — same visual language as Rate plan → Channels' own "Add
+// channel" button. `content.newButtonWizard` (v3, "Add property") opts a
+// SPECIFIC caller into the shared wizard-overlay mechanism instead (same
+// `data-wizard-open` attribute wireWizardOpenButtons already queries for)
+// — nothing decided yet about what creating a new dashboard/widget
+// involves, but "add a property" is exactly the product-led, full-page-
+// stepper moment the v3 Confluence page's "Product led growth" row calls
+// for. Shared by both the `records` cards/list page (multi-property
+// Properties) and renderNavDashboardPage (single-property's collapsed
+// "Property" page) — one button, two entry points into the same
+// 'add-property' wizard depending on which mode the account is in.
+function renderNewButton(content) {
+  return content.newButtonLabel
+    ? `<button class="records-page__new-btn" type="button"${content.newButtonWizard ? ` data-wizard-open="${content.newButtonWizard}"` : ''}><span aria-hidden="true">+</span>${tr(content.newButtonLabel)}</button>`
+    : '';
+}
+
 function renderNavDashboardPage(content, tiles, depth) {
+  const newButtonHtml = renderNewButton(content);
   const titleHtml = content.title ? `<h2 class="nav-dashboard-page__title">${tr(content.title)}</h2>` : '';
   const tileGrid = renderNavDashboard(tiles, depth);
   const extraSections = (content.extraSections ?? [])
@@ -2227,7 +2242,7 @@ function renderNavDashboardPage(content, tiles, depth) {
       `
     )
     .join('');
-  return `<div class="nav-dashboard-page">${titleHtml}${tileGrid}${extraSections}</div>`;
+  return `<div class="nav-dashboard-page">${newButtonHtml}${titleHtml}${tileGrid}${extraSections}</div>`;
 }
 
 function wirePathLinks() {
@@ -2369,6 +2384,113 @@ const WIZARD_DEFINITIONS = {
       },
     ],
     onComplete: () => {},
+  },
+  // "Add property" (v3 Confluence "Open problems" — Product led growth /
+  // Upsell and discovery rows: "present a clear view of available products
+  // and consistent activation management process" at the moment a property
+  // is actually being set up, not after the fact via Manage products).
+  // Opened from Configuration > Properties' own "Add property" button (see
+  // `newButtonWizard` in nav-data.js) via the same wizard-overlay mechanism
+  // as add-channel/ai-setup-stepper — four steps: basic property details,
+  // how it connects (PMS vs. manual — this prototype has no real PMS
+  // connectivity flow, so it's presented as a choice, not built out),
+  // which products to enable up front (reuses MANAGE_PRODUCTS_CATALOG so
+  // the picker shows the same real product names/taglines Manage products
+  // does, rather than inventing a second product list), then review/confirm.
+  // `onComplete` is a no-op, same convention as add-channel — no persistent
+  // data layer to actually add a new property into SAMPLE_PROPERTIES.
+  'add-property': {
+    steps: [
+      {
+        title: 'Property details',
+        render: () => `
+          <h2 class="wizard-step__title">${tr('Tell us about your property')}</h2>
+          <p class="wizard-step__intro">${tr("We'll use this to set sensible defaults for rates, taxes and channels — you can change anything later.")}</p>
+          ${renderSectionsSketch([
+            { title: 'Basic details', shape: 'cols' },
+            { title: 'Address', shape: 'list' },
+          ])}
+        `,
+        onNext: (wizard) => {
+          wizard.data.connectMode = wizard.data.connectMode ?? 'manual';
+          return true;
+        },
+      },
+      {
+        title: 'Connect',
+        render: (wizard) => `
+          <h2 class="wizard-step__title">${tr('How should this property manage inventory?')}</h2>
+          <p class="wizard-step__intro">${tr('Connect an existing PMS to sync rates and availability automatically, or set inventory up manually to start.')}</p>
+          <ul class="wf-list wizard-channel-picker">
+            <li>
+              <a href="#" class="wf-list__row${wizard.data.connectMode === 'pms' ? ' is-active' : ''}" data-wizard-select="connectMode" data-wizard-value="pms">
+                <span class="wf-list__row-title">${tr('Connect a PMS')}</span>
+                <span class="wf-list__row-snippet-skel"></span>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="wf-list__row${wizard.data.connectMode === 'manual' || !wizard.data.connectMode ? ' is-active' : ''}" data-wizard-select="connectMode" data-wizard-value="manual">
+                <span class="wf-list__row-title">${tr('Set up rates and inventory manually')}</span>
+                <span class="wf-list__row-snippet-skel"></span>
+              </a>
+            </li>
+          </ul>
+        `,
+      },
+      {
+        // Reuses MANAGE_PRODUCTS_CATALOG's real name/tagline pairs so this
+        // reads as the same product universe Manage products shows, not a
+        // second invented list — plain checked-by-default checkboxes, same
+        // non-interactive-selection convention as ai-setup-stepper's own
+        // "Choose your properties" step (structure only, no real multi-
+        // select persisted).
+        title: 'Choose products',
+        render: () => `
+          <h2 class="wizard-step__title">${tr('Which products should be active on this property?')}</h2>
+          <p class="wizard-step__intro">${tr('Based on your account, we’ve pre-selected the products most new properties start with — untick anything you don’t need yet.')}</p>
+          <div class="sketch-section">${MANAGE_PRODUCTS_CATALOG.map(
+            (p) => `
+              <label class="mapping-check-row">
+                <input type="checkbox" checked />
+                <span>
+                  <span class="wf-list__row-title">${tr(p.name)}</span>
+                  <span class="wizard-step__product-tagline">${tr(p.tagline)}</span>
+                </span>
+              </label>
+            `
+          ).join('')}</div>
+        `,
+      },
+      {
+        title: 'Review and confirm',
+        render: (wizard) => `
+          <h2 class="wizard-step__title">${tr('Review and confirm')}</h2>
+          <p class="wizard-step__intro">${tr('Confirming creates the property and activates the products you selected — you can fine-tune rates, channels and users right after.')}</p>
+          ${renderSectionsSketch([
+            { title: 'Property', shape: 'field' },
+            { title: wizard.data.connectMode === 'pms' ? 'PMS connection' : 'Inventory setup', shape: 'field' },
+            { title: 'Products enabled', shape: 'chips' },
+          ])}
+        `,
+      },
+    ],
+    // Single-property accounts reach this wizard from the collapsed
+    // "Property" page (see buildConfigurationPropertiesItem's !showProperties
+    // branch) — completing it means the account now genuinely has more than
+    // one property, so it needs to land back on the real multi-property
+    // Properties cards view, not the single-property dashboard it started
+    // on. Same "activating X implies state Y" precedent as setProductActive's
+    // own Multi-Property case (activating Multi-Property force-switches
+    // propertyCount to 'multiple') — reuses that exact mechanism rather than
+    // inventing a second one. Already-multiple accounts are a no-op here
+    // (the `!==` guard mirrors setProductActive's own).
+    onComplete: () => {
+      if (state.propertyCount !== 'multiple') {
+        state.propertyCount = 'multiple';
+        syncPropertyCountButtons();
+        savePrototypeSettings();
+      }
+    },
   },
   // AI-generated dynamic stepper (v3 Confluence framing) — ONE shared
   // wizard reused by every product's "Set up" button (see

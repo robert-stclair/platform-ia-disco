@@ -384,6 +384,21 @@ a { color: inherit; }
   color: var(--text-secondary);
 }
 
+/* Add property wizard's product-choice step — a second, smaller line under
+   each product's name inside a mapping-check-row (which otherwise only
+   ever holds a single skeleton bar), so the checkbox aligns with the top
+   of the two-line label instead of its vertical center. */
+.mapping-check-row:has(.wizard-step__product-tagline) {
+  align-items: flex-start;
+}
+
+.wizard-step__product-tagline {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .debug-panel__header {
   display: flex;
   align-items: center;

@@ -220,7 +220,7 @@ export const PRODUCT_KEYS = ['channels-plus', 'pay', 'metasearch'];
 // `benefits` (v3): a short real-text list, giving the product detail page
 // (buildProductDetailNode) genuine substance to fill — Robert: "make them
 // feel substantial in that they fill the space but still wireframe."
-const MANAGE_PRODUCTS_CATALOG = [
+export const MANAGE_PRODUCTS_CATALOG = [
   {
     key: 'direct-booking',
     name: 'Direct Booking',
@@ -1737,7 +1737,21 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
     // 1) — scoped to just this panel item's label; buildPropertyNode itself
     // (the shared nav-dashboard shown once drilled into a specific property)
     // keeps its own label/key unchanged.
-    return { key: 'property-settings', label: 'Property', active: true, content: buildPropertyNode(showProperties).content };
+    //
+    // `newButtonLabel`/`newButtonWizard` (v3, "Add property" needs to exist
+    // in single-property mode too, not just the multi-property cards view)
+    // — set HERE, on this one collapsed standalone-property page, not
+    // inside buildPropertyNode itself: that function is also reused as a
+    // `detailNode` for an ALREADY-selected specific property (Users'
+    // cross-nav, Group rate plans' Properties tab, Properties cards' own
+    // detail view) — "add a property" makes no sense once you're already
+    // looking at one particular property's own dashboard.
+    return {
+      key: 'property-settings',
+      label: 'Property',
+      active: true,
+      content: { ...buildPropertyNode(showProperties).content, newButtonLabel: 'Add property', newButtonWizard: 'add-property' },
+    };
   }
   return {
     key: 'properties-config',
@@ -1778,6 +1792,16 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
             display: 'cards',
             cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }],
             detailNode: buildPropertyNode(showProperties),
+            // Product-led "Add property" entry point (v3 Confluence "Open
+            // problems" — Product led growth / Upsell and discovery): reuses
+            // the existing `newButtonLabel` affordance (previously a plain,
+            // non-functional button — no other `records` caller sets
+            // `newButtonWizard`, so they keep the inert button) and points
+            // it at the shared wizard-overlay mechanism via
+            // `newButtonWizard`, same `data-wizard-open` plumbing as
+            // Manage products' Activate/Set up buttons.
+            newButtonLabel: 'Add property',
+            newButtonWizard: 'add-property',
             // `syncsScope: true` — clicking a property name acts as a
             // proxy click on the global scope switcher (see
             // wirePathLinks) — the switcher already reflects where you
