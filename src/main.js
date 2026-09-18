@@ -1601,7 +1601,31 @@ function renderViewAllChevron(pathKey) {
   return `<a href="#" class="home-view-all-chevron" data-path-key="${pathKey}" aria-label="${tr('View all')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></a>`;
 }
 
-function renderPriorityActions(items, viewAllKey) {
+// Per-item DR+ gating (v3, Robert: "DR+ can sit in the rec level - some
+// will be only for DR+ customers .. so tag any revenue ones as DR+" / "a
+// couple of the forecasting blocks are DR+ only .. lets tag them .. and
+// then the upsell is they see what it can do but its locked") — shared by
+// Priority actions, Forecasting's metric groups, and the value-tracker's
+// recent rows: an item with `drPlusOnly: true` always gets the small
+// colored DR+ tag (renderHome's own row-level badge is a SEPARATE, coarser
+// signal — this is per-item); on an account WITHOUT DR+ it additionally
+// renders locked — same real title/shape, dimmed, small lock icon, click
+// opens the same 'ai-setup-stepper' wizard Manage products' Activate
+// button uses (via `data-wizard-open`, seeded with DR+'s own catalog
+// entry) instead of whatever that item would normally navigate to. "They
+// see what it can do but it's locked" — a real, specific, inspectable
+// item, not a separate ad unit or empty placeholder.
+const DR_PLUS_PRODUCT = MANAGE_PRODUCTS_CATALOG.find((p) => p.key === 'dr-plus');
+
+function renderDrPlusTag() {
+  return `<span class="dr-plus-tag">${tr('DR+')}</span>`;
+}
+
+function renderDrPlusLockAttrs() {
+  return `data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(DR_PLUS_PRODUCT.name)}" data-wizard-toggle-key="${DR_PLUS_PRODUCT.key}"`;
+}
+
+function renderPriorityActions(items, viewAllKey, hasDrPlus) {
   const count = items.length;
   // `viewAllKey` (e.g. 'recommendations') routes to a real top-level
   // Insights item via the same `data-path-key` mechanism every other canvas
@@ -1616,21 +1640,26 @@ function renderPriorityActions(items, viewAllKey) {
       </div>
       <div class="priority-actions__cards">
         ${items
-          .map(
-            (item) => `
-              <div class="priority-actions__card">
+          .map((item) => {
+            const locked = item.drPlusOnly && !hasDrPlus;
+            return `
+              <div class="priority-actions__card${locked ? ' is-dr-plus-locked' : ''}" ${locked ? renderDrPlusLockAttrs() : ''}>
                 <div class="priority-actions__card-top">
-                  <h3 class="priority-actions__card-title">${tr(item.title)}</h3>
-                  <svg class="priority-actions__card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+                  <h3 class="priority-actions__card-title">${tr(item.title)}${item.drPlusOnly ? renderDrPlusTag() : ''}</h3>
+                  ${locked ? renderLockIcon('priority-actions__card-lock') : '<svg class="priority-actions__card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>'}
                 </div>
                 <p class="priority-actions__card-rationale">${tr(item.rationale)}</p>
               </div>
-            `
-          )
+            `;
+          })
           .join('')}
       </div>
     </div>
   `;
+}
+
+function renderLockIcon(className) {
+  return `<svg class="${className}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
 }
 
 // Wireframe data-viz for Home's metric-group stats (v3, Robert: "lets make
@@ -1736,24 +1765,30 @@ function renderWireframeChart(index) {
 // inert card (Robert: "imagine they are dedicated sub-dashboard under my
 // dashboards"). Groups without `linkTo` stay non-functional, same "shape
 // only" convention as everywhere else not yet wired up.
-function renderMetricGroups(groups) {
+// `hasDrPlus` (optional): when a group carries `drPlusOnly: true` and the
+// account has no DR+, it renders locked instead of its normal clickable
+// nav-link shape — a `<div data-wizard-open>` (opens Set up DR+) rather
+// than an `<a data-path-key>` (would navigate to the real dashboard it
+// doesn't actually have real data for). See the shared DR+-gating comment
+// above renderPriorityActions.
+function renderMetricGroups(groups, hasDrPlus) {
   let chartIndex = 0;
   return `
     <div class="metric-groups">
       ${groups
         .map((group) => {
+          const locked = group.drPlusOnly && !hasDrPlus;
+          const drPlusTag = group.drPlusOnly ? renderDrPlusTag() : '';
+          const icon = locked
+            ? renderLockIcon('metric-group__chevron')
+            : `<svg class="metric-group__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>`;
+          const stats = `<div class="metric-group__stats">${group.stats.map(() => renderWireframeChart(chartIndex++)).join('')}</div>`;
+          const header = `<div class="metric-group__header"><h3 class="metric-group__title">${tr(group.title)}${drPlusTag}</h3>${icon}</div>`;
+          if (locked) {
+            return `<div class="metric-group is-dr-plus-locked" ${renderDrPlusLockAttrs()}>${header}${stats}</div>`;
+          }
           const pathKey = group.linkTo ? `data-path-key="0:${group.linkTo[0]}:${group.linkTo[1]}"` : '';
-          return `
-            <a href="#" class="metric-group" ${pathKey}>
-              <div class="metric-group__header">
-                <h3 class="metric-group__title">${tr(group.title)}</h3>
-                <svg class="metric-group__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
-              </div>
-              <div class="metric-group__stats">
-                ${group.stats.map(() => renderWireframeChart(chartIndex++)).join('')}
-              </div>
-            </a>
-          `;
+          return `<a href="#" class="metric-group" ${pathKey}>${header}${stats}</a>`;
         })
         .join('')}
     </div>
@@ -1768,21 +1803,31 @@ function renderMetricGroups(groups) {
 // "Confirmed" vs. "Estimated" — mirrors the strategy doc's own distinction
 // between causally-proven and directional value, without overclaiming
 // accuracy this prototype doesn't have real data for).
-function renderValueTracker(summary, recent) {
+// `hasDrPlus` (optional): a `row.drPlusOnly` entry without DR+ renders
+// locked — dimmed, its status pill replaced by a lock icon, the whole row
+// clickable to open Set up DR+ (this row has no other navigation to lose,
+// unlike renderMetricGroups' own linked cards). See the shared DR+-gating
+// comment above renderPriorityActions.
+function renderValueTracker(summary, recent, hasDrPlus) {
   return `
     <div class="value-tracker">
       <p class="value-tracker__summary">${tr(summary)}</p>
       <div class="value-tracker__rows">
         ${recent
-          .map(
-            (row) => `
-              <div class="value-tracker__row">
-                <span class="value-tracker__row-title">${tr(row.title)}</span>
+          .map((row) => {
+            const locked = row.drPlusOnly && !hasDrPlus;
+            const drPlusTag = row.drPlusOnly ? renderDrPlusTag() : '';
+            const status = locked
+              ? renderLockIcon('value-tracker__row-lock')
+              : `<span class="value-tracker__row-status value-tracker__row-status--${row.status === 'Confirmed' ? 'confirmed' : 'estimated'}">${tr(row.status)}</span>`;
+            return `
+              <div class="value-tracker__row${locked ? ' is-dr-plus-locked' : ''}" ${locked ? renderDrPlusLockAttrs() : ''}>
+                <span class="value-tracker__row-title">${tr(row.title)}${drPlusTag}</span>
                 <span class="value-tracker__row-value">${tr(row.value)}</span>
-                <span class="value-tracker__row-status value-tracker__row-status--${row.status === 'Confirmed' ? 'confirmed' : 'estimated'}">${tr(row.status)}</span>
+                ${status}
               </div>
-            `
-          )
+            `;
+          })
           .join('')}
       </div>
     </div>
@@ -2799,7 +2844,7 @@ function renderSketch(content) {
     // widget for now — the v3 Confluence page's "cascading dashboard
     // family" (keeping these separate) is logged as a later refinement,
     // not built here yet (Robert: "for now keep it combined").
-    return renderPriorityActions(content.items, content.viewAllKey);
+    return renderPriorityActions(content.items, content.viewAllKey, content.hasDrPlus);
   }
   if (content.sketch === 'metric-groups') {
     // Home's performance row — grouped stat cards, each group a small
@@ -2808,19 +2853,20 @@ function renderSketch(content) {
     // trying to carry every number itself. First scaffold of the
     // cascading-dashboard-family idea (v3 Confluence page) applied to
     // performance content specifically.
-    return renderMetricGroups(content.groups);
+    return renderMetricGroups(content.groups, content.hasDrPlus);
   }
   if (content.sketch === 'value-tracker') {
     // "Tracking past recommendations performance" — answers the CPO/
     // strategy-doc value-awareness gap directly: once a recommendation is
     // accepted, show what it was actually worth, not just that DR+ exists.
-    // Deliberately NOT a "DR+ tier" badge/label (Robert reconsidered that —
-    // "its prob more about demonstrating that dr+ was making them money
-    // which is the other idea") — the row's job is to make realized value
-    // visible, not to brand the feature. `content.summary`: real headline
-    // text (accepted count + estimated $ this period); `content.recent`:
-    // [{title, value, status}] illustrative recent accepted actions.
-    return renderValueTracker(content.summary, content.recent);
+    // The row's own heading (not this content) now carries a small "DR+"
+    // tag (see renderHome's `row.drPlusBadge` — Robert revisited the
+    // earlier "not a DR+ badge" call) — this content's job is still just
+    // making realized value visible, not branding. `content.summary`: real
+    // headline text (accepted count + estimated $ this period);
+    // `content.recent`: [{title, value, status}] illustrative recent
+    // accepted actions.
+    return renderValueTracker(content.summary, content.recent, content.hasDrPlus);
   }
   if (content.sketch === 'list') {
     // `starredRows` (optional): indices that get an illustrative star icon —

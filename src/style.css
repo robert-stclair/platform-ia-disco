@@ -1635,6 +1635,47 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
+/* Per-item DR+ gating (v3, Robert: "tag any revenue ones as DR+" / "a
+   couple of the forecasting blocks are DR+ only .. lets tag them .. and
+   then the upsell is they see what it can do but its locked") — shared by
+   Priority actions cards, Forecasting's metric-group cards, and the
+   value-tracker's recent rows. See renderDrPlusTag/renderDrPlusLockAttrs
+   and each render function's own `is-dr-plus-locked` class. */
+.dr-plus-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: var(--dr-plus-tint);
+  color: var(--dr-plus);
+}
+
+/* Locked state — same real card/row, dimmed, cursor signals it opens Set
+   up DR+ rather than navigating through to content this account doesn't
+   have real data for. */
+.is-dr-plus-locked {
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.is-dr-plus-locked:hover {
+  opacity: 0.8;
+}
+
+.priority-actions__card-lock,
+.metric-group.is-dr-plus-locked .metric-group__chevron,
+.value-tracker__row-lock {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--dr-plus);
+}
+
 /* "Manage products" (v3) — tier comparison + real value-prop cards per
    product. See renderProductCards/wireProductCards. */
 .manage-products {

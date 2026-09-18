@@ -966,112 +966,155 @@ const ASSISTANT_ITEMS = {
 // realized $ from ACCEPTED recommendations, not a feature/tier badge
 // (Robert: "its prob more about demonstrating that dr+ was making them
 // money"). All illustrative — real wording/shape, not real data.
-const HOME_CONTENT = {
-  type: 'sketch',
-  sketch: 'home',
-  rows: [
-    {
-      content: {
-        type: 'sketch',
-        sketch: 'priority-actions',
-        items: [
-          {
-            title: 'Add a non-refundable rate',
-            rationale: 'Your compset sells one on Booking.com — your NRF mix is currently 0%.',
-          },
-          {
-            title: 'Occupancy has passed your threshold for Thu 14 Aug',
-            rationale: "Thu 14 Aug just crossed 90% on the books — the point you've told us to flag for a pricing review.",
-          },
-          {
-            title: 'Reopen Booking.com',
-            rationale: 'Closed 9 days over sellable dates — likely an accidental stop-sell that was never reopened.',
-          },
-        ],
-        // "View all" routes to the real Recommendations item already in
-        // this section (Robert: "view all on the rec widgets links to the
-        // rec full page") — not a separate priority-actions page, since
-        // one doesn't exist yet; Recommendations is the closest real
-        // destination until the diagnostics/recommendations split (v3
-        // Confluence page) is actually built.
-        viewAllKey: 'recommendations',
+//
+// `buildHomeContent(hasDrPlus)` (v3) — a function, not a static constant,
+// because DR+ status now gates individual ITEMS, not whole rows (Robert,
+// after an earlier row-level "teaser replaces the row" pass: "DR+ can sit
+// in the rec level - some will be only for DR+ customers .. so tag any
+// revenue ones as DR+" / "a couple of the forecasting blocks are DR+ only
+// .. lets tag them .. and then the upsell is they see what it can do but
+// its locked"). So every row always renders — Forecasting, Priority
+// actions and Tracking past recommendations performance all show their
+// real items regardless of hasDrPlus — but individual items within them
+// carry `drPlusOnly: true` (Pace vs. comp set; revenue/pricing
+// recommendations like "Add a non-refundable rate" or a rate-increase
+// entry — NOT operational diagnostics like "Reopen Booking.com," which
+// exist independent of DR+). A `drPlusOnly` item always gets the small
+// colored "DR+" tag; on an account WITHOUT DR+ it additionally renders
+// locked (same real title/shape, dimmed, small lock icon, click opens the
+// same 'ai-setup-stepper' wizard Manage products' own Activate button
+// uses, instead of navigating through) — "they see what it can do but
+// it's locked," not a separate ad unit or an empty placeholder.
+function buildHomeContent(hasDrPlus) {
+  return {
+    type: 'sketch',
+    sketch: 'home',
+    rows: [
+      {
+        content: {
+          type: 'sketch',
+          sketch: 'priority-actions',
+          hasDrPlus,
+          items: [
+            {
+              title: 'Add a non-refundable rate',
+              rationale: 'Your compset sells one on Booking.com — your NRF mix is currently 0%.',
+              // Revenue/pricing recommendation — DR+'s own pricing-rec
+              // engine, not a plain operational diagnostic.
+              drPlusOnly: true,
+            },
+            {
+              title: 'Occupancy has passed your threshold for Thu 14 Aug',
+              rationale: "Thu 14 Aug just crossed 90% on the books — the point you've told us to flag for a pricing review.",
+              // A THRESHOLD DIAGNOSTIC (occupancy crossed a number the
+              // user set) — real either way, not DR+-gated. Left untagged.
+            },
+            {
+              title: 'Reopen Booking.com',
+              rationale: 'Closed 9 days over sellable dates — likely an accidental stop-sell that was never reopened.',
+              // Operational diagnostic (a stop-sell left open), not a
+              // pricing/revenue recommendation — left untagged.
+            },
+          ],
+          // "View all" routes to the real Recommendations item already in
+          // this section (Robert: "view all on the rec widgets links to the
+          // rec full page") — not a separate priority-actions page, since
+          // one doesn't exist yet; Recommendations is the closest real
+          // destination until the diagnostics/recommendations split (v3
+          // Confluence page) is actually built.
+          viewAllKey: 'recommendations',
+        },
       },
-    },
-    {
-      heading: 'Performance',
-      // Row-level "View all" (v3, Robert: "add a view all to the
-      // performance") — jumps to My dashboards' own "Performance" entry,
-      // imagined as Performance's dedicated sub-dashboard (see
-      // SAMPLE_CUSTOM_DASHBOARDS' own comment) rather than a tab elsewhere.
-      viewAll: { linkTo: ['my-dashboards', 'Performance'] },
-      content: {
-        type: 'sketch',
-        sketch: 'metric-groups',
-        // First-pass grouping only (Robert: "its a start") — not confirmed,
-        // grouped by what a hotelier would investigate together rather than
-        // Sam's doc's own flat list (occupancy/ADR/RevPAR/pace/channel mix).
-        // Performance is deliberately RETROSPECTIVE only now (Robert:
-        // "performance as a section is retrospective .. forecasting is
-        // stuff like pace etc which is looking forwards .. it needs its own
-        // row") — Forecasting (and "Pace vs. comp set," itself forward-
-        // looking by the same logic) moved OUT into its own row below.
-        groups: [
-          { title: 'Rates & distribution', stats: [{ label: 'ADR' }, { label: 'RevPAR' }] },
-          { title: 'Occupancy & demand', stats: [{ label: 'Occupancy' }, { label: 'Strongest period' }, { label: 'Weakest period' }] },
-          { title: 'Channel mix', stats: [{ label: 'Direct share' }, { label: 'OTA share' }] },
-        ],
+      {
+        heading: 'Performance',
+        // Row-level "View all" (v3, Robert: "add a view all to the
+        // performance") — jumps to My dashboards' own "Performance" entry,
+        // imagined as Performance's dedicated sub-dashboard (see
+        // SAMPLE_CUSTOM_DASHBOARDS' own comment) rather than a tab
+        // elsewhere.
+        viewAll: { linkTo: ['my-dashboards', 'Performance'] },
+        content: {
+          type: 'sketch',
+          sketch: 'metric-groups',
+          // First-pass grouping only (Robert: "its a start") — not
+          // confirmed, grouped by what a hotelier would investigate
+          // together rather than Sam's doc's own flat list (occupancy/ADR/
+          // RevPAR/pace/channel mix). Performance is deliberately
+          // RETROSPECTIVE only now (Robert: "performance as a section is
+          // retrospective .. forecasting is stuff like pace etc which is
+          // looking forwards .. it needs its own row") — Forecasting (and
+          // "Pace vs. comp set," itself forward-looking by the same logic)
+          // moved OUT into its own row below.
+          groups: [
+            { title: 'Rates & distribution', stats: [{ label: 'ADR' }, { label: 'RevPAR' }] },
+            { title: 'Occupancy & demand', stats: [{ label: 'Occupancy' }, { label: 'Strongest period' }, { label: 'Weakest period' }] },
+            { title: 'Channel mix', stats: [{ label: 'Direct share' }, { label: 'OTA share' }] },
+          ],
+        },
       },
-    },
-    {
-      heading: 'Forecasting',
-      // Own row, separate from Performance's retrospective content (see
-      // comment above) — links to the existing Forecasting PRESET dashboard
-      // under My dashboards, reusing it rather than inventing a second
-      // Forecasting page. 3 separate cards (Robert: "make forecasting a few
-      // digets" / "widgets") — matches Performance row's own rhythm of
-      // distinct cards rather than one wide card with 3 stacked stats.
-      // `drPlusBadge: true` (v3, Robert: revisits the "DR+ tier badge"
-      // idea logged as rejected above on the value-tracker row — this time
-      // as a small colored tag next to the row heading, not a value-prop
-      // replacement) — forecasting (pace/projections) is genuinely DR+-
-      // powered content, worth attributing.
-      drPlusBadge: true,
-      viewAll: { linkTo: ['my-dashboards', 'Forecasting'] },
-      content: {
-        type: 'sketch',
-        sketch: 'metric-groups',
-        groups: [
-          { title: 'Next 30 days', stats: [{ label: 'Projected occupancy' }, { label: 'Projected revenue' }], linkTo: ['my-dashboards', 'Forecasting'] },
-          { title: 'Next 90 days', stats: [{ label: 'Projected occupancy' }, { label: 'Projected revenue' }], linkTo: ['my-dashboards', 'Forecasting'] },
-          { title: 'Pace vs. comp set', stats: [{ label: 'Your pace' }, { label: 'Comp set pace' }], linkTo: ['my-dashboards', 'Forecasting'] },
-        ],
+      {
+        heading: 'Forecasting',
+        // Own row, separate from Performance's retrospective content (see
+        // comment above) — links to the existing Forecasting PRESET
+        // dashboard under My dashboards, reusing it rather than inventing a
+        // second Forecasting page. 3 separate cards (Robert: "make
+        // forecasting a few digets" / "widgets") — matches Performance
+        // row's own rhythm of distinct cards rather than one wide card with
+        // 3 stacked stats. Always shown, regardless of hasDrPlus — only
+        // "Pace vs. comp set" (comparative/predictive benchmarking) is
+        // genuinely DR+-only; Next 30/90 days are baseline occupancy/
+        // revenue projections available either way.
+        viewAll: { linkTo: ['my-dashboards', 'Forecasting'] },
+        content: {
+          type: 'sketch',
+          sketch: 'metric-groups',
+          hasDrPlus,
+          groups: [
+            { title: 'Next 30 days', stats: [{ label: 'Projected occupancy' }, { label: 'Projected revenue' }], linkTo: ['my-dashboards', 'Forecasting'] },
+            { title: 'Next 90 days', stats: [{ label: 'Projected occupancy' }, { label: 'Projected revenue' }], linkTo: ['my-dashboards', 'Forecasting'] },
+            {
+              title: 'Pace vs. comp set',
+              stats: [{ label: 'Your pace' }, { label: 'Comp set pace' }],
+              linkTo: ['my-dashboards', 'Forecasting'],
+              // `drPlusOnly: true` (v3, Robert: "a couple of the
+              // forecasting blocks are DR+ only .. lets tag them") — the
+              // one genuinely DR+-only card here: real comp-set data comes
+              // from DR+'s own market-intelligence signals, not baseline
+              // PMS/booking data the other two cards use.
+              drPlusOnly: true,
+            },
+          ],
+        },
       },
-    },
-    {
-      heading: 'Tracking past recommendations performance',
-      // "View all" (v3, Robert: "a tab under recommendations page called
-      // performance") — jumps to Recommendations' new "Performance" tab,
-      // which shows the fuller accepted-recommendation value history behind
-      // this row's own 3-item summary.
-      // `drPlusBadge: true` (v3) — Robert revisited the earlier "not a DR+
-      // tier badge/label" decision (see this row's own content comment
-      // below): a small tag next to the heading, alongside the row's own
-      // real-$ value copy, not instead of it.
-      drPlusBadge: true,
-      viewAll: { linkTo: ['recommendations', 'performance'] },
-      content: {
-        type: 'sketch',
-        sketch: 'value-tracker',
-        summary: '4 recommendations accepted this month — an estimated $1,240 in additional revenue.',
-        recent: [
-          { title: 'Weekend surcharge, Fri 8 Aug', value: '+$180', status: 'Confirmed' },
-          { title: 'Deluxe King rate increase, 16 Oct', value: '+$25/night', status: 'Estimated' },
-          { title: 'Reopened Booking.com, 3 nights', value: '+$410', status: 'Confirmed' },
-        ],
+      {
+        heading: 'Tracking past recommendations performance',
+        // "View all" (v3, Robert: "a tab under recommendations page called
+        // performance") — jumps to Recommendations' new "Performance" tab,
+        // which shows the fuller accepted-recommendation value history
+        // behind this row's own 3-item summary. Always shown — an account
+        // without DR+ still accepts/tracks its OWN (non-DR+) recommendations
+        // via the diagnostics in Priority actions; only the DR+-sourced
+        // entries below are individually tagged/locked.
+        viewAll: { linkTo: ['recommendations', 'performance'] },
+        content: {
+          type: 'sketch',
+          sketch: 'value-tracker',
+          hasDrPlus,
+          summary: '4 recommendations accepted this month — an estimated $1,240 in additional revenue.',
+          recent: [
+            // Revenue/pricing recommendations — DR+'s own pricing-rec
+            // engine (Robert: "tag any revenue ones as DR+").
+            { title: 'Weekend surcharge, Fri 8 Aug', value: '+$180', status: 'Confirmed', drPlusOnly: true },
+            { title: 'Deluxe King rate increase, 16 Oct', value: '+$25/night', status: 'Estimated', drPlusOnly: true },
+            // Reopening a channel is availability/distribution, not a
+            // pricing/revenue action — left untagged.
+            { title: 'Reopened Booking.com, 3 nights', value: '+$410', status: 'Confirmed' },
+          ],
+        },
       },
-    },
-  ],
-};
+    ],
+  };
+}
 
 // My dashboards (Insights) — a real CRUD + starring list (Robert: "my
 // dashboardfs will be a lisr where user can do CRUD functions and
@@ -1108,7 +1151,12 @@ const PRESET_DASHBOARD_NAMES = [
 // landing page" convention every other section uses. Card shapes are
 // arbitrary/illustrative, just varied enough that the 7 pages don't look
 // identically empty.
-const PRESET_DASHBOARD_ITEMS = [
+// A function of `hasDrPlus` (v3, not a static array) — Home's own content
+// now depends on it too (see buildHomeContent), so this whole list has to
+// be rebuilt per-account rather than once at module load. Called from
+// buildSmContentTree, the one place `hasDrPlus` is actually in scope.
+function buildPresetDashboardItems(hasDrPlus) {
+  return [
   { key: 'overview', label: 'Home', active: true, cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'booking-performance', label: 'Booking performance', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'forecasting', label: 'Forecasting', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
@@ -1116,22 +1164,23 @@ const PRESET_DASHBOARD_ITEMS = [
   { key: 'competitor-rates', label: 'Competitor rates', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }] },
   { key: 'rate-parity', label: 'Rate parity', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }] },
   { key: 'availability', label: 'Availability', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
-].map((item) => ({
+  ].map((item) => ({
   key: item.key,
   label: item.label,
   ...(item.active ? { active: true } : {}),
   // Overview is Home now (v3) — a stack of purpose-built widgets, not a
   // dashboard-cards grid like the other 6 presets. Special-cased here
-  // rather than pulled out of PRESET_DASHBOARD_ITEMS entirely, so it keeps
-  // behaving like a normal preset everywhere else that matters (still
-  // counted in PRESET_DASHBOARD_NAMES/STARRED_DASHBOARD_NAMES, still shows
-  // in My dashboards, still the default active landing page).
-  content: item.key === 'overview' ? HOME_CONTENT : { type: 'sketch', sketch: 'dashboard-cards', cards: item.cards },
+  // rather than pulled out of this list entirely, so it keeps behaving
+  // like a normal preset everywhere else that matters (still counted in
+  // PRESET_DASHBOARD_NAMES/STARRED_DASHBOARD_NAMES, still shows in My
+  // dashboards, still the default active landing page).
+  content: item.key === 'overview' ? buildHomeContent(hasDrPlus) : { type: 'sketch', sketch: 'dashboard-cards', cards: item.cards },
   // `scopeSwitcher: 'multi-select'` on every dashboard-shaped item in
   // this section (user: "keep property selector for all the insights
   // dashboards").
   scopeSwitcher: 'multi-select',
-}));
+  }));
+}
 // EXPLORATORY — a couple of illustrative custom (non-preset) dashboards,
 // generic realistic names, not real confirmed data. "Performance" (v3,
 // Robert: "imagine they are dedicated sub-dashboard under my dashboards")
@@ -1917,7 +1966,7 @@ function buildSmContentTree(showProperties, scope, accountType, enabledProducts,
       // still fully real — just only reachable via "My dashboards," not
       // pinned to the rail list.
       items: [
-        ...[...PRESET_DASHBOARD_ITEMS, ...CUSTOM_DASHBOARD_ITEMS].filter((item) => STARRED_DASHBOARD_NAMES.includes(item.label)),
+        ...[...buildPresetDashboardItems(hasDrPlus), ...CUSTOM_DASHBOARD_ITEMS].filter((item) => STARRED_DASHBOARD_NAMES.includes(item.label)),
         // Dynamic pricing REMOVED from this list (Robert: "we dont want
         // dynamic pricing in that list") — it's real in the shipped
         // product's Insights nav too, but already has its own home under
