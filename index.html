@@ -35,9 +35,6 @@
         <div class="rail__brand" id="railBrand" title="SiteMinder"></div>
         <div class="rail__items" id="rail"></div>
         <div class="rail__utility">
-          <button class="rail-item" id="railGuestMessaging" title="Guest messaging" aria-label="Guest messaging" hidden>
-            <span class="rail-item__icon" aria-hidden="true"></span>
-          </button>
           <button class="rail-item" id="railAssistant" title="Assistant" aria-label="AI assistant">
             <span class="rail-item__icon rail-item__icon--assistant" aria-hidden="true">?</span>
           </button>
@@ -116,7 +113,7 @@
 
     <div class="debug-panel__group">
       <div class="debug-panel__label">Account type</div>
-      <div class="debug-panel__hint">Multi-Property is now an add-on (Configuration &gt; Manage products), not a 3rd account type</div>
+      <div class="debug-panel__hint">Independent of plan tier. Plan tier itself now switches only from My account &gt; Manage products' own "Switch to this" buttons, not here.</div>
       <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="Account type">
         <button class="is-active" data-account-type="SM">SM</button>
         <button data-account-type="LH">LH</button>
@@ -125,7 +122,7 @@
 
     <div class="debug-panel__group">
       <div class="debug-panel__label">User role</div>
-      <div class="debug-panel__hint">Non-admin: Manage products shows a banner and disables Activate (Learn more still works)</div>
+      <div class="debug-panel__hint">Non-admin: state-changing controls are disabled elsewhere in the app</div>
       <div class="scope-toggle scope-toggle--debug" role="tablist" aria-label="User role">
         <button class="is-active" data-user-role="admin">Admin</button>
         <button data-user-role="non-admin">Non-admin</button>

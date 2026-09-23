@@ -1724,36 +1724,14 @@ a { color: inherit; }
   color: var(--dr-plus);
 }
 
-/* "Manage products" (v3) — tier comparison + real value-prop cards per
-   product. See renderProductCards/wireProductCards. */
+/* "Manage products" (v4) — a single static tier-comparison grid (My
+   account, see renderPlanComparison). Replaced the old v3 per-product
+   value-prop cards + Activate/Remove/Learn-more mechanism entirely — tier
+   switching now lives only in the debug panel's Plan tier picker. */
 .manage-products {
   display: flex;
   flex-direction: column;
   gap: 32px;
-}
-
-/* Non-admin role gate (v3, Robert: "let's tackle the user type next") —
-   informational, not an alert: a plain neutral surface, NOT the red
-   `--alert`/`--alert-tint` tokens (.tile-tip-banner) — those are reserved
-   for "something needs fixing," and a non-admin viewing this page isn't a
-   problem to resolve.
-   FULL-WIDTH, its own strip directly under .canvas-header (rendered by
-   render() itself, not inside renderProductCards/renderProductDetail's own
-   markup) — Robert: "bit messy - do you think we should have a full width
-   banner under the header row?" — a first version lived inside
-   `.product-detail`'s 640px column and read as one more paragraph of page
-   content rather than a page-level notice. Horizontal padding matches
-   `.canvas-header`'s own 24px so the banner's text lines up with the
-   breadcrumb/title above it, even though the banner itself spans edge to
-   edge. */
-.role-banner {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--surface-sunken);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 24px;
-  flex-shrink: 0;
 }
 
 .product-tier-comparison table {
@@ -1776,10 +1754,27 @@ a { color: inherit; }
   background: var(--surface-sunken);
   font-weight: 700;
   color: var(--text);
+  padding-top: 16px;
+  padding-bottom: 16px;
+  vertical-align: top;
 }
 
 .product-tier-comparison__tier-name {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+/* Elevated "Customer promise" (v4, Robert: "do we elevate the promise?") —
+   a real tagline directly under each tier's name, not one more row in the
+   feature table below. Normal weight/case, distinct from the bold
+   all-caps tier name above it, so the two don't compete for attention. */
+.product-tier-comparison__promise {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .product-tier-comparison__current-label {
@@ -1791,6 +1786,9 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
+/* v4 — in-page tier switching (Robert: "i want it in the UI whenever
+   possible," not just the debug panel). Same real state-flip as the debug
+   panel's own Plan tier picker, see setTier in main.js. */
 .product-tier-comparison__switch-btn {
   font-family: inherit;
   font-size: 11.5px;
@@ -1823,9 +1821,35 @@ a { color: inherit; }
   color: var(--text-secondary);
 }
 
+.product-tier-comparison__cell {
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.product-tier-comparison__cell.is-current-tier {
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-weight: 600;
+}
+
 .product-tier-comparison__check {
   color: var(--text-muted);
   font-weight: 700;
+}
+
+/* Pay-per-use group label — a plain full-width divider row inside the same
+   table rather than a second table, since every column below it still
+   lines up with the tier header above (Robert's packaging doc treats these
+   rows as available on every tier, no per-tier distinction needed). */
+.product-tier-comparison__group-label-row td {
+  text-align: left;
+  background: var(--surface-sunken);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
 }
 
 .product-tier-comparison tbody tr:last-child th,
@@ -1833,228 +1857,10 @@ a { color: inherit; }
   border-bottom: none;
 }
 
-.product-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-}
-
-.product-card {
-  display: flex;
-  flex-direction: column;
-  padding: 20px;
-  border-radius: 8px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-}
-
-.product-card.is-active {
-  border-color: var(--border-strong);
-}
-
-.product-card__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.product-card__name {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.product-card__owned-badge {
-  font-size: 10.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--tag-bg);
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
-
-.product-card__tagline {
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-secondary);
-}
-
-.product-card__value-prop {
-  margin: 0 0 16px;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--text-secondary);
-  flex: 1;
-}
-
-.product-card__footer {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--border);
-}
-
-.product-card__billing {
-  font-size: 11.5px;
-  color: var(--text-muted);
-  line-height: 1.4;
-}
-
-.product-card__actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 14px;
-}
-
-.product-card__learn-more {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--text-secondary);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.product-card__learn-more:hover {
-  color: var(--text);
-}
-
-.product-card__action {
-  font-family: inherit;
-  font-size: 12.5px;
-  font-weight: 600;
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--border-strong);
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.product-card__action:hover {
-  background: var(--surface-sunken);
-}
-
-/* Activate and Remove need to read as EQUALLY disabled here (Robert:
-   "activate looks less disabled than remove for some reason") — Activate's
-   enabled-state color is `--text` (full dark, "activate can be stronger"
-   visual-hierarchy call) while Remove's is already `--text-muted`
-   (.product-card__action--remove); the same opacity applied to two
-   different starting colors doesn't land the same, so `color` is pinned
-   explicitly here rather than relying on opacity alone to flatten the
-   difference. */
-.product-card__action:disabled {
-  cursor: not-allowed;
-  color: var(--text-muted);
-  opacity: 0.6;
-}
-
-.product-card__action:disabled:hover {
-  background: var(--surface);
-}
-
-.product-card__action--remove {
-  color: var(--text-muted);
-}
-
-/* Product detail page (v3) — "Learn more" destination. Expanded version of
-   the card's own content, real enough to fill the space (Robert: "make
-   them feel substantial .. but still wireframe"). See renderProductDetail. */
-.product-detail {
-  max-width: 640px;
-}
-
-.product-detail__tagline {
-  margin: 0 0 12px;
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.product-detail__value-prop {
-  margin: 0 0 28px;
-  font-size: 14.5px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
-
-.product-detail__section-title {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.product-detail__benefits-list {
-  margin: 0 0 32px;
-  padding-left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.product-detail__benefits-list li {
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--text);
-}
-
-.product-detail__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
-}
-
-.product-detail__billing {
-  font-size: 12.5px;
-  color: var(--text-muted);
-}
-
-.product-detail__setup-btn {
-  font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 700;
-  padding: 10px 20px;
-  border-radius: 6px;
-  border: none;
-  background: var(--text);
-  color: var(--surface);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.product-detail__setup-btn:hover {
-  opacity: 0.85;
-}
-
-.product-detail__setup-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.4;
-}
-
-.product-detail__setup-btn:disabled:hover {
-  opacity: 0.4;
-}
-
 /* Release note detail page (v3) — reached from a Notifications inbox row
    (see renderReleaseNote). Real headline/body/link — the one exception to
-   Notifications' otherwise titleless-skeleton content, same width cap and
-   type scale as .product-detail for visual consistency with the app's
-   other "detail page reached from a list" pattern. */
+   Notifications' otherwise titleless-skeleton content, 640px width cap for
+   comfortable reading line-length. */
 .release-note {
   max-width: 640px;
 }

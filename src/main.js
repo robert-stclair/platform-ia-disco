@@ -7,9 +7,10 @@ import {
   SCOPE_BRANDS,
   SCOPE_CLUSTERS,
   ALL_DISTRIBUTION_CHANNELS,
-  PRODUCT_KEYS,
   MANAGE_PRODUCTS_CATALOG,
-  GUEST_MESSAGING_KEY,
+  TIERS,
+  TIER_LABELS,
+  deriveCapabilitiesFromTier,
 } from './nav-data.js';
 import { RAIL_ICONS, BRAND_MARKS } from './icons.js';
 
@@ -180,10 +181,7 @@ function savePrototypeSettings() {
         propertyCount: state.propertyCount,
         multipleSystems: state.multipleSystems,
         language: state.language,
-        enabledProducts: state.enabledProducts,
         tier: state.tier,
-        hasDrPlus: state.hasDrPlus,
-        hasMultiProperty: state.hasMultiProperty,
         isAdmin: state.isAdmin,
       })
     );
@@ -209,45 +207,22 @@ const state = {
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: savedPrototypeSettings.multipleSystems ?? false, // hidden-settings toggle: does every property have >1 connected system?
-  // Real SiteMinder packaging (v3 — Robert: "the current bubling is
-  // SiteMinder which is channel manager etc .. then SiteMinder Plus which
-  // brings in DB, then the rest is add-ons," refined through several
-  // corrections, confirmed against siteminder.com/pricing and Sam's own
-  // real-world knowledge of Demand+/Metasearch's actual activation):
-  //
-  //   - Tier: base SiteMinder vs. SiteMinder Plus. Plus additionally
-  //     unlocks Direct Booking — the ONLY thing tier gates now (Metasearch
-  //     moved out of tier-gating once Robert flagged uncertainty about how
-  //     it's really activated).
-  //   - "In-product sign-ups" (PRODUCT_KEYS): Channels Plus, Pay,
-  //     Metasearch — independently toggleable regardless of tier, kept as
-  //     ONE combined list rather than split further by payment model
-  //     (commission vs. subscription) or activation method (self-serve vs.
-  //     sales-mediated) — a real further distinction surfaced by research
-  //     (DR+ needs sales contact, the other 3 are self-serve/automatic per
-  //     siteminder.com) but deliberately deferred: "keep it simpler .. just
-  //     one combined list for now."
-  //   - DR+ (hasDrPlus): a genuinely separate standalone add-on
-  //     subscription, independent of tier and of the 3 sign-ups above.
-  //
-  // Each of these DOES gate Configuration's tree now (getContent's
-  // hasDirectBooking/enabledProducts/hasDrPlus params) — when inactive, the
-  // product gets NO Configuration item at all, appearing on "Add products"
-  // instead (v3 principle: don't bloat the IA with upsell stubs for unowned
-  // products — Robert: "not to bloat the ia with upsells").
-  enabledProducts: savedPrototypeSettings.enabledProducts ?? [...PRODUCT_KEYS],
-  tier: savedPrototypeSettings.tier ?? 'siteminder-plus', // 'siteminder' | 'siteminder-plus'
-  hasDrPlus: savedPrototypeSettings.hasDrPlus ?? true,
-  // Multi-Property (v3) — was accountType === 'MP', a 3rd mutually-exclusive
-  // account type; now a genuine add-on toggle, same treatment as DR+
-  // (Robert: "lets make Multi-Property an add on like the others"). Gates
-  // Brands/Clusters, Group rate plans, and Direct Booking's API/Group
-  // landing page items — everything that used to check accountType ===
-  // 'MP' directly now checks this instead. Defaults to false (Multi-
-  // Property is the one product NOT on by default, unlike the others —
-  // it's the more unusual case, an SM/LH account with a portfolio) so a
-  // fresh load doesn't show Brands/Clusters/Group rate plans unprompted.
-  hasMultiProperty: savedPrototypeSettings.hasMultiProperty ?? false,
+  // v4 packaging model (SiteMinder Packaging & Pricing doc) — REPLACES the
+  // old 2-value 'siteminder'/'siteminder-plus' tier + independent
+  // hasDrPlus/hasMultiProperty toggles AND the independent enabledProducts
+  // list. Robert: "the various IA changes based on available functions
+  // will be affected by the tier now — not turning discrete products on or
+  // off." `tier` is now the SINGLE thing this prototype's debug panel lets
+  // you change directly; everything else that used to be its own toggle
+  // (Direct Booking, DR+, Guest Engagement, and — split per Robert's
+  // correction — Groups' multiple-properties vs. Enterprise's shared
+  // distribution) is DERIVED fresh each render via
+  // deriveCapabilitiesFromTier(state.tier), not stored here at all. See
+  // that function in nav-data.js for the full derivation table. Channels
+  // Plus/Pay/Metasearch stay always-on at every tier per the packaging doc
+  // (universal capabilities, not tier-gated) — no state needed for them at
+  // all now, unlike the old enabledProducts toggle list.
+  tier: TIERS.includes(savedPrototypeSettings.tier) ? savedPrototypeSettings.tier : 'impact', // one of TIERS — see deriveCapabilitiesFromTier
   // User role (v3, Robert: "let's tackle the user type next - let's add
   // admin and non-admin to the proto settings") — the first real work
   // against the "Permissions and visible function" open problem (role-based
@@ -320,6 +295,15 @@ const state = {
   attention: new Set(ATTENTION_KEYS),
 };
 
+// The single place every former hasDrPlus/hasMultiProperty reader now goes
+// through — recomputed fresh from state.tier each call rather than cached,
+// since it's cheap and this way there's no separate derived-state copy to
+// keep in sync. See deriveCapabilitiesFromTier (nav-data.js) for the actual
+// tier -> capability table.
+function getCapabilities() {
+  return deriveCapabilitiesFromTier(state.tier);
+}
+
 // Does NOT touch state.scope — the property/cluster/brand switcher is a
 // GLOBAL, user-owned value ("we can't switch the scope as people move
 // around - they need to own that"), completely independent of navigation.
@@ -338,7 +322,6 @@ function resetPath() {
 const railEl = document.getElementById('rail');
 const railBrandEl = document.getElementById('railBrand');
 const railUserEl = document.getElementById('railUser');
-const railGuestMessagingEl = document.getElementById('railGuestMessaging');
 const railAssistantEl = document.getElementById('railAssistant');
 const railNotificationsEl = document.getElementById('railNotifications');
 const railNotificationsBadgeEl = document.getElementById('railNotificationsBadge');
@@ -527,7 +510,7 @@ function resolveChain(rootNode) {
     const content = node.content;
 
     if (content.type === 'tabs') {
-      const tabs = content.tabs.filter((t) => !t.mpOnly || state.hasMultiProperty);
+      const tabs = content.tabs.filter((t) => !t.mpOnly || getCapabilities().hasMultiProperty);
       const explicitKey = state.path[pathIndex];
       let selected = (explicitKey && tabs.find((t) => t.key === explicitKey)) || tabs.find((t) => t.active) || tabs[0] || null;
       chain.push({
@@ -741,14 +724,6 @@ function renderRail(content) {
   });
 
   railUserEl.classList.toggle('is-active', state.section === 'my-account');
-  // Guest messaging (v3) — hidden entirely until Guest Engagement is
-  // active, same "no item at all" convention as every other add-on-gated
-  // item, derived from the RESOLVED content tree (content?.[key]) rather
-  // than re-checking state.enabledProducts directly — one source of truth
-  // for "does this exist right now," matching how sectionHasAttention
-  // above already reads content, not raw state.
-  railGuestMessagingEl.hidden = !content?.[GUEST_MESSAGING_KEY];
-  railGuestMessagingEl.classList.toggle('is-active', state.section === GUEST_MESSAGING_KEY);
   railAssistantEl.classList.toggle('is-active', state.section === 'assistant');
   railNotificationsEl.classList.toggle('is-active', state.section === 'notifications');
   // Notifications' own badge (v3, Robert: "can you make the badge work if
@@ -766,8 +741,8 @@ function renderRail(content) {
 // for its original purpose (My account/Notifications/AI assistant, which
 // aren't in getRailItems' own list, unlike a normal rail-item click's
 // handler), but reused generically by the mobile drawer for ALL sections
-// (both getRailItems' own items AND the utility ones — Guest messaging
-// included) since it's exactly the same mechanism either way.
+// (both getRailItems' own items and the utility ones) since it's exactly
+// the same mechanism either way.
 function switchToUtilitySection(key) {
   if (state.section === key) return;
   state.section = key;
@@ -780,13 +755,6 @@ function switchToUtilitySection(key) {
 }
 
 railUserEl.addEventListener('click', () => switchToUtilitySection('my-account'));
-// Icon injected once here (static content, not re-rendered per frame,
-// unlike the main rail's own dynamically-built buttons) — same
-// RAIL_ICONS lookup those use, so Guest messaging's icon stays defined in
-// one place (icons.js) rather than hardcoded as inline SVG in index.html
-// like Assistant/Notifications' own icons are.
-railGuestMessagingEl.querySelector('.rail-item__icon').innerHTML = RAIL_ICONS.guestMessaging;
-railGuestMessagingEl.addEventListener('click', () => switchToUtilitySection(GUEST_MESSAGING_KEY));
 railAssistantEl.addEventListener('click', () => switchToUtilitySection('assistant'));
 railNotificationsEl.addEventListener('click', () => switchToUtilitySection('notifications'));
 
@@ -826,7 +794,7 @@ function renderScopeSwitcher(mode) {
       (name) => `<option value="property:${name}" ${!forceAll && state.scope.type === 'property' && state.scope.key === name ? 'selected' : ''}>${name}</option>`
     ).join('')}</optgroup>`
   );
-  if (state.hasMultiProperty) {
+  if (getCapabilities().hasMultiProperty) {
     groups.push(
       `<optgroup label="Brands">${SCOPE_BRANDS.map(
         (name) =>
@@ -1089,7 +1057,7 @@ function renderPanel(data) {
     if (isOpen) {
       const childPathIndex = 1;
       // `mpOnly` items (e.g. Brands/Clusters) only show when Multi-Property is active.
-      const children = item.content.items.filter((s) => !s.mpOnly || state.hasMultiProperty);
+      const children = item.content.items.filter((s) => !s.mpOnly || getCapabilities().hasMultiProperty);
       const explicitChildKey = state.path[0] === item.key ? state.path[childPathIndex] : null;
       html += `<ul class="nav-sublist">${children
         .map((s) => {
@@ -1258,30 +1226,14 @@ function renderCanvas(data) {
   // renderCanvasHeader's own comment for how the title/breadcrumb share
   // one slot.
   //
-  // Non-admin role banner (v3) — rendered HERE, full-width, its own strip
-  // between the header and `.sketch`, NOT inside renderProductCards/
-  // renderProductDetail's own markup (Robert: "bit messy - do you think we
-  // should have a full width banner under the header row?" — the first
-  // version was capped to .product-detail's 640px column, reading as one
-  // more paragraph of page content rather than a page-level notice, same
-  // visual language as the app's other full-bleed header-adjacent bars).
-  // `rootItem.key === 'manage-products'` covers BOTH the card grid and any
-  // of its product detail pages — resolveChain walks from this same
-  // rootItem either way, so one check here covers both without threading a
-  // flag through renderProductCards/renderProductDetail individually.
-  const roleBanner =
-    rootItem.key === 'manage-products' && !state.isAdmin
-      ? `<div class="role-banner">${tr('To make changes to your account, please speak to one of your administrators.')}</div>`
-      : '';
-  canvasEl.innerHTML =
-    renderCanvasHeader(rootItem.label, trail, scopeSwitcherMode) + roleBanner + `<div class="sketch">${bodyHtml}</div>`;
+  canvasEl.innerHTML = renderCanvasHeader(rootItem.label, trail, scopeSwitcherMode) + `<div class="sketch">${bodyHtml}</div>`;
   wireScopeSwitcher();
   wirePathLinks();
   wireCrossSectionLinks();
   wireBreadcrumb();
   wireThemeToggle();
   wireWizardOpenButtons();
-  wireProductCards();
+  wireTierSwitchButtons();
 }
 
 // Render every step in `chain` from `i` onward into nested HTML, plus the
@@ -1389,9 +1341,7 @@ function renderChainBody(chain, i) {
                 content.syncsScope,
                 content.bubblesAttention ? content.detailNode : null
               )
-            : content.display === 'product-cards'
-              ? renderProductCards(pathIndex, content.tierComparison, content.currentTier, content.products)
-              : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope, presetNames);
+            : renderRecordPicker(step.options, pathIndex, starredNames, content.showSnippet, content.syncsScope, presetNames);
       // `content.topWidgets` (optional, e.g. Rate plans): a few dashboard-
       // cards widgets rendered ABOVE the picker — "contextual insights
       // around the place rather than just lists." Same building block
@@ -1630,11 +1580,9 @@ function renderViewAllChevron(pathKey) {
 // the value-tracker DROP their DR+-only items entirely (see
 // renderPriorityActions/renderValueTracker); only Forecasting's metric
 // groups render locked instead — see renderMetricGroups' own comment for
-// why its "Learn more" goes to DR+'s real Manage products detail page
-// (Robert: "make the dr plus upsell link to a learn more page not
-// straight into the wizard"), not the setup wizard directly.
-const DR_PLUS_PRODUCT = MANAGE_PRODUCTS_CATALOG.find((p) => p.key === 'dr-plus');
-
+// why its "Learn more" goes to Manage products (Robert: "make the dr plus
+// upsell link to a learn more page not straight into the wizard"), not the
+// setup wizard directly.
 function renderDrPlusTag() {
   return `<span class="dr-plus-tag">${tr('DR+')}</span>`;
 }
@@ -1796,12 +1744,14 @@ function renderWireframeChart(index) {
 // (Robert: "lets be a bit more sell than just a lock - put some little
 // line in the middle of the widget with a learn more link" — a bare lock
 // icon read as too flat) with `group.teaser`'s sell line + a "Learn more"
-// link. Clicking it goes to DR+'s own Manage products detail page (Robert:
-// "make the dr plus upsell link to a learn more page not straight into the
-// wizard" — a first pass opened the setup wizard directly) via
-// `data-cross-section-to`, same real page Manage products' own "Learn
-// more" text link opens, not the wizard-overlay shortcut. See the shared
-// DR+-gating comment above renderPriorityActions.
+// link. Clicking it goes to Manage products (Robert: "make the dr plus
+// upsell link to a learn more page not straight into the wizard" — a first
+// pass opened the setup wizard directly) via `data-cross-section-to` — v4:
+// Manage products is now under My account, a single plan-comparison grid
+// with no per-product sub-page, so this links to the page itself rather
+// than a DR+-specific detail page (that per-product `recordName` segment
+// no longer exists — see wireCrossSectionLinks). See the shared DR+-gating
+// comment above renderPriorityActions.
 function renderMetricGroups(groups, hasDrPlus) {
   let chartIndex = 0;
   return `
@@ -1822,7 +1772,7 @@ function renderMetricGroups(groups, hasDrPlus) {
                 <span class="metric-group__lock-learn-more">${tr('Learn more')} →</span>
               </div>
             `;
-            return `<a href="#" class="metric-group is-dr-plus-locked" data-cross-section-to="configuration:manage-products:${tr(DR_PLUS_PRODUCT.name)}">${header}<div class="metric-group__preview">${stats}${overlay}</div></a>`;
+            return `<a href="#" class="metric-group is-dr-plus-locked" data-cross-section-to="my-account:manage-products">${header}<div class="metric-group__preview">${stats}${overlay}</div></a>`;
           }
           const pathKey = group.linkTo ? `data-path-key="0:${group.linkTo[0]}:${group.linkTo[1]}"` : '';
           return `<a href="#" class="metric-group" ${pathKey}>${header}${stats}</a>`;
@@ -1873,232 +1823,72 @@ function renderValueTracker(summary, recent, hasDrPlus, summaryNoDrPlus) {
   `;
 }
 
-// "Manage products" (v3) — a real card per product (value prop + billing
-// model), plus the SiteMinder/SiteMinder Plus tier comparison. Each
-// INACTIVE card gets two actions (v3, Robert: "lets have both with some vis
-// hierarchy .. activate can be stronger"): a strong "Activate" button (same
-// live state-flip as before, via `data-toggle-product`) and a plain "Learn
-// more" TEXT LINK (real `records` navigation via `data-path-key`, into that
-// product's own detail page — see buildProductDetailNode) — button vs. text
-// link IS the visual hierarchy, no size/colour trick needed. An ACTIVE
-// card just gets "Remove" (unchanged, immediate, no detail/stepper
-// needed to deactivate). `pathIndex` makes this a real `records` picker
-// now, not a standalone sketch — "Learn more" needs genuine nav depth to
-// reach a per-product page, which content.type === 'sketch' can't provide
-// (renderSketch has no path/depth context at all, confirmed when this was
-// still a sketch).
-//
-// Role gate (v3, Robert: "let's tackle the user type next .. for non-admin
-// they would see everything but not be able to click activate (can still
-// click learn more)") — the first real "Permissions and visible function"
-// work (role-based access, orthogonal to product entitlement). A non-admin
-// sees a banner up top and every state-changing control disabled — Activate
-// AND Remove (his framing was "make changes to your account," which covers
-// removing a product too, not just adding one) AND the tier-switch buttons
-// — while "Learn more" stays a real, clickable link either way (browsing a
-// product's own detail page isn't "making a change"). Reads `state.isAdmin`
-// directly rather than threading it through another parameter — same
-// convention this file already uses for other cross-cutting state
-// (itemHasAttention reads `state.attention` the same way).
-function renderProductCards(pathIndex, tierComparison, currentTier, products) {
-  const isAdmin = state.isAdmin;
-  const currentTierIndex = currentTier === 'siteminder-plus' ? 1 : 0;
-  // Tier switch lives right in the comparison grid too (v3, Robert: "shall
-  // we have activate buttons on the SM / SM+ grid as well") — same
-  // `data-toggle-product="direct-booking"` mechanism the Direct Booking
-  // card's own button already uses (Direct Booking is the ONLY thing tier
-  // gates — see buildSmContentTree's own comment), not a separate toggle.
-  // The CURRENT tier's column shows a plain "Current" label; the OTHER
-  // column gets a real switch button.
-  const tierTable = `
-    <div class="product-tier-comparison">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            ${tierComparison.tiers
-              .map(
-                (t, i) => `
-                  <th class="${i === currentTierIndex ? 'is-current-tier' : ''}">
-                    <div class="product-tier-comparison__tier-name">${tr(t)}</div>
-                    ${
-                      i === currentTierIndex
-                        ? `<span class="product-tier-comparison__current-label">${tr('Current')}</span>`
-                        : i === 1
-                          ? // Switching TO SiteMinder Plus is an activation
-                            // (real packaging: it's what unlocks Direct
-                            // Booking) — same AI setup stepper as the
-                            // Direct Booking card's own Activate button,
-                            // not an instant flip.
-                            `<button type="button" class="product-tier-comparison__switch-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr('Direct Booking')}" data-wizard-toggle-key="direct-booking" ${isAdmin ? '' : 'disabled'}>${tr('Switch to this')}</button>`
-                          : // Switching back to base SiteMinder is a
-                            // downgrade/removal — instant, same as Remove,
-                            // no wizard needed to deactivate.
-                            `<button type="button" class="product-tier-comparison__switch-btn" data-toggle-product="direct-booking" ${isAdmin ? '' : 'disabled'}>${tr('Switch to this')}</button>`
-                    }
-                  </th>
-                `
-              )
-              .join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${tierComparison.rows
-            .map(
-              (row) => `
-                <tr>
-                  <td class="product-tier-comparison__feature">${tr(row.feature)}</td>
-                  ${row.included.map((inc) => `<td class="product-tier-comparison__check">${inc ? '✓' : '—'}</td>`).join('')}
-                </tr>
-              `
-            )
-            .join('')}
-        </tbody>
-      </table>
-    </div>
-  `;
-  const cards = products
+// "Manage products" (v4) — REPLACES the old per-product card grid +
+// SiteMinder/SiteMinder Plus comparison. Robert: "rather than individual
+// products just extend the grid to reflect what's in this doc" — this is
+// now a single 5-tier plan comparison (PLAN_COMPARISON, nav-data.js), moved
+// under My account (see getContent). Each non-current column header gets a
+// real "Switch to this" button (Robert: "i want it in the UI whenever
+// possible," not just the debug panel) — same instant, no-sales-call flip
+// as the debug panel's own Plan tier picker (see setTier), not a wizard —
+// no per-product Activate/Remove/Learn-more (that whole mechanism —
+// renderProductCards, setProductActive, the 'ai-setup-stepper' wizard,
+// renderProductDetail — is gone, since tier is now the only lever).
+function renderPlanComparison(plan, currentTier) {
+  const currentTierIndex = plan.tiers.indexOf(currentTier);
+  const tierHeaderCells = plan.tiers
     .map(
-      (p) => `
-        <div class="product-card ${p.active ? 'is-active' : ''}">
-          <div class="product-card__top">
-            <h3 class="product-card__name">${tr(p.name)}</h3>
-            ${p.active ? `<span class="product-card__owned-badge">${tr('Active')}</span>` : ''}
-          </div>
-          <p class="product-card__tagline">${tr(p.tagline)}</p>
-          <p class="product-card__value-prop">${tr(p.valueProp)}</p>
-          <div class="product-card__footer">
-            <span class="product-card__billing">${tr(p.billing)}</span>
-            <div class="product-card__actions">
-              ${
-                p.active
-                  ? ''
-                  : `<a href="#" class="product-card__learn-more" data-path-key="${pathIndex}:${p.name}">${tr('Learn more')}</a>`
-              }
-              ${
-                p.active
-                  ? `<button type="button" class="product-card__action product-card__action--remove" data-toggle-product="${p.key}" ${isAdmin ? '' : 'disabled'}>${tr('Remove')}</button>`
-                  : `<button type="button" class="product-card__action product-card__action--activate" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(p.name)}" data-wizard-toggle-key="${p.key}" ${isAdmin ? '' : 'disabled'}>${tr('Activate')}</button>`
-              }
-            </div>
-          </div>
-        </div>
+      (t, i) => `
+        <th class="${i === currentTierIndex ? 'is-current-tier' : ''}">
+          <div class="product-tier-comparison__tier-name">${tr(TIER_LABELS[t] ?? t)}</div>
+          <p class="product-tier-comparison__promise">${tr(plan.promises[i])}</p>
+          ${
+            i === currentTierIndex
+              ? `<span class="product-tier-comparison__current-label">${tr('Current')}</span>`
+              : `<button type="button" class="product-tier-comparison__switch-btn" data-tier-switch="${t}" ${state.isAdmin ? '' : 'disabled'}>${tr('Switch to this')}</button>`
+          }
+        </th>
+      `
+    )
+    .join('');
+  const featureRows = plan.rows
+    .map(
+      (row) => `
+        <tr>
+          <td class="product-tier-comparison__feature">${tr(row.feature)}</td>
+          ${row.values.map((v, i) => `<td class="product-tier-comparison__cell ${i === currentTierIndex ? 'is-current-tier' : ''}">${tr(v)}</td>`).join('')}
+        </tr>
+      `
+    )
+    .join('');
+  const payPerUseRows = plan.payPerUse.rows
+    .map(
+      (row) => `
+        <tr>
+          <td class="product-tier-comparison__feature">${tr(row.feature)}</td>
+          ${plan.tiers.map((_, i) => `<td class="product-tier-comparison__cell product-tier-comparison__check ${i === currentTierIndex ? 'is-current-tier' : ''}">✓</td>`).join('')}
+        </tr>
       `
     )
     .join('');
   return `
     <div class="manage-products">
-      ${tierTable}
-      <div class="product-cards">${cards}</div>
-    </div>
-  `;
-}
-
-// Shared by BOTH directions — Remove (instant, wireProductCards below) and
-// Activate (via the AI setup stepper's onComplete, WIZARD_DEFINITIONS'
-// 'ai-setup-stepper') — so there's one place that knows how each product
-// key maps onto real state, not two copies that could drift. Same state
-// the debug panel's Tier/DR+ controls read and write
-// (state.tier/enabledProducts/hasDrPlus/hasMultiProperty) — this page and
-// the debug panel are two views onto one source of truth. `activate: true`
-// turns a product ON unconditionally; `activate: false` turns it OFF
-// unconditionally — NEITHER toggles, since the caller already knows which
-// direction it wants (Activate only ever appears on an inactive card,
-// Remove only ever on an active one).
-function setProductActive(key, activate) {
-  if (key === 'direct-booking') {
-    // Direct Booking is the only thing tier gates (see buildSmContentTree's
-    // own comment) — flips the WHOLE tier, not a per-product flag. Tier is
-    // no longer a debug-panel control at all (v3, Robert: "we can prob
-    // remove sm/sm+ from the proto settings now as well" — activation now
-    // always flows through Manage products/the AI stepper).
-    state.tier = activate ? 'siteminder-plus' : 'siteminder';
-  } else if (key === 'dr-plus') {
-    state.hasDrPlus = activate;
-  } else if (key === 'multi-property') {
-    state.hasMultiProperty = activate;
-    // Activating Multi-Property force-switches propertyCount to 'multiple'
-    // if it isn't already (Robert: "adding it automatically toggles the
-    // proto setting to multiple properties if its not already") — a
-    // Multi-Property portfolio implies more than one property by
-    // definition; this prototype doesn't model the inconsistent
-    // combination of hasMultiProperty + single property. Deliberately does
-    // NOT revert propertyCount back to 'single' when DEACTIVATING Multi-
-    // Property — a portfolio account can shrink to managing it as single-
-    // property-equivalent without losing its already-entered multi-
-    // property data/context.
-    if (state.hasMultiProperty && state.propertyCount !== 'multiple') {
-      state.propertyCount = 'multiple';
-      syncPropertyCountButtons();
-    }
-  } else {
-    state.enabledProducts = activate ? [...new Set([...state.enabledProducts, key])] : state.enabledProducts.filter((k) => k !== key);
-  }
-  savePrototypeSettings();
-}
-
-function activateProduct(key) {
-  setProductActive(key, true);
-}
-
-// Remove button (v3) — still an instant, in-place deactivation (Robert:
-// "itd be neat if we can add remove products in the ui just to get the
-// feel for it, obv without the onboarding") — no stepper needed to
-// deactivate, only to activate (see the Activate button's own
-// data-wizard-open, wired through wireWizardOpenButtons instead of this
-// function entirely).
-function wireProductCards() {
-  canvasEl.querySelectorAll('[data-toggle-product]').forEach((el) => {
-    el.addEventListener('click', () => {
-      setProductActive(el.dataset.toggleProduct, false);
-      render();
-    });
-  });
-}
-
-// Product detail page (v3) — the "Learn more" destination from a Manage
-// products card (see buildProductDetailNode). Expanded/larger version of
-// the card's own tagline/value-prop/billing plus a real `benefits` list,
-// giving the page genuine substance (Robert: "make them feel substantial
-// in that they fill the space but still wireframe") without inventing new
-// content categories (no screenshots/FAQ/testimonials). "Set up" opens the
-// shared AI-generated dynamic stepper wizard (see WIZARD_DEFINITIONS'
-// 'ai-setup-stepper') via data-wizard-open/data-wizard-context — the same
-// wizard-overlay mechanism the Rate plan > Add channel flow already uses,
-// per Robert's own instinct that this might be "the standard form
-// presentation" for a bounded task, not a one-off.
-function renderProductDetail(product) {
-  // `data-wizard-toggle-key` was missing here (a real, pre-existing bug —
-  // Robert: "oh you are right - i thought it was working last time we
-  // looked") — without it, wizard.data.toggleKey is undefined on
-  // completion, so onComplete's `if (data.toggleKey) activateProduct(...)`
-  // silently skips the activation step: the wizard finishes, returns to
-  // Manage products, but the product never actually turns on. The card's
-  // own Activate button always had this wired correctly; this page's
-  // "Set up" (reached via Learn more, or a direct/deep link — Robert: "we
-  // might deep link to it") did not.
-  //
-  // The role banner itself is NOT rendered here — see render()'s own
-  // `roleBanner` (Robert: "bit messy - do you think we should have a full
-  // width banner under the header row?") — this page's `.product-detail`
-  // column is only 640px wide, so a banner rendered inside it read as one
-  // more paragraph of content rather than a page-level notice. render()
-  // renders it once, full-width, for both this page and the card grid.
-  return `
-    <div class="product-detail">
-      <p class="product-detail__tagline">${tr(product.tagline)}</p>
-      <p class="product-detail__value-prop">${tr(product.valueProp)}</p>
-      <div class="product-detail__benefits">
-        <h3 class="product-detail__section-title">${tr('What you get')}</h3>
-        <ul class="product-detail__benefits-list">
-          ${product.benefits.map((b) => `<li>${tr(b)}</li>`).join('')}
-        </ul>
-      </div>
-      <div class="product-detail__footer">
-        <span class="product-detail__billing">${tr(product.billing)}</span>
-        <button type="button" class="product-detail__setup-btn" data-wizard-open="ai-setup-stepper" data-wizard-context="${tr(product.name)}" data-wizard-toggle-key="${product.key}" ${state.isAdmin ? '' : 'disabled'}>
-          ${tr('Set up')}
-        </button>
+      <div class="product-tier-comparison">
+        <table>
+          <thead>
+            <tr>
+              <th></th>
+              ${tierHeaderCells}
+            </tr>
+          </thead>
+          <tbody>
+            ${featureRows}
+            <tr class="product-tier-comparison__group-label-row">
+              <td colspan="${plan.tiers.length + 1}">${tr(plan.payPerUse.label)}</td>
+            </tr>
+            ${payPerUseRows}
+          </tbody>
+        </table>
       </div>
     </div>
   `;
@@ -2573,89 +2363,18 @@ const WIZARD_DEFINITIONS = {
     // branch) — completing it means the account now genuinely has more than
     // one property, so it needs to land back on the real multi-property
     // Properties cards view, not the single-property dashboard it started
-    // on. Same "activating X implies state Y" precedent as setProductActive's
-    // own Multi-Property case (activating Multi-Property force-switches
-    // propertyCount to 'multiple') — reuses that exact mechanism rather than
-    // inventing a second one. Already-multiple accounts are a no-op here
-    // (the `!==` guard mirrors setProductActive's own).
+    // on. Same "activating X implies state Y" precedent as setTier's own
+    // Groups/Enterprise case (landing on either force-switches propertyCount
+    // to 'multiple' — see setTier in main.js) — reuses that exact mechanism
+    // rather than inventing a second one. Already-multiple accounts are a
+    // no-op here (the `!==` guard
+    // mirrors that handler's own).
     onComplete: () => {
       if (state.propertyCount !== 'multiple') {
         state.propertyCount = 'multiple';
         syncPropertyCountButtons();
         savePrototypeSettings();
       }
-    },
-  },
-  // AI-generated dynamic stepper (v3 Confluence framing) — ONE shared
-  // wizard reused by every product's "Set up" button (see
-  // buildProductDetailNode), not a bespoke wizard per product. Robert:
-  // "generic .. but maybe we show it in that full screen edit mode like we
-  // use for the rate mapping .. i am wondering if that might be the
-  // standard form presentation" — reuses this exact wizard-overlay
-  // mechanism rather than inventing a new full-page stepper style, since
-  // this IS meant to be the standard presentation for a bounded task, not
-  // just this one flow. `wizard.data.productName` (seeded via
-  // data-wizard-context, see wireWizardOpenButtons) is the only thing that
-  // varies step titles/copy by product — steps themselves stay generic/
-  // illustrative, matching the "wireframe but substantial" brief: real
-  // enough to fill the space, not real per-product content. Per the hybrid
-  // save model (project_save_model.md) this is a CONSEQUENTIAL action
-  // (activating a product) — commits via the final step's explicit
-  // Confirm, same as add-channel above, not progressively as steps are
-  // completed.
-  'ai-setup-stepper': {
-    steps: [
-      {
-        title: 'Connect your account',
-        render: (wizard) => `
-          <h2 class="wizard-step__title">${tr('Setting up')} ${tr(wizard.data.productName ?? 'this product')}</h2>
-          <p class="wizard-step__intro">${tr("We've put together a short setup based on your account — just confirm the details below.")}</p>
-          ${renderSectionsSketch([{ title: 'Account details', shape: 'field' }])}
-        `,
-      },
-      {
-        // Plain checkbox list, real property names — same
-        // `mapping-check-row` pattern renderDirectBookingMappingSketch
-        // already uses, not the real-navigation renderRecordPicker (whose
-        // data-path-key links only make sense inside canvasEl, which
-        // wirePathLinks actually queries — wizardBodyEl is a different
-        // subtree entirely). Non-interactive, matching "structure only, no
-        // real flow" convention — checked by default, not a real multi-
-        // select.
-        title: 'Choose your properties',
-        render: (wizard) => `
-          <h2 class="wizard-step__title">${tr('Which properties should this apply to?')}</h2>
-          <div class="sketch-section">${SCOPE_PROPERTIES.map(
-            (name) => `<label class="mapping-check-row"><input type="checkbox" checked /><span>${tr(name)}</span></label>`
-          ).join('')}</div>
-        `,
-      },
-      {
-        title: 'Review and confirm',
-        render: (wizard) => `
-          <h2 class="wizard-step__title">${tr('Review and confirm')}</h2>
-          <p class="wizard-step__intro">${tr('Confirming activates')} ${tr(wizard.data.productName ?? 'this product')} ${tr('for the properties you selected.')}</p>
-          ${renderSectionsSketch([{ title: 'Summary', shape: 'field' }])}
-        `,
-      },
-    ],
-    // Two real bugs, both here (Robert: "setup stepper should land back on
-    // the products page not the 'learn more' page" / "activate should go
-    // to the stepper setup, currently it just toggles in place"):
-    //   1. The actual state-flip now happens HERE, on completion — not on
-    //      the Activate button's own click (see the card's own
-    //      data-wizard-toggle-key, seeded into wizard.data as `toggleKey`
-    //      by wireWizardOpenButtons) — same activateProduct() helper
-    //      wireProductCards' Remove path also uses, so both directions go
-    //      through one shared function.
-    //   2. `select(0, 'manage-products')` drops back to the picker level —
-    //      completing the wizard from a product's detail page (depth 1)
-    //      must NOT leave state.path pointed at that now-activated
-    //      product's detail page; it returns to Manage products' own card
-    //      grid so the newly-activated card is visible in its new state.
-    onComplete: (data) => {
-      if (data.toggleKey) activateProduct(data.toggleKey);
-      select(0, 'manage-products');
     },
   },
 };
@@ -2860,7 +2579,7 @@ function renderHome(rows) {
 
 function renderSketch(content) {
   if (content.sketch === 'home') return renderHome(content.rows);
-  if (content.sketch === 'product-detail') return renderProductDetail(content.product);
+  if (content.sketch === 'plan-comparison') return renderPlanComparison(content.plan, content.currentTier);
   if (content.sketch === 'release-note') return renderReleaseNote(content.note);
   if (content.sketch === 'sections') return renderSectionsSketch(content.sections);
   if (content.sketch === 'media') {
@@ -3223,14 +2942,15 @@ function render() {
   // sectionHasAttention). Falls through to an honest empty panel/canvas for
   // any section with no data for the current state (e.g. an undefined rail
   // item for a given account type) — no placeholders, just nothing rendered.
+  const capabilities = getCapabilities();
   const content = getContent(
     state.accountType,
     state.propertyCount,
     state.scope,
-    state.enabledProducts,
-    state.hasDrPlus,
-    state.tier === 'siteminder-plus',
-    state.hasMultiProperty
+    capabilities.drPlusLevel !== 'none',
+    capabilities.hasDirectBooking,
+    capabilities.hasMultiProperty,
+    state.tier
   );
   renderRail(content);
   const data = content?.[state.section];
@@ -3279,7 +2999,6 @@ const UTILITY_SECTION_LABELS = {
   'my-account': 'My account',
   notifications: 'Notifications',
   assistant: 'AI assistant',
-  [GUEST_MESSAGING_KEY]: 'Guest messaging',
 };
 
 function renderMobileChrome(data) {
@@ -3331,14 +3050,15 @@ function renderMobileDrawer() {
   // Same rail-level bubbling as the desktop rail (renderRail) — recomputed
   // here rather than threaded in, since the drawer opens from its own
   // gesture (the hamburger), independent of the main render() cycle.
+  const mobileCapabilities = getCapabilities();
   const content = getContent(
     state.accountType,
     state.propertyCount,
     state.scope,
-    state.enabledProducts,
-    state.hasDrPlus,
-    state.tier === 'siteminder-plus',
-    state.hasMultiProperty
+    mobileCapabilities.drPlusLevel !== 'none',
+    mobileCapabilities.hasDirectBooking,
+    mobileCapabilities.hasMultiProperty,
+    state.tier
   );
   const sectionRows = items
     .map((item) => {
@@ -3357,11 +3077,6 @@ function renderMobileDrawer() {
     })
     .join('');
   const utilityRows = [
-    // Guest messaging (v3) — same "no item at all until Guest Engagement
-    // is active" gate as the desktop rail's own railGuestMessagingEl
-    // `hidden` toggle (see renderRail), derived from the same resolved
-    // content tree.
-    ...(content?.[GUEST_MESSAGING_KEY] ? [{ key: GUEST_MESSAGING_KEY, label: 'Guest messaging' }] : []),
     { key: 'assistant', label: 'AI assistant' },
     { key: 'notifications', label: 'Notifications' },
     { key: 'my-account', label: 'My account' },
@@ -3424,6 +3139,43 @@ document.querySelectorAll('[data-account-type]').forEach((el) => {
   });
 });
 
+// v4 tier switch — the ONE mechanism that drives Direct Booking/DR+/Guest
+// Engagement/Multi-Property now (see getCapabilities/deriveCapabilitiesFromTier),
+// replacing the old per-product Activate/Remove buttons entirely. Tier
+// switches ONLY from Manage products' own in-page "Switch to this" buttons
+// (Robert: "remove tier from the [debug panel] settings" — a prototype-only
+// control isn't representative of a real switch point, unlike every other
+// debug-panel toggle) — see wireTierSwitchButtons below. Applies the
+// confirmed Groups/Enterprise property-count side effect (Robert: "groups
+// can allow multiple properties but only enterprise has MP (shared
+// distribution)") — same propertyCount auto-switch setProductActive's old
+// multi-property branch used, just triggered by tier now, and Groups
+// deliberately does NOT flip hasMultiProperty (that's derived,
+// Enterprise-only).
+function setTier(tier) {
+  state.tier = tier;
+  const { autoPropertyCount } = getCapabilities();
+  if (autoPropertyCount && state.propertyCount !== 'multiple') {
+    state.propertyCount = 'multiple';
+    syncPropertyCountButtons();
+  }
+  savePrototypeSettings();
+  render();
+}
+
+// Manage products' "Switch to this" buttons (see renderPlanComparison) —
+// canvas content is re-rendered from scratch on every render(), so this is
+// wired per-render (alongside wirePathLinks etc. in renderCanvas), not once
+// at load like the rest of this file's debug-panel toggles. re-render
+// itself puts the fresh `is-current-tier` class on the right column, so no
+// separate active-class sync is needed here the way the debug panel's
+// static buttons needed one.
+function wireTierSwitchButtons() {
+  canvasEl.querySelectorAll('[data-tier-switch]').forEach((el) => {
+    el.addEventListener('click', () => setTier(el.dataset.tierSwitch));
+  });
+}
+
 document.querySelectorAll('[data-property-count]').forEach((el) => {
   el.addEventListener('click', () => {
     state.propertyCount = el.dataset.propertyCount;
@@ -3479,12 +3231,12 @@ document.querySelectorAll('[data-user-role]').forEach((el) => {
   });
 });
 
-// Activating Multi-Property from a
-// Manage products card (see setProductActive) auto-switches
-// state.propertyCount to 'multiple' (Robert: "adding it automatically
-// toggles the proto setting to multiple properties if its not already"),
-// so the debug panel's own Property count buttons need to be kept in sync
-// from that entry point too, not just their own direct click handler.
+// Landing on Groups/Enterprise from the debug panel's tier picker
+// auto-switches state.propertyCount to 'multiple' (Robert: "adding it
+// automatically toggles the proto setting to multiple properties if its
+// not already"), so the debug panel's own Property count buttons need to
+// be kept in sync from that entry point too, not just their own direct
+// click handler.
 function syncPropertyCountButtons() {
   document.querySelectorAll('[data-property-count]').forEach((b) => {
     b.classList.toggle('is-active', b.dataset.propertyCount === state.propertyCount);
