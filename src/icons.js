@@ -17,6 +17,11 @@ export const RAIL_ICONS = {
   // clearly at rail size. See CHANGE-QUEUE.md item 5.
   frontDesk:
     '<svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0 1 16 0"/><path d="M3 15h18"/><path d="M12 5v2"/><circle cx="12" cy="4" r="1"/><path d="M10 19h4"/></svg>',
+  // Home (v4) — a plain house glyph for the new dedicated landing section.
+  // Matched to the rest of the set's open, single-weight line style (no
+  // filled/boxy segments) — same roof-plus-outline construction as
+  // frontDesk's own arc-and-line composition above.
+  home: '<svg viewBox="0 0 24 24"><path d="M4 12 12 4.5 20 12"/><path d="M6 10.5V19a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8.5"/><path d="M10 20v-4.5h4V20"/></svg>',
   insights:
     '<svg viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M7 15l4-6 4 3 5-8"/></svg>',
   distribution:
@@ -28,8 +33,13 @@ export const RAIL_ICONS = {
   // just the payments piece. See nav-data.js's BASE_RAIL_ITEMS comment.
   operations:
     '<svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M8 13l2.5 2.5L16 10"/></svg>',
+  // "Property" (v4, renamed from Configuration — Robert: "the cog is not
+  // right for property") — a plain building glyph, matching what this
+  // section actually holds (property details, users, direct booking,
+  // channels, pay) rather than a generic settings mark. Same open,
+  // single-weight line style as the rest of the set.
   configuration:
-    '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+    '<svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/><path d="M10 21v-4a2 2 0 0 1 4 0v4"/></svg>',
   // Guest messaging rail item (v3, Guest Engagement add-on) — a chat
   // bubble with a small guest/person mark inside, reading as "chat with a
   // guest" rather than a generic messaging icon. EXPLORATORY: first pass,

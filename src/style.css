@@ -517,64 +517,109 @@ a { color: inherit; }
   min-height: 0;
 }
 
-/* Pane 1: primary rail — deliberately inverted (dark, greyscale) regardless
-   of light/dark theme. This is a fixed design choice for the rail specifically,
-   not a light/dark variant, so it uses its own token set rather than the
-   shared --surface/--text tokens. */
-.rail {
+/* Pane 1: merged nav (v4) — REPLACES the old two-column rail (64px,
+   icon-only) + secondary panel (current section's own items only). Robert:
+   "my leaders expect more clarity around the top level sections... should
+   we consider a vertical nav that is just one column with sections
+   instead?" One dark-chrome column: brand+tier header (always visible, no
+   hover needed), then every section's own heading + items in one
+   continuously scrollable list, then a small utility row pinned to the
+   bottom. Deliberately inverted (dark, greyscale) regardless of light/dark
+   theme — same fixed design choice the old rail made, own token set rather
+   than the shared --surface/--text tokens. Sized with flexbox only (flex,
+   min-height:0, overflow-y:auto) — no hardcoded pixel insets anywhere,
+   learned directly from the earlier rail-hover-expand rework's fragile
+   pixel-math bugs. */
+.merged-nav {
   --rail-ground: #26292E;
   --rail-ground-raised: #34383F;
   --rail-icon: #9AA0A8;
   --rail-icon-active: #FFFFFF;
   --rail-active-bg: #40444C;
 
-  width: 64px;
+  /* Same --surface/--text/--border family .secondary-panel redefines
+     locally (its own "Slack-sidebar" dark chrome) — mapped onto this
+     column's own darker palette so .nav-list/.nav-sublist and every
+     existing descendant class render correctly without any changes to
+     their own rules, now that they're nested here instead. */
+  --surface: var(--rail-ground);
+  --surface-sunken: #21252B;
+  --surface-raised: var(--rail-ground-raised);
+  --border: #3D424B;
+  --border-strong: #4B515C;
+  --text: var(--rail-icon-active);
+  --text-secondary: #C4C9D0;
+  --text-muted: var(--rail-icon);
+
+  /* Shrunk from 260px (v4, Robert: "shall we shrink the width a bit for
+     now") — sections collapse to just their heading by default now, so the
+     pane no longer needs as much room to avoid wrapping longer item
+     labels; 220px still comfortably fits every section/item label without
+     truncation. */
+  width: 220px;
   flex-shrink: 0;
   background: var(--rail-ground);
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
-/* Both brand marks are now self-contained colored tiles (own rounded-square
+.merged-nav__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--rail-ground-raised);
+}
+
+/* Both brand marks are self-contained colored tiles (own rounded-square
    background baked into the SVG, matching how each product's icon actually
    appears in-app) — no chip background needed here. */
-.rail__brand {
+.merged-nav__brand {
   display: flex;
-  justify-content: center;
   align-items: center;
-  width: 32px;
-  height: 32px;
-  margin: 20px auto 8px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   flex-shrink: 0;
 }
 
-.rail__brand-mark {
+.merged-nav__brand svg {
   width: 24px;
   height: 24px;
 }
 
-.rail__items {
+/* Current plan tier, permanently shown next to the brand mark (v4, Robert:
+   "show the tier to the right of the brand" — a deliberate reversal of an
+   earlier call against a static tier label, made when the rail was too
+   narrow to hold it without hover-reveal; the merged pane has real room for
+   it now). */
+.merged-nav__tier {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rail-icon);
+}
+
+.merged-nav__scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 0;
+  padding: 8px 10px 16px;
 }
 
-/* AI assistant + notifications — both sit above the avatar, below the
-   main section list. Neither is a rail SECTION (getRailItems is
-   unaffected) — same treatment as railUser: a separate mode switch that
-   swaps the L2 panel/canvas without being one of the section icons. */
-.rail__utility {
+/* Small fixed row (Assistant/Notifications/My account) pinned to the
+   bottom, outside the scrollable section list — these are deliberately NOT
+   real IA sections (PATTERNS.md), so they don't get a heading row in the
+   merged list; same "always reachable regardless of scroll position"
+   treatment the old rail's own utility group had. */
+.merged-nav__utility {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 0;
+  gap: 2px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--rail-ground-raised);
 }
 
 /* Circled "?" — deliberately NOT a bare "?" (which reads as help/support,
@@ -588,118 +633,120 @@ a { color: inherit; }
   border: 1.6px solid currentColor;
   font-size: 11px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
-/* LIVE aggregation, not static — shows when ANY of this rail section's own
-   panel items currently need attention (sectionHasAttention in main.js),
-   and disappears once every one of them has been visited. Same dot as the
-   L2 panel-item badge (.nav-list-item__badge), just rail-positioned.
-   Pushed up and OUT past the icon's own corner (was inset at top/right:8px,
-   sitting inside the 32px selected-state highlight box) — Robert: "if you
-   push the dot up and out it will sit better against the selected state,"
-   since a dot sitting inside that box on the active item read as floating
-   inside the highlight rather than marking the icon. */
+/* LIVE aggregation, not static — shows when ANY of this section's own
+   items currently need attention (sectionHasAttention in main.js), and
+   disappears once every one of them has been visited. Same dot as the
+   item-level badge (.nav-list-item__badge), just also usable on a section
+   heading or a utility row. */
 .rail-item__badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   background: var(--alert);
+  flex-shrink: 0;
 }
 
 .rail__user {
-  flex-shrink: 0;
   display: flex;
-  justify-content: center;
-  padding: 12px 0 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
   border: none;
+  border-radius: 8px;
   background: transparent;
+  color: var(--rail-icon);
   cursor: pointer;
 }
 
+.rail__user:hover {
+  background: var(--rail-ground-raised);
+  color: #C4C8CE;
+}
+
+.rail__user.is-active {
+  background: var(--rail-active-bg);
+  color: var(--rail-icon-active);
+}
+
 .rail__user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
   background: var(--rail-ground-raised);
   color: var(--rail-icon-active);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  transition: background 0.12s ease;
-}
-
-.rail__user:hover .rail__user-avatar {
-  background: var(--rail-active-bg);
+  flex-shrink: 0;
 }
 
 .rail__user.is-active .rail__user-avatar {
   background: var(--rail-active-bg);
-  color: var(--rail-icon-active);
   box-shadow: inset 0 0 0 1.5px var(--rail-icon-active);
 }
 
-/* Hit target stays 44px (click/tap area, spacing rhythm) but the
-   hover/active highlight itself is drawn at 32px via ::before — matching
-   the brand mark's own 32px footprint above it, rather than the full 44px
-   box (Robert: "reduce the size of selected state in the rail to match
-   the brand icon"). */
+/* Utility buttons (Assistant/Notifications) — same row shape as
+   .rail__user above (icon/avatar, label, optional badge, real hover/active
+   feedback), reusing the shared .rail-item class each row already had. */
 .rail-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
   cursor: pointer;
   border: none;
   background: transparent;
   color: var(--rail-icon);
-  position: relative;
 }
 
 /* Guest messaging's own hide/show (v3, gated on Guest Engagement being
-   active — see renderRail's railGuestMessagingEl.hidden toggle) needs an
-   explicit override: .rail-item's own `display: flex` above already beats
-   the `[hidden]` UA-stylesheet rule (display: none) on specificity, same
-   fix .wizard__btn--secondary[hidden] uses elsewhere in this file. */
+   active) needs an explicit override: .rail-item's own `display: flex`
+   above already beats the `[hidden]` UA-stylesheet rule (display: none) on
+   specificity, same fix .wizard__btn--secondary[hidden] uses elsewhere in
+   this file. */
 .rail-item[hidden] {
   display: none;
 }
 
-.rail-item::before {
-  content: '';
-  position: absolute;
-  inset: 6px;
-  border-radius: 8px;
-  background: transparent;
-  transition: background 0.12s ease;
-}
-
-.rail-item__icon,
-.rail-item__icon svg {
-  position: relative;
-}
-
 .rail-item:hover {
   color: #C4C8CE;
-}
-
-.rail-item:hover::before {
   background: var(--rail-ground-raised);
 }
 
 .rail-item.is-active {
   color: var(--rail-icon-active);
+  background: var(--rail-active-bg);
 }
 
-.rail-item.is-active::before {
-  background: var(--rail-active-bg);
+/* Icon-only utility rows (v4, Robert: "lose these [labels]... keep them as
+   icons" — kept vertical/stacked, same as before, just without a label
+   filling each row's remaining width) — Assistant/Notifications/My account
+   now show just their icon, centered in a square hit target instead of
+   left-aligned with empty space trailing it. */
+.rail-item--icon-only,
+.rail__user--icon-only {
+  width: 32px;
+  justify-content: center;
+  padding: 8px;
+  position: relative;
+}
+
+/* Corner badge on an icon-only button (v4) — was a flex sibling that used
+   to sit next to the label; with the label gone, it needs to overlay the
+   icon's own corner instead of floating off to the side on its own. */
+.rail-item--icon-only .rail-item__badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
 }
 
 .rail-item__icon {
@@ -708,6 +755,7 @@ a { color: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
 }
 
 .rail-item__icon svg {
@@ -716,6 +764,16 @@ a { color: inherit; }
   stroke: currentColor;
   fill: none;
   stroke-width: 1.7;
+}
+
+.rail-item__label {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Pane 2: secondary panel — inverted dark chrome, Slack-sidebar style
@@ -911,6 +969,106 @@ a { color: inherit; }
   color: var(--text-muted);
 }
 
+/* Top-level SECTION heading (v4, merged nav) — same visual DNA as
+   .nav-list-heading (bold, uppercase, small, muted) but a DELIBERATELY
+   SEPARATE class: unlike that one, this IS clickable/routable (a real
+   section switch, same mechanism the old rail's own icon click used). Never
+   reuse .nav-list-heading itself for this — its whole contract elsewhere is
+   "never clickable" (PATTERNS.md), conflating the two risks exactly the
+   kind of accidental dual-meaning bug this codebase's own comments warn
+   against. */
+/* Visual hierarchy pass (v4, Robert: "even though it's a wireframe let's
+   see if we can make it read a bit better") — the original version used
+   the SAME small/muted/uppercase treatment for every heading regardless of
+   state, so nothing actually anchored the eye: the current section didn't
+   pop, collapsed ones didn't recede, and the active ITEM barely read as
+   selected against everything else at the same visual weight. Three
+   changes address this together: (1) collapsed section headings drop to a
+   genuinely quieter tone (not the same tone active items use), so they
+   read as "closed drawers," not equal peers of what's open; (2) the ACTIVE
+   section's own heading gets real size/weight/spacing, more like a page's
+   section title than a list row; (3) the active item gets a left accent
+   bar + brighter fill, not just a background tint that reads flat against
+   this dark chrome at a glance. */
+.nav-section-heading {
+  margin-top: 18px;
+}
+
+.nav-section-heading:first-child {
+  margin-top: 4px;
+}
+
+/* Monospace for section headings specifically (Robert: "refine the
+   typography if you need to - can use different fonts as well") — already
+   loaded for this app (--font-mono, JetBrains Mono, otherwise only used for
+   code/support-code strings) and unused anywhere in the nav until now;
+   reusing it here gives section "chapter titles" real typographic
+   distinction from the item rows below them (still Inter) without loading
+   a third font family just for this. Same eyebrow-label pattern several
+   real dashboard products use (Linear, Vercel) for exactly this role. */
+.nav-section-heading a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Bumped from 11px (Robert: "maybe make them all a bit bigger by
+     default - the top levels that is") — every heading grows together, not
+     just the active one, so the whole row stays one consistent
+     typographic family (see is-active-section below: still no size jump
+     between open/closed, just color/weight). */
+  padding: 7px 10px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #5B6069;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 7px;
+  transition: color 0.12s ease;
+}
+
+.nav-section-heading a:hover {
+  color: var(--text-secondary);
+}
+
+/* The OPEN section's own heading — deliberately heavier and larger than a
+   collapsed one, closer to a small page title than a list row, so it's
+   unmistakable which "chapter" the items below it belong to. */
+/* Same size as every heading (Robert: "i dont like that the selected
+   section header gets bigger") — color/weight alone carry the distinction,
+   not a size jump, so the whole row of headings stays visually consistent
+   as ONE typographic family regardless of which one is open. */
+.nav-section-heading.is-active-section a {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.nav-section-heading.is-active-section .nav-section-heading__icon {
+  color: var(--text);
+}
+
+/* Secondary scan-aid (v4, Robert: "too much noise... probably bring in
+   icons") — muted like the collapsed heading it sits beside; only the
+   ACTIVE section's icon (see above) brightens to match its own heading. */
+.nav-section-heading__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: #5B6069;
+}
+
+.nav-section-heading__icon svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
 /* Plain-line divider — lighter separator than `.nav-list-heading` for a
    group that doesn't need its own label (Insights: starred dashboards vs.
    My dashboards/My widgets/Recommendations). */
@@ -942,6 +1100,10 @@ a { color: inherit; }
   color: var(--text);
 }
 
+/* Plain background + weight only (Robert: "lose it entirely" re: an
+   earlier left-accent-bar attempt — "very stylistic sort of decision" for
+   a wireframe) — no border/accent styling, just the same fill/weight
+   treatment every other selected state in this app already uses. */
 .nav-list-item.is-active a {
   background: var(--surface-raised);
   color: var(--text);
@@ -1339,6 +1501,20 @@ a { color: inherit; }
   background: var(--alert);
 }
 
+/* Plan & billing's non-admin banner (v4 — Robert: "switching to non-admin
+   should update the plans and billing page to show the banner"). Neutral/
+   informational, not `.tile-tip-banner`'s alert-red — a plain permission
+   state, not something needing attention or fixing. */
+.plan-comparison__admin-banner {
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
 /* Link affordance — same visual role as `.nav-list-item__chevron` (a
    folder's expand indicator), but this marks a canvas tile as clickable,
    not a panel-list row as expandable. */
@@ -1453,6 +1629,24 @@ a { color: inherit; }
   padding: 14px 18px;
   background: var(--surface-sunken);
   border-bottom: 1px solid var(--border);
+}
+
+/* Real "View all (N)" text, deliberately NOT the minimal bare-chevron
+   treatment the other Home rows use (v4 — Robert: "add a 'view all (25)'
+   to the right of the recommendations widget") — this row now has a real
+   named destination worth calling out, not a borrowed stand-in. See
+   renderPriorityActions' own comment. */
+.priority-actions__view-all {
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.priority-actions__view-all:hover {
+  color: var(--text);
+  text-decoration: underline;
 }
 
 .priority-actions__heading {
@@ -2241,6 +2435,26 @@ a { color: inherit; }
   background: var(--surface-sunken);
 }
 
+/* Quiet text-footer promo, replacing the "+ Add property" button on the
+   single-property Property page (v4 — Robert: "low traffic" reasoning
+   already applied to demote the button below the tile grid; this demotes
+   it further, to plain text, since the multi-property Properties cards
+   list is the primary place this action still lives as a real button). */
+.records-page__add-property-promo {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.records-page__add-property-promo a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+
+.records-page__add-property-promo a:hover {
+  color: var(--text);
+}
+
 .channel-rates__add-btn:hover {
   background: var(--surface-sunken);
 }
@@ -2623,6 +2837,27 @@ a.wf-list__row:hover {
   color: var(--text);
 }
 
+/* Internal-only "which product actually uses this field" annotation (v4,
+   Robert: "tag these new fields... for internal reference at this stage,
+   not so much for customers") — deliberately styled as TOOLING, not a real
+   product tag like .dr-plus-tag: dashed border (nothing else in this app
+   uses one), monospace, muted grey-on-grey. The goal is that anyone
+   reviewing the prototype instantly reads this as "a note for us," never
+   mistakes it for something a real customer would see. */
+.used-by-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
 .sketch-field--sm {
   max-width: 160px;
 }
@@ -2685,6 +2920,70 @@ a.wf-list__row:hover {
   border-radius: 4px;
   background: var(--surface-sunken);
   border: 1px solid var(--border);
+}
+
+/* Real field-level settings row (v4, Direct Booking channel settings —
+   Robert: "i wanted it down to field level"). Real label TEXT, still a
+   skeleton VALUE bar (no fake data) — first departure from the plain
+   skeleton-bar-only convention above. Compact single row (label left,
+   value right) rather than skeletonField's stacked label-then-value —
+   real settings lists need tighter density than anonymous placeholder
+   content did. See PATTERNS.md's own section-shape write-up. */
+.sketch-real-fields {
+  display: flex;
+  flex-direction: column;
+}
+
+.sketch-real-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sketch-real-field:last-child {
+  border-bottom: none;
+}
+
+.sketch-real-field__label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.sketch-real-field__value {
+  height: 14px;
+  width: 90px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+/* External jump-off link above a sections list (v4, Direct Booking channel
+   settings' "view booking engine" link). Neutral, same visual weight as the
+   breadcrumb's own link treatment — deliberately not a brand-color accent,
+   this is a wireframe utility link, not a real product CTA. */
+.sketch-external-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.sketch-external-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+.sketch-external-link svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
 }
 
 /* Remote-channel mapping — SM rate column vs the channel's own rate column,
@@ -2809,7 +3108,7 @@ a.wf-list__row:hover {
     height: auto;
   }
 
-  .rail {
+  .merged-nav {
     display: none;
   }
 

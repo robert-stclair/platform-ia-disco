@@ -170,22 +170,26 @@
 //                                                                    Security so they can sit together as plain
 //                                                                    action rows rather than tabs
 
+// Section labels renamed v4 (merged single-pane nav — Robert: "lets do the
+// renaming" once real full-text headings replaced icon-only rail buttons)
+// to Home/Plan/Sell/Operate/Property — internal `key`s DELIBERATELY left
+// unchanged (still 'insights'/'distribution'/'operations'/'configuration'),
+// only the visible `label` changed, since every `tree[key]`/`state.section`
+// comparison across this file and main.js keys off these strings —
+// renaming them too would be a much larger, riskier ripple for a
+// label-only ask. Icons kept as their existing glyphs (line-chart/globe/
+// clipboard/gear) rather than re-doing an earlier, reverted icon swap —
+// icons are now a secondary scan-aid next to each heading, not the primary
+// identifier, so today's established set still reads fine under new labels.
 const BASE_RAIL_ITEMS = [
-  { key: 'insights', label: 'Insights', icon: 'insights' },
-  { key: 'distribution', label: 'Distribution', icon: 'distribution' },
-  // Renamed from "Transactions" — CONTEXT.md logged this rail section's own
-  // name as an open thread ("we might need to think of a better rail
-  // section name... not sure what it is") after the user reached for
-  // "Transactions" as a name for something NEW mid-conversation before
-  // recalling this section already existed — a sign the old name wasn't
-  // sticking in the mental model. "Operations" is the chosen replacement —
-  // covers Reservations/Guest communications/Payments as the day-to-day
-  // running of a property, not just its payment-transaction content (which
-  // is only one of the three L2 items here). `key`/tree property renamed
-  // to match (`operations`, not `transactions`) rather than leaving an
-  // internal key that no longer matches its visible label.
-  { key: 'operations', label: 'Operations', icon: 'operations' },
-  { key: 'configuration', label: 'Configuration', icon: 'configuration' },
+  // Dedicated Home section (v4) — a plain top-level landing destination,
+  // separate from Insights' own "Overview" preset even though it shows the
+  // same content (see buildSmContentTree's own 'home' tree entry).
+  { key: 'home', label: 'Home', icon: 'home' },
+  { key: 'insights', label: 'Plan', icon: 'insights' },
+  { key: 'distribution', label: 'Sell', icon: 'distribution' },
+  { key: 'operations', label: 'Operate', icon: 'operations' },
+  { key: 'configuration', label: 'Property', icon: 'configuration' },
 ];
 
 // Guest messaging (v3, Robert: "when they have it lets add a rail item
@@ -444,7 +448,11 @@ export const PLAN_COMPARISON = {
 // own comment; it lives in the rail's utility group instead.
 export function getRailItems(accountType) {
   if (accountType === 'LH') {
-    return [{ key: 'front-desk', label: 'Front desk', icon: 'frontDesk' }, ...BASE_RAIL_ITEMS];
+    // Front desk sits right after Home (v4, Robert: "for LH front desk
+    // would come after home") — was previously prepended ahead of
+    // everything, including Home; Home is the account's own landing
+    // destination regardless of account type, so it stays first either way.
+    return [BASE_RAIL_ITEMS[0], { key: 'front-desk', label: 'Front desk', icon: 'frontDesk' }, ...BASE_RAIL_ITEMS.slice(1)];
   }
   return BASE_RAIL_ITEMS;
 }
@@ -590,6 +598,18 @@ const PROPERTY_DETAILS_NODE = {
             { title: 'Inventory', shape: 'field' },
             { title: 'Language and region', shape: 'field' },
             { title: 'Property', shape: 'field' },
+            // New field (v4, IA-restructure work — Robert: "add a property
+            // type field to property settings... that is a Channels Plus
+            // setting"): OTA listing category (Hotel/Resort/Apartment/
+            // Hostel/etc.) — genuinely Channels Plus config (channels need
+            // this to list the property correctly), but it's a property-
+            // wide attribute, not something that varies per rate plan or
+            // per channel, so it belongs here rather than duplicated in
+            // Rate plan > Channels. `usedBy` is an internal-only note (see
+            // renderUsedByTag) — not shown to customers, just flags which
+            // product actually reads this field now that Channels Plus no
+            // longer has its own separate Configuration page.
+            { title: 'Property type', shape: 'field', usedBy: 'Channels Plus' },
             { title: 'Contact', shape: 'cols' },
             { title: 'Extra information', shape: 'field' },
           ],
@@ -618,6 +638,34 @@ const PROPERTY_DETAILS_NODE = {
             { title: 'Check-in / Check-out', shape: 'field' },
             { title: 'Smoking policy', shape: 'field' },
             { title: 'Terms, conditions and privacy policy', shape: 'field' },
+          ],
+        },
+      },
+      // Tab (v4, IA-restructure work — Robert: "add taxes and fees to the
+      // property settings, its for C+ as well", then "and licenses moves
+      // from C+ to Property as well") — one field per thing Robert named
+      // (Taxes and fees; Licenses), not a hand-invented breakdown. Named
+      // "Legal and compliance" rather than "Taxes and fees" so this stays
+      // ONE durable home for property-level registration/compliance data,
+      // instead of spawning a new tab per requirement (Robert: "we dont
+      // want to just add tabs for everything"). Distinct from "Policies",
+      // which covers guest-facing house rules (check-in time, smoking) —
+      // this tab is about a property's legal standing to operate/be listed,
+      // not guest-facing terms. Property-wide, not per-rate-plan (unlike
+      // Cancellation policy) — neither field varies by which rate plan
+      // someone books, so it stays here rather than under Rate plan. Real
+      // Channels Plus config: channels need this to display all-in pricing
+      // and, per jurisdiction, a valid license/registration number on their
+      // own listings. `usedBy` — see renderUsedByTag — internal-only.
+      {
+        key: 'legal-and-compliance',
+        label: 'Legal and compliance',
+        content: {
+          type: 'sketch',
+          sketch: 'sections',
+          sections: [
+            { title: 'Taxes and fees', shape: 'field', usedBy: 'Channels Plus' },
+            { title: 'Licenses', shape: 'field', usedBy: 'Channels Plus' },
           ],
         },
       },
@@ -1085,6 +1133,53 @@ const ASSISTANT_ITEMS = {
 // same 'ai-setup-stepper' wizard Manage products' own Activate button
 // uses, instead of navigating through) — "they see what it can do but
 // it's locked," not a separate ad unit or an empty placeholder.
+// Dynamic actions' own full-page content (v4 — Robert: "put the tabs on the
+// page - and use a grid layout for the recommendations") — 3 tabs (New /
+// Actioned / Automation), each a real title+rationale card grid (same shape
+// as Home's own widget preview, see renderActionCardsGrid in main.js), not
+// a `records` list — no per-item detail node exists yet, and Robert's own
+// framing ("we might want to have tabs to divide new, actioned, automation
+// etc") describes STATES of one action feed, not independently-drillable
+// entities. Illustrative items only, same "generic realistic, not real
+// confirmed data" convention as everywhere else — "New" reuses the 3 real
+// items already on Home's own widget (same underlying feed, not a
+// duplicate concept); Actioned/Automation are freshly illustrative.
+const DYNAMIC_ACTIONS_NEW = [
+  {
+    title: 'Add a non-refundable rate',
+    rationale: 'Your compset sells one on Booking.com — your NRF mix is currently 0%.',
+    drPlusOnly: true,
+  },
+  {
+    title: 'Occupancy has passed your threshold for Thu 14 Aug',
+    rationale: "Thu 14 Aug just crossed 90% on the books — the point you've told us to flag for a pricing review.",
+  },
+  {
+    title: 'Reopen Booking.com',
+    rationale: 'Closed 9 days over sellable dates — likely an accidental stop-sell that was never reopened.',
+  },
+];
+const DYNAMIC_ACTIONS_ACTIONED = [
+  { title: 'Weekend surcharge, Fri 8 Aug', rationale: 'Accepted — applied a surcharge ahead of a high-demand weekend.', drPlusOnly: true },
+  { title: 'Deluxe King rate increase, 16 Oct', rationale: 'Accepted — raised the rate on a night trending toward a sellout.', drPlusOnly: true },
+  { title: 'Reopened Booking.com, 3 nights', rationale: 'Accepted — reopened sellable dates that had been left closed.' },
+];
+const DYNAMIC_ACTIONS_AUTOMATION = [
+  { title: 'Auto-apply weekend surcharges', rationale: 'Automatically raises weekend rates when demand crosses your set threshold.' },
+  { title: 'Auto-reopen accidental stop-sells', rationale: 'Flags and reopens channels closed longer than your set window with no new bookings.' },
+];
+
+// Home's own dashboard content — plain `sketch` page, same shape as before
+// the brief `tabs`-wrapper experiment. REVERTED from a "Dashboard"/"Dynamic
+// actions" tab pair (v4 — Robert caught the problem: "having dynamic
+// actions in a tab is a problem - because we might want to have tabs to
+// divide new, actioned, automation etc tabs for the actions") — Dynamic
+// actions needs room to grow its OWN tab strip later, which a flat sibling
+// tab inside Home's tabs can never support (this app's `tabs` content holds
+// one flat `content` per tab, no nesting). See buildSmContentTree's own
+// 'home' entry for how "View all" now reaches Dynamic actions instead — a
+// SECOND, hidden item on Home (same `hidden: true` mechanism as Plan's
+// Recommendations item), not a tab.
 function buildHomeContent(hasDrPlus) {
   return {
     type: 'sketch',
@@ -1122,13 +1217,16 @@ function buildHomeContent(hasDrPlus) {
               // pricing/revenue recommendation — left untagged.
             },
           ],
-          // "View all" routes to the real Recommendations item already in
-          // this section (Robert: "view all on the rec widgets links to the
-          // rec full page") — not a separate priority-actions page, since
-          // one doesn't exist yet; Recommendations is the closest real
-          // destination until the diagnostics/recommendations split (v3
-          // Confluence page) is actually built.
-          viewAllKey: 'recommendations',
+          // "View all (25)" (v4, Robert: "add a 'view all (25)' to the
+          // right of the recommendations widget on the home page ... goes
+          // to a breadcrumb home/dynamic actions") — a real, SEPARATE hidden
+          // item on Home (see buildSmContentTree's 'home' entry), not a
+          // jump out to Plan's Recommendations item (which was only ever a
+          // stand-in) and not a sibling tab either (tried and reverted —
+          // see buildHomeContent's own comment: Dynamic actions needs room
+          // for its own future tab strip, which a tab can't itself hold).
+          viewAllKey: 'dynamic-actions',
+          viewAllCount: 25,
         },
       },
       {
@@ -1249,37 +1347,22 @@ function buildHomeContent(hasDrPlus) {
 // convention). Starring is the real mechanism for which dashboards get
 // pinned/promoted elsewhere, not decoration.
 //
-// "Overview" renamed to "Home" (v3, Robert: "i think we need a better name
-// than overview") once its content became the priority-actions/performance/
-// value-tracking Home page rather than one dashboard among seven equals —
-// `key: 'overview'` kept as the internal id (PRESET_DASHBOARD_ITEMS.map()
-// special-cases on the key, not the label; renaming it would just churn
-// every reference below for no reason).
-const PRESET_DASHBOARD_NAMES = [
-  'Home',
-  'Booking performance',
-  'Forecasting',
-  'Pace',
-  'Competitor rates',
-  'Rate parity',
-  'Availability',
-];
-// The 7 preset dashboards' own top-level panel-item definitions — a real
-// array (not 7 hand-written literals) specifically so the Insights
+// Home (v4) pulled OUT of this list entirely — it's now its own top-level
+// rail destination (see buildSmContentTree's 'home' entry), not one
+// dashboard among Insights' others. `active: true` moved to the first
+// remaining preset (Booking performance) — same "first item is the
+// default landing page" convention every other section uses, now that
+// Insights itself doesn't default to Home.
+const PRESET_DASHBOARD_NAMES = ['Booking performance', 'Forecasting', 'Pace', 'Competitor rates', 'Rate parity', 'Availability'];
+// The remaining preset dashboards' own top-level panel-item definitions —
+// a real array (not hand-written literals) specifically so the Insights
 // section's `items` list and My dashboards' own list can both derive from
-// ONE shared source instead of two copies that could drift. `active:
-// true` only on the first (Home) — same "first item is the default
-// landing page" convention every other section uses. Card shapes are
-// arbitrary/illustrative, just varied enough that the 7 pages don't look
+// ONE shared source instead of two copies that could drift. Card shapes
+// are arbitrary/illustrative, just varied enough that the pages don't look
 // identically empty.
-// A function of `hasDrPlus` (v3, not a static array) — Home's own content
-// now depends on it too (see buildHomeContent), so this whole list has to
-// be rebuilt per-account rather than once at module load. Called from
-// buildSmContentTree, the one place `hasDrPlus` is actually in scope.
-function buildPresetDashboardItems(hasDrPlus) {
+function buildPresetDashboardItems() {
   return [
-  { key: 'overview', label: 'Home', active: true, cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }, { shape: 'chart' }, { shape: 'stat' }] },
-  { key: 'booking-performance', label: 'Booking performance', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
+  { key: 'booking-performance', label: 'Booking performance', active: true, cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'forecasting', label: 'Forecasting', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'pace', label: 'Pace', cards: [{ shape: 'chart' }, { shape: 'chart' }, { shape: 'stat' }] },
   { key: 'competitor-rates', label: 'Competitor rates', cards: [{ shape: 'stat' }, { shape: 'chart' }, { shape: 'chart' }] },
@@ -1289,13 +1372,7 @@ function buildPresetDashboardItems(hasDrPlus) {
   key: item.key,
   label: item.label,
   ...(item.active ? { active: true } : {}),
-  // Overview is Home now (v3) — a stack of purpose-built widgets, not a
-  // dashboard-cards grid like the other 6 presets. Special-cased here
-  // rather than pulled out of this list entirely, so it keeps behaving
-  // like a normal preset everywhere else that matters (still counted in
-  // PRESET_DASHBOARD_NAMES/STARRED_DASHBOARD_NAMES, still shows in My
-  // dashboards, still the default active landing page).
-  content: item.key === 'overview' ? buildHomeContent(hasDrPlus) : { type: 'sketch', sketch: 'dashboard-cards', cards: item.cards },
+  content: { type: 'sketch', sketch: 'dashboard-cards', cards: item.cards },
   // `scopeSwitcher: 'multi-select'` on every dashboard-shaped item in
   // this section (user: "keep property selector for all the insights
   // dashboards").
@@ -1317,7 +1394,7 @@ const SAMPLE_CUSTOM_DASHBOARDS = ['Weekly owner report', 'Peak season tracker', 
 // Illustrative subset — 2 presets + 1 custom, not all-or-nothing — per
 // "show a scenario where user only surfaces a few, and some of their own
 // ones."
-const STARRED_DASHBOARD_NAMES = ['Home', 'Rate parity', 'Weekly owner report'];
+const STARRED_DASHBOARD_NAMES = ['Booking performance', 'Rate parity', 'Weekly owner report'];
 const MY_DASHBOARDS_NODE = {
   key: 'my-dashboard',
   label: 'Dashboard',
@@ -1447,6 +1524,25 @@ export const ALL_DISTRIBUTION_CHANNELS = ['Direct Booking', 'Channels Plus', 'Bo
 // underneath each one — see buildRatePlanNode's Channels tab).
 const RATE_PLAN_CHANNELS = ['Direct Booking', 'Booking.com', 'Expedia'];
 
+// The PROPERTY-level equivalent, for Sell > Channels' own "Connected" tab
+// (v4, Robert: "lets add tabs to channels - Connected channels and not
+// connected - but better words for this concept") — a distinct concept
+// from RATE_PLAN_CHANNELS (a rate plan's own channel mapping), even though
+// it originally reused those same 3 names. Robert then corrected: "channels
+// plus should be in available" -> "sorry i meant connected" — Channels Plus
+// IS connected (commission-based, no separate subscription/activation step
+// per its own Manage-products catalog copy), so it belongs in Connected,
+// ADDED alongside the existing 3 rather than swapped in for one of them
+// (confirmed: 4 connected, not 3). "Available" chosen over "Not connected"
+// — frames the second tab as opportunity (channels you could add) rather
+// than a negative/absence state, standard SaaS-integrations-page framing.
+// Order: SiteMinder's own products first (Direct Booking, Channels Plus),
+// then third-party OTAs — Robert: "DB and C+ should prob be first since
+// they are our own." Matches ALL_DISTRIBUTION_CHANNELS' own existing order
+// (already SiteMinder-first), not a new convention.
+const CONNECTED_CHANNELS = ['Direct Booking', 'Channels Plus', 'Booking.com', 'Expedia'];
+const AVAILABLE_CHANNELS = ALL_DISTRIBUTION_CHANNELS.filter((c) => !CONNECTED_CHANNELS.includes(c));
+
 // Shared detail node every rate plan opens — a normal `tabs` node (NOT a
 // standalone nav-dashboard — Rate plans doesn't need the extra nav LEVEL
 // after all, per the user's own reversal: "rate plans don't need the extra
@@ -1484,7 +1580,7 @@ function buildRatePlanNode() {
             // routable), just labeled now.
             title: 'Configuration',
             tiles: [
-              { key: 'rooms-tile', label: 'Rooms', linksToTab: 'rooms' },
+              { key: 'rooms-tile', label: 'Room rates', linksToTab: 'rooms' },
               { key: 'channels-tile', label: 'Channels', linksToTab: 'channels' },
               // Renamed from "Connectivities" — same concept as Config →
               // Property's "Integrated systems," just named differently by
@@ -1496,6 +1592,10 @@ function buildRatePlanNode() {
               // `connectivities`) rather than leaving an internal key that
               // no longer matches its visible label.
               { key: 'integrated-systems-tile', label: 'Integrated systems', linksToTab: 'integrated-systems' },
+              // New tile (v4, IA-restructure work — Robert: "add a policies
+              // tab to rate plan and a cancellation policy field there
+              // which is also C+") — links to the new "Policies" tab below.
+              { key: 'policies-tile', label: 'Policies', linksToTab: 'policies' },
             ],
             // Two purely decorative sections stacked below the tile grid —
             // never navigable, rendered via the same renderSketch dispatcher
@@ -1526,7 +1626,15 @@ function buildRatePlanNode() {
             ],
           },
         },
-        { key: 'rooms', label: 'Rooms', content: { type: 'sketch', sketch: 'list' } },
+        {
+          key: 'rooms',
+          label: 'Room rates',
+          content: {
+            type: 'records',
+            names: SAMPLE_ROOM_RATES,
+            detailNode: ROOM_RATE_NODE,
+          },
+        },
         // `sketch: 'channel-rates'` (new) — real shape for what used to be
         // a plain list stub: "i see all the live rates listed there (a
         // rate is the combination of a rate plan and a room type), i see a
@@ -1537,6 +1645,33 @@ function buildRatePlanNode() {
         // whole IA's not-yet-tackled editing-surface pattern.
         { key: 'channels', label: 'Channels', content: { type: 'sketch', sketch: 'channel-rates', channels: RATE_PLAN_CHANNELS } },
         { key: 'integrated-systems', label: 'Integrated systems', content: { type: 'sketch', sketch: 'list' } },
+        // New tab (v4, IA-restructure work — Robert: "add a policies tab to
+        // rate plan and a cancellation policy field there which is also
+        // C+" then "add Direct booking for that as well") — originally a
+        // single placeholder field; now a real library PICK (Robert: "i
+        // also need to find a home for policies ... its a library concept
+        // so it sits above rate plans ... which can then apply policies
+        // from the library") — same `records` list Sell > Policies itself
+        // opens, not a separate copy. Cancellation policy is genuinely
+        // per-rate-plan (each rate plan — Standard/Non-refundable/Advance
+        // Purchase — has its own terms, unlike Property settings' Policies
+        // tab, which covers property-wide check-in/smoking/T&Cs), and it's
+        // read by BOTH products now dissolving out of Configuration:
+        // Channels Plus (OTAs need it to represent the rate plan's terms on
+        // their own listings) and Direct Booking (the booking engine
+        // itself enforces/displays it at checkout) — real reconciliation of
+        // "which wins" against a room rate's OWN policy pick (see
+        // ROOM_RATE_NODE's Policies tab) is an open question, not resolved
+        // by this change.
+        {
+          key: 'policies',
+          label: 'Policies',
+          content: {
+            type: 'records',
+            names: SAMPLE_POLICIES,
+            detailNode: POLICY_NODE,
+          },
+        },
       ],
     },
   };
@@ -1596,6 +1731,266 @@ const YIELD_RULE_NODE = {
   key: 'yield-rule',
   label: 'Yield rule',
   content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Yield rule', shape: 'field' }] },
+};
+
+// A channel's own settings (v4, Robert: "we need a channel section to
+// manage channel level settings ... i guess it lives in Sell") — same
+// "start simple" shared detail node convention as YIELD_RULE_NODE/
+// RESERVATION_NODE. Distinct from Property's "Channels" tile (connect/
+// activate status) and Rate plan's own "Channels" tab (per-rate-plan
+// mapping) — this is where a channel's OWN settings live, e.g. Booking.com's
+// settings as opposed to which rate plans are mapped to it.
+//
+// ONE shared node for every channel, Channels Plus and Direct Booking
+// included (Robert: "this is key - channels plus gets treated like a normal
+// channel .. same with DB") — no per-channel fork, same principle
+// ALL_DISTRIBUTION_CHANNELS itself already established (no categorical
+// split between OTAs and SiteMinder's own products). Rate multiplier / Net
+// invoicing (Robert: "we just need rate multiplier and net invoicing .. the
+// whole section is channel settings conceptually") are two fields WITHIN
+// the one "Channel settings" section, not their own section cards — hence
+// `shape: 'list'`, same multi-field-under-one-title shape used elsewhere
+// (see renderSectionShape), applies the same way regardless of which
+// channel's row opened this page.
+const CHANNEL_NODE = {
+  key: 'channel',
+  label: 'Channel',
+  content: {
+    type: 'sketch',
+    sketch: 'sections',
+    sections: [{ title: 'Channel settings', shape: 'list' }],
+  },
+};
+
+// Direct Booking's OWN channel detail (v4, Robert: "in the channel settings
+// for direct booking we need to start adding a bunch of stuff - collect it
+// from the following screenshots and then architect it as you like ... i
+// think we can be much more streamlined and efficient about it") — every
+// channel genuinely has different settings once you click in (Robert: "every
+// channel will have different fields so i always thought we would keep them
+// separate") — the shared CHANNEL_NODE was only ever the simple starting
+// stub before any channel had real content, not a promise every channel's
+// settings page stays identical. Distribution's Channels list routes to
+// THIS node specifically for the "Direct Booking" row (see its own
+// `detailNode` thunk below); every other channel still opens the plain
+// shared CHANNEL_NODE until it gets its own real content the same way.
+//
+// Consolidated from 3 production screenshots (6 source cards, ~20 fields).
+// First pass grouped into 4 sections matching the screenshots' own card
+// boundaries fairly closely; then REGROUPED by underlying concept, not
+// screenshot origin, once the rendered page turned out to be ~4 screens
+// long (Robert: "should we use tabs to break it up?" -> "its more whether
+// there are meaningful groupings") — the real question was never scroll
+// length, it was whether the boundaries meant anything. Two tabs, each a
+// coherent stage of the guest's own journey:
+//   - "Search & availability": Occupancy rules (who can book — max
+//     adults/children/infants, max ages) + Search & display (what the
+//     booking engine's search results show/hide by default) — both about
+//     BEFORE a guest has committed to booking.
+//   - "Booking flow": Guest details form (what's collected at checkout) +
+//     Booking rules (Enquiry-only, additional rooms) — both about the
+//     checkout process itself, AFTER a room's been chosen.
+// Real field NAMES, not skeleton bars (v4 — Robert: "i wanted it down to
+// field level from what i had shared") — `shape: 'fields'` (see
+// renderSectionShape's own comment in main.js), a real label per row, still
+// skeleton VALUES (no fake data). Field text transcribed directly from
+// Robert's 3 screenshots — regrouped, not renamed/invented.
+const DIRECT_BOOKING_CHANNEL_NODE = {
+  key: 'direct-booking-channel',
+  label: 'Direct Booking',
+  content: {
+    type: 'tabs',
+    tabs: [
+      {
+        key: 'search-availability',
+        label: 'Search & availability',
+        active: true,
+        content: {
+          type: 'sketch',
+          sketch: 'sections',
+          // v4, Robert: "we also need a booking engine link in those db
+          // channel settings ... lets not get bespoke yet - maybe just at
+          // the top of the most relevant tab" — placed on Search &
+          // availability specifically (not Booking flow): these fields are
+          // what governs the booking engine's own search/results page,
+          // closer to what this link actually jumps to than the checkout-
+          // step fields on the other tab. Placeholder domain — no real
+          // booking-engine URL exists in this prototype yet.
+          externalLink: { label: 'View booking engine', href: 'https://example.com/book' },
+          sections: [
+            {
+              title: 'Occupancy rules',
+              shape: 'fields',
+              fields: [
+                'Maximum adults',
+                'Maximum children',
+                'Maximum infants',
+                'Include children and infants in maximum occupancy',
+                'Maximum child age (in years)',
+                'Maximum infant age (in years)',
+              ],
+            },
+            {
+              title: 'Search & display',
+              shape: 'fields',
+              fields: [
+                'Default calendar length of stay',
+                'Default number of guests',
+                'Hide unavailable rates',
+                'Show low-availability alert',
+                'Show "Early bird special"',
+                'Hide public rates when a promotion code is applied',
+              ],
+            },
+          ],
+        },
+      },
+      {
+        key: 'booking-flow',
+        label: 'Booking flow',
+        content: {
+          type: 'sketch',
+          sketch: 'sections',
+          sections: [
+            {
+              title: 'Guest details form',
+              shape: 'fields',
+              fields: [
+                'Ask guests for their title',
+                'Ask guests to include their phone number',
+                'Ask guests to include their address',
+                'Ask guests if they would like to receive newsletters or marketing e-mails (this includes GDPR consent)',
+                'Ask guests the question "how did you hear about us?"',
+                'Include an optional custom field?',
+              ],
+            },
+            {
+              title: 'Booking rules',
+              shape: 'fields',
+              fields: ['Allow Enquiry only', 'Allow guests to add additional rooms'],
+            },
+          ],
+        },
+      },
+    ],
+  },
+};
+
+// Extras as a real LIBRARY, not a single skeleton card (v4, Robert: "the
+// challenge is we are trying to unpack direct booking concepts like extras
+// a level up - so they might potentially get used elsewhere in the future -
+// we are making libraries of entities that rate plans can apply... you
+// click through to a list page") — same generic `records` + shared-detail-
+// node pattern as Rate plans/Yield rules/Channels, deliberately NOT scoped
+// to Direct Booking. This is the first instance of a broader intended
+// pattern (Robert: "its all fairly ambitious") — Rate plans would eventually
+// get their own "Extras" tab that picks FROM this list rather than owning a
+// separate copy, but that consuming side doesn't exist yet; don't build it
+// speculatively. "Start simple" shared detail node, same convention as
+// YIELD_RULE_NODE/CHANNEL_NODE.
+const SAMPLE_EXTRAS = ['Airport transfer', 'Breakfast', 'Late checkout'];
+const EXTRA_NODE = {
+  key: 'extra',
+  label: 'Extra',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Extra', shape: 'field' }] },
+};
+
+// Policies as a real LIBRARY, same pattern/intent as Extras above (v4,
+// Robert: "i also need to find a home for policies - this is really just
+// cancellation policies at this stage - and they apply to various
+// channels... its a library concept so it sits above rate plans... FYI
+// policies can be configured on both the rate plan and the individual room
+// rate level which adds complexity"). Just cancellation-policy NAMES for
+// now, per Robert's own scoping — not modeling other policy types
+// speculatively. Sits in Sell (same level as Add-ons), not nested under
+// Rate plans, because it's meant to be shared UPWARD across rate plans (and
+// eventually channels), not owned by any one rate plan.
+//
+// The two-level complexity (a rate plan's own Policies tab AND a room
+// rate's own Policies tab can each apply one) is handled by pointing BOTH
+// existing tabs at this SAME library/detail pair rather than each keeping
+// its own separate placeholder field — see buildRatePlanNode's Policies tab
+// and ROOM_RATE_NODE's Policies tab. Real reconciliation of "which one wins
+// when both are set" is an open design question, not resolved here — this
+// only establishes that both levels pick from the same shared library.
+const SAMPLE_POLICIES = ['Standard cancellation', 'Non-refundable', 'Flexible'];
+const POLICY_NODE = {
+  key: 'policy',
+  label: 'Policy',
+  content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Policy', shape: 'field' }] },
+};
+
+// Rate plan's "Rooms" tab renamed "Room rates" and built out as a real list
+// (v4, Robert: "rename rooms under rate plan to room rates, and make it a
+// real list so i can click on a room rate and go a level deeper") — was a
+// contentless `sketch: 'list'` stub. A row here is a room type's rate under
+// THIS rate plan (see the Channels tab's own comment: "a rate is the
+// combination of a rate plan and a room type"), not a room type itself —
+// Configuration/Property's own "Room types" tile is the room type list
+// proper. Same generic `records` + shared-detail-node pattern as Rate
+// plans/Yield rules/Channels/Extras. Generic realistic names, not real
+// confirmed room types (same convention as SAMPLE_EXTRAS/SAMPLE_YIELD_RULES).
+const SAMPLE_ROOM_RATES = ['Standard Room', 'Deluxe Room', 'Suite', 'Family Room'];
+
+// A room rate's own detail — dashboard style with real tabs, not a single
+// field card (v4, Robert: "room rate should be dashboard style but have
+// some tabs like extras, and policies") — same `tabs` + `nav-dashboard`
+// Overview shape as buildRatePlanNode() itself, just one level down.
+//
+// Extras tab reuses the SAME shared library (SAMPLE_EXTRAS/EXTRA_NODE) Sell
+// > Add-ons > Extras already opens — "which extras apply to this room
+// rate," not a separate copy — the first real instance of the
+// library-that-things-apply-from pattern actually being consumed by
+// something (see EXTRA_NODE's own comment on the broader intent). No real
+// picker/selection mechanic built yet (nothing in this prototype models
+// "choose a subset of a shared list") — showing the same library list here
+// is the honest simple version until that's designed, not a placeholder
+// pretending to be more finished than it is.
+//
+// Policies tab: same shared-library pick as Rate plan's own Policies tab
+// (see SAMPLE_POLICIES/POLICY_NODE's own comment) — the two-level
+// application Robert flagged ("policies can be configured on both the rate
+// plan and the individual room rate level which adds complexity") — both
+// levels pick from the SAME library, not two separate ones. Which one
+// actually wins when both are set is an open question, not resolved here.
+const ROOM_RATE_NODE = {
+  key: 'room-rate',
+  label: 'Room rate',
+  content: {
+    type: 'tabs',
+    tabs: [
+      {
+        key: 'overview',
+        label: 'Overview',
+        active: true,
+        content: {
+          type: 'nav-dashboard',
+          tiles: [
+            { key: 'extras-tile', label: 'Extras', linksToTab: 'extras' },
+            { key: 'policies-tile', label: 'Policies', linksToTab: 'policies' },
+          ],
+        },
+      },
+      {
+        key: 'extras',
+        label: 'Extras',
+        content: {
+          type: 'records',
+          names: SAMPLE_EXTRAS,
+          detailNode: EXTRA_NODE,
+        },
+      },
+      {
+        key: 'policies',
+        label: 'Policies',
+        content: {
+          type: 'records',
+          names: SAMPLE_POLICIES,
+          detailNode: POLICY_NODE,
+        },
+      },
+    ],
+  },
 };
 
 // Operations' real row content (Confluence "IA node tree v2" — Reservations
@@ -1919,19 +2314,27 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
     // (the shared nav-dashboard shown once drilled into a specific property)
     // keeps its own label/key unchanged.
     //
-    // `newButtonLabel`/`newButtonWizard` (v3, "Add property" needs to exist
-    // in single-property mode too, not just the multi-property cards view)
-    // — set HERE, on this one collapsed standalone-property page, not
-    // inside buildPropertyNode itself: that function is also reused as a
-    // `detailNode` for an ALREADY-selected specific property (Users'
-    // cross-nav, Group rate plans' Properties tab, Properties cards' own
-    // detail view) — "add a property" makes no sense once you're already
-    // looking at one particular property's own dashboard.
+    // `addPropertyPromo` (v4, Robert: "remove 'add property' for now from
+    // the property page - or actually lets put it as a small text footer
+    // with a promo 'Add another property to this account' with a link to
+    // the product grid") — REPLACES the old `newButtonLabel`/`newButtonWizard`
+    // button (v3, "Add property" needs to exist in single-property mode
+    // too, not just the multi-property cards view) with a quiet text-link
+    // promo instead, pointing at Plan & billing (see renderNewButton's own
+    // comment in main.js). Set HERE, on this one collapsed standalone-
+    // property page, not inside buildPropertyNode itself: that function is
+    // also reused as a `detailNode` for an ALREADY-selected specific
+    // property (Users' cross-nav, Group rate plans' Properties tab,
+    // Properties cards' own detail view) — this promo makes no sense once
+    // you're already looking at one particular property's own dashboard.
+    // Multi-property's own Properties cards list is UNCHANGED — keeps its
+    // real `newButtonLabel`/`newButtonWizard` button (see
+    // buildConfigurationPropertiesItem's `showProperties` branch below).
     return {
       key: 'property-settings',
       label: 'Property',
       active: true,
-      content: { ...buildPropertyNode(showProperties).content, newButtonLabel: 'Add property', newButtonWizard: 'add-property' },
+      content: { ...buildPropertyNode(showProperties).content, addPropertyPromo: true },
     };
   }
   return {
@@ -2049,6 +2452,52 @@ function buildConfigurationPropertiesItem(showProperties, scope) {
 // products).
 function buildSmContentTree(showProperties, scope, accountType, hasDrPlus, hasDirectBooking, hasMultiProperty, hasGuestEngagement) {
   return {
+    // Home (v4) — reuses buildHomeContent's existing widget stack (Dynamic
+    // actions/Performance/Forecasting/Tracking past recommendations)
+    // directly as its own single-item section, same content Insights' own
+    // "Overview" preset already shows. Deliberately NOT removed from
+    // Insights/My dashboards too — untangling Overview's "first item is
+    // the default landing page" wiring there (also feeding My dashboards/
+    // PRESET_DASHBOARD_NAMES) is real follow-up scope, not part of adding
+    // this destination.
+    home: {
+      noPanel: true,
+      items: [
+        { key: 'overview', label: 'Home', active: true, content: buildHomeContent(hasDrPlus), scopeSwitcher: 'multi-select' },
+        // `hidden: true` (v4, Robert: "having dynamic actions in a tab is a
+        // problem - because we might want to have tabs to divide new,
+        // actioned, automation etc tabs for the actions") — a real, separate
+        // destination (not a tab on 'overview'), so it can grow its own tab
+        // strip later without restructuring Home again. Reached only via
+        // the Dynamic actions widget's "View all (25)" link (see
+        // renderPriorityActions), same hidden-but-reachable mechanism as
+        // Plan's own Recommendations item — not browsable from Home's own
+        // nav list (which only ever shows one item here anyway, `noPanel`).
+        //
+        // Now WITH the tabs it was reserving room for (Robert: "put the
+        // tabs on the page - and use a grid layout for the recommendations")
+        // — New / Actioned / Automation, each a real card grid (see
+        // DYNAMIC_ACTIONS_NEW's own comment).
+        {
+          key: 'dynamic-actions',
+          label: 'Dynamic actions',
+          hidden: true,
+          // `crumbBackTo` (v4, Robert: "it needs a breadcrumb back to home")
+          // — see renderCanvas' own comment: a hidden top-level item has no
+          // nav-list highlight to substitute for a crumb, so this names the
+          // real "parent" to link back to explicitly.
+          crumbBackTo: { key: 'overview', label: 'Home' },
+          content: {
+            type: 'tabs',
+            tabs: [
+              { key: 'new', label: 'New', active: true, content: { type: 'sketch', sketch: 'action-cards-grid', items: DYNAMIC_ACTIONS_NEW } },
+              { key: 'actioned', label: 'Actioned', content: { type: 'sketch', sketch: 'action-cards-grid', items: DYNAMIC_ACTIONS_ACTIONED } },
+              { key: 'automation', label: 'Automation', content: { type: 'sketch', sketch: 'action-cards-grid', items: DYNAMIC_ACTIONS_AUTOMATION } },
+            ],
+          },
+        },
+      ],
+    },
     insights: {
       // REBUILT (Robert flagged the previous structure as "messy," then:
       // "can you check platform property as i said?") to match the REAL
@@ -2087,7 +2536,7 @@ function buildSmContentTree(showProperties, scope, accountType, hasDrPlus, hasDi
       // still fully real — just only reachable via "My dashboards," not
       // pinned to the rail list.
       items: [
-        ...[...buildPresetDashboardItems(hasDrPlus), ...CUSTOM_DASHBOARD_ITEMS].filter((item) => STARRED_DASHBOARD_NAMES.includes(item.label)),
+        ...[...buildPresetDashboardItems(), ...CUSTOM_DASHBOARD_ITEMS].filter((item) => STARRED_DASHBOARD_NAMES.includes(item.label)),
         // Dynamic pricing REMOVED from this list (Robert: "we dont want
         // dynamic pricing in that list") — it's real in the shipped
         // product's Insights nav too, but already has its own home under
@@ -2104,12 +2553,12 @@ function buildSmContentTree(showProperties, scope, accountType, hasDrPlus, hasDi
         // or widget-library feature exists there today) — new IA
         // territory for Platform 2.0, not a real-product match.
         //
-        // Plain-line divider (Robert: "some kind of visual divide between
-        // the dashboards and the last three items") — separates the
-        // starred DASHBOARD content above from the management/utility
-        // items below (My dashboards/My widgets/Recommendations), which
-        // are a different kind of thing, not more dashboards.
-        { divider: true },
+        // Plain-line divider REMOVED (v4, Robert: "lets remove the line
+        // divider in plan") — originally separated starred dashboard
+        // content above from My dashboards/My widgets/Recommendations
+        // below; Recommendations is now hidden from this list entirely
+        // (see that item's own `hidden: true` comment), so the divider's
+        // original framing was already stale.
         // Fixed preset rows (the 7 real dashboards above, same labels)
         // PLUS the user's own custom ones, in one combined list — presets
         // can't be deleted, only starred/unstarred; starring is the real
@@ -2157,37 +2606,38 @@ function buildSmContentTree(showProperties, scope, accountType, hasDrPlus, hasDi
         // picking this back up. Badge is LIVE (state.attention, main.js) —
         // same seeded set as Health check/Dynamic pricing.
         //
-        // Gained a "Performance" tab (v3, Robert: "a tab under
-        // recommendations page called performance") — Home's value-tracking
-        // row ("Tracking past recommendations performance") "View all"
-        // lands here, showing the fuller accepted-recommendation value
-        // history behind the row's own 3-item summary.
+        // Was "Recommendations" with 2 tabs (Recommendations + Performance)
+        // — the "Recommendations" tab itself REMOVED (v4, Robert: Home's own
+        // Dynamic actions widget now has a real native "View all" — see
+        // buildHomeContent's own comment — making this generic dashboard-
+        // cards tab a redundant second destination for the same underlying
+        // concept: "this would mean removing recommendations from plan").
+        // The "Performance" tab is UNRELATED and stays — it's a different
+        // Home widget's own View all target ("Tracking past recommendations
+        // performance" row, see its own `viewAll: { linkTo: ['recommendations',
+        // 'performance'] }`), so the item KEY stays 'recommendations' (that
+        // link isn't touched) even though the item only has one tab now.
+        // Label kept as "Recommendations" too — still the right name for
+        // "recommendations you've acted on over time," which is what the
+        // one remaining tab actually shows.
+        //
+        // `hidden: true` (v4, Robert: "recoomednation is still under plan" —
+        // trimming its tabs down wasn't enough, the ITEM itself was still a
+        // visible, browsable destination in Plan's own nav, which is exactly
+        // what "removing recommendations from plan" meant to avoid) — see
+        // buildNavListHtml's own comment: renders nothing in the nav list,
+        // but stays a real reachable destination for the View all link above.
         {
           key: 'recommendations',
           label: 'Recommendations',
+          hidden: true,
           content: {
             type: 'tabs',
             tabs: [
               {
-                key: 'recommendations',
-                label: 'Recommendations',
-                active: true,
-                content: {
-                  type: 'sketch',
-                  sketch: 'dashboard-cards',
-                  cards: [
-                    { shape: 'stat' },
-                    { shape: 'chart' },
-                    { shape: 'chart' },
-                    { shape: 'stat' },
-                    { shape: 'chart' },
-                    { shape: 'stat' },
-                  ],
-                },
-              },
-              {
                 key: 'performance',
                 label: 'Performance',
+                active: true,
                 content: {
                   type: 'sketch',
                   sketch: 'value-tracker',
@@ -2334,6 +2784,157 @@ function buildSmContentTree(showProperties, scope, accountType, hasDrPlus, hasDi
           },
           scopeSwitcher: 'multi-select',
         },
+        // New section (v4, Robert: "i think we need a channel section to
+        // manage channel level settings - i guess it lives in Sell") — same
+        // generic `records` pattern as Rate plans/Yield rules, one row per
+        // connected channel. Reuses ALL_DISTRIBUTION_CHANNELS (the same one
+        // list already used by Rate plan's Channels tab and its "Add
+        // channel" wizard — "no categorical split between OTAs and
+        // SiteMinder's own products").
+        //
+        // `detailNode` is a per-name thunk (Robert: "every channel will have
+        // different fields so i always thought we would keep them
+        // separate") — Direct Booking opens its own real DIRECT_BOOKING_
+        // CHANNEL_NODE; every other channel still falls through to the
+        // plain shared CHANNEL_NODE stub until it gets built out the same
+        // way. Same `detailNode(name)` thunk mechanism Manage products'
+        // per-product pages already established (see resolveChain's own
+        // comment in main.js) — not a new mechanism.
+        //
+        // Split into 2 tabs (v4, Robert: "lets add tabs to channels -
+        // connected channels and not connected - but better words for this
+        // concept") — "Available" chosen over "Not connected" (see
+        // CONNECTED_CHANNELS' own comment: opportunity framing, not an
+        // absence state). Same `records` content and `detailNode` thunk in
+        // each tab, just a different `names` subset — CONNECTED_CHANNELS /
+        // AVAILABLE_CHANNELS partition ALL_DISTRIBUTION_CHANNELS exactly,
+        // so every channel still shows up exactly once across the two tabs.
+        {
+          key: 'channels',
+          label: 'Channels',
+          content: {
+            type: 'tabs',
+            tabs: [
+              {
+                key: 'connected',
+                label: 'Connected',
+                active: true,
+                content: {
+                  type: 'records',
+                  names: CONNECTED_CHANNELS,
+                  display: 'table',
+                  detailNode: (name) => (name === 'Direct Booking' ? DIRECT_BOOKING_CHANNEL_NODE : CHANNEL_NODE),
+                },
+              },
+              {
+                key: 'available',
+                label: 'Available',
+                content: {
+                  type: 'records',
+                  names: AVAILABLE_CHANNELS,
+                  display: 'table',
+                  detailNode: (name) => (name === 'Direct Booking' ? DIRECT_BOOKING_CHANNEL_NODE : CHANNEL_NODE),
+                },
+              },
+            ],
+          },
+          scopeSwitcher: 'multi-select',
+        },
+        // New section (v4, IA-restructure work, working through Direct
+        // Booking's old config page — Robert: "lets make a section in
+        // selling called add-ons and put a dashboard in there with extras
+        // and promotions") — Direct Booking's own former "Selling tools"
+        // tab (Promotions/Extras) surfaces here now that Direct Booking no
+        // longer has its own separate config page (same treatment as
+        // Channels Plus's fields before it). `nav-dashboard` with tiles
+        // holding their content directly (not `linksToTab` — no sibling
+        // tabs here to link to, unlike Rate plan's Overview), same shape
+        // buildPropertyNode's tiles use. Content unchanged from the old
+        // BOOKING_ENGINE_LIST Promotions/Extras tabs — real titles, still
+        // skeleton-only underneath.
+        //
+        // OPEN QUESTION, not yet resolved (Robert: "not sure promotions is
+        // really an add-on though .. leave it for now") — Extras (e.g. late
+        // checkout, breakfast) genuinely IS an add-on to the stay; Promotions
+        // (discounts/offers) is a pricing/marketing mechanism, a different
+        // kind of thing. Don't treat this placement as confirmed — revisit
+        // where Promotions actually belongs before calling this settled.
+        {
+          key: 'add-ons',
+          label: 'Add-ons',
+          content: {
+            type: 'nav-dashboard',
+            tiles: [
+              {
+                key: 'promotions',
+                label: 'Promotions',
+                content: { type: 'sketch', sketch: 'sections', sections: [{ title: 'Promotions', shape: 'list' }] },
+              },
+              // A real library, not a skeleton card (Robert: "we are making
+              // libraries of entities that rate plans can apply ... you
+              // click through to a list page") — see EXTRA_NODE's own
+              // comment for the broader intent. Same `records` pattern as
+              // Rate plans/Yield rules/Channels.
+              {
+                key: 'extras',
+                label: 'Extras',
+                content: {
+                  type: 'records',
+                  names: SAMPLE_EXTRAS,
+                  detailNode: EXTRA_NODE,
+                },
+              },
+            ],
+          },
+        },
+        // New section (v4, Robert: "i also need to find a home for
+        // policies - this is really just cancellation policies at this
+        // stage - and they apply to various channels, or at least thats
+        // the vision .. its a library concept so it sits above rate
+        // plans... which can then apply policies from the library") — same
+        // shared-library pattern as Add-ons' Extras, its own top-level Sell
+        // item rather than nested under Rate plans, for the same reason
+        // Extras isn't nested under a single rate plan either: it needs to
+        // sit ABOVE anything that applies it. See SAMPLE_POLICIES/
+        // POLICY_NODE's own comment for the two-level (rate plan + room
+        // rate) application, both now wired to this same library.
+        //
+        // OPEN QUESTION, flagged live while building this (Robert: "this
+        // being IA we might need to create more levels at some point, if
+        // that list under sell starts to lose focus") — Sell's secondary
+        // nav is starting to mix two different KINDS of items: core selling
+        // mechanics (Inventory, Rate plans, Yield rules, Dynamic pricing)
+        // and shared libraries other things apply from (Add-ons, Policies).
+        // Not resolved — if more libraries appear later, revisit whether
+        // they deserve their own grouping instead of Sell's list just
+        // growing flatter.
+        {
+          key: 'policies',
+          label: 'Policies',
+          content: {
+            type: 'records',
+            names: SAMPLE_POLICIES,
+            detailNode: POLICY_NODE,
+          },
+        },
+        // New section (v4, Robert: "lets add metasearch to sell section")
+        // — Metasearch's own IA-restructure moment, same treatment
+        // Channels Plus/Direct Booking got: dissolving out of the old
+        // Configuration "Products" grouping into Sell as a real section.
+        // Minimal stub for now (Robert: confirmed via AskUserQuestion) —
+        // unlike Direct Booking, there's no existing field-level detail to
+        // work from yet (no screenshots shared), so this stays a plain
+        // placeholder — same shape as the generic CHANNEL_NODE stub — until
+        // real settings are shared, same path Direct Booking took.
+        {
+          key: 'metasearch',
+          label: 'Metasearch',
+          content: {
+            type: 'sketch',
+            sketch: 'sections',
+            sections: [{ title: 'Metasearch settings', shape: 'list' }],
+          },
+        },
         // Calendar-style grid (user: "dynamic pricing is a grid as well -
         // can use the LH calendar style") — same 7-weekday-column, 5-row
         // shape Front desk's calendar uses, but embedded in a NORMAL
@@ -2357,7 +2958,12 @@ function buildSmContentTree(showProperties, scope, accountType, hasDrPlus, hasDi
         // IA-BY-USER-TYPE.md's SM-multiple-properties section for the open
         // question. Do NOT reintroduce this without that being resolved —
         // Configuration's own Properties item is unrelated and unaffected.
-        HEALTH_CHECK_ITEM,
+        //
+        // Health check REMOVED for now (v4, Robert: "lets remove health
+        // check for now") — HEALTH_CHECK_ITEM left defined but unreferenced,
+        // same "clean removal, not a placeholder" convention as the old
+        // Products grouping — reintroduce by adding HEALTH_CHECK_ITEM back
+        // to this array if/when it's wanted again.
       ],
       // Section-level `scopeSwitcher` REMOVED (Confluence "IA node tree
       // v2"): the switcher is now a PER-ITEM property (see each item
@@ -2525,52 +3131,17 @@ function buildSmContentTree(showProperties, scope, accountType, hasDrPlus, hasDi
           // Configuration > Users).
           scopeSwitcher: 'multi-select',
         },
-        // "Products" — a grouping HEADING (see PATTERNS.md's folder-vs-
-        // heading rule), not a folder: always-expanded, no chevron, purely
-        // clusters the already-visible items below it under one label.
-        { heading: true, label: 'Products' },
-        //
-        // `scopeSwitcher: 'force-single'` throughout — Confluence's v2 tree
-        // leaves Property scope blank for these, but the earlier v1c draft
-        // is explicit: "not applicable — no group config yet." There's no
-        // group/portfolio-level product config anywhere in this tree (see
-        // the "Group-level product config is still missing" open thread) —
-        // until that exists, a product is configured one property at a
-        // time, so single-property is the only meaningful mode, same
-        // reasoning as Inventory/Dynamic pricing.
-        //
-        // Direct Booking is tier-gated (v3, real packaging confirmed
-        // against siteminder.com/pricing) — comes with SiteMinder Plus,
-        // driven by `hasDirectBooking` (state.tier in main.js), NOT
-        // enabledProducts. DELIBERATELY gets no Configuration item at all
-        // when the account is on the base tier (Robert: "not to bloat the
-        // ia with upsells .. if they are not active they would be shown on
-        // the add products page") — shows on "Add products" instead.
-        ...(hasDirectBooking
-          ? [{ key: 'direct-booking', label: 'Direct Booking', content: BOOKING_ENGINE_LIST, scopeSwitcher: 'force-single' }]
-          : []),
-        // Channels Plus, Pay, Metasearch ("In-product sign-ups," v3; v4:
-        // universal at every tier per the packaging doc, no longer
-        // independently toggleable — Robert: "channel management/PMS
-        // connectivity/pay/demand generation" are baseline, not gated) —
-        // always rendered, unconditionally.
-        { key: 'channels-plus', label: 'Channels Plus', content: null, scopeSwitcher: 'force-single' },
-        { key: 'pay', label: 'Pay', content: PAY_LIST, scopeSwitcher: 'force-single' },
-        { key: 'metasearch', label: 'Metasearch', content: null, scopeSwitcher: 'force-single' },
-        // Guest Engagement (v3 stub; v4: tier-gated — included from Pro
-        // upward, see deriveCapabilitiesFromTier's guestEngagementIncluded —
-        // no longer an independent enabledProducts toggle). What actually
-        // belongs on this page is a separate, not-yet-decided question (see
-        // MANAGE_PRODUCTS_CATALOG's own Guest Engagement comment on
-        // distributing its features across the IA) — this is just the real
-        // rail-item slot appearing once the tier includes it.
-        ...(hasGuestEngagement
-          ? [{ key: 'guest-engagement', label: 'Guest Engagement', content: null, scopeSwitcher: 'force-single' }]
-          : []),
-        // DR+ — a genuinely separate standalone add-on subscription,
-        // independent of tier and of the 3 in-product sign-ups above (see
-        // buildSmContentTree's own comment on `hasDrPlus`).
-        ...(hasDrPlus ? [{ key: 'dr-plus', label: 'DR+', content: null, scopeSwitcher: 'force-single' }] : []),
+        // "Products" grouping (Direct Booking/Channels Plus/Pay/Metasearch/
+        // Guest Engagement/DR+) REMOVED entirely from Property settings (v4
+        // — Robert: "the main aim is to elevate all the product level
+        // config to rate plans or property settings so i can just get rid
+        // of them as discrete 'product' concepts entirely... lets start by
+        // just remove the product section from property"). Each one's real
+        // field-level settings get redesigned and relocated individually
+        // (starting with Channels Plus) into Rate plans/Property settings'
+        // own existing structure, not kept as a parallel "Products" list
+        // here. This is a genuine clean slate, not a placeholder — nothing
+        // stands in for these until each is redesigned on its own.
       ],
     },
   };

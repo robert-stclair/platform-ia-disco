@@ -203,7 +203,7 @@ const ATTENTION_KEYS = ['health-check', 'recommendations', 'dynamic-pricing', 'r
 const state = {
   accountType: savedPrototypeSettings.accountType ?? 'SM', // 'SM' | 'LH' — independent of propertyCount; only SM has real content so far. MP used to be a 3rd value here — now `hasMultiProperty` below, an add-on like the others (Robert: "lets make Multi-Property an add on like the others").
   propertyCount: savedPrototypeSettings.propertyCount ?? 'single', // 'single' | 'multiple' — independent of accountType
-  section: 'insights',
+  section: 'home', // v4: Home is the default landing section
   path: [], // e.g. ['property-settings', 'services'] or ['direct-booking', 'setup', 'contact-page']
   expandedKey: null, // which top-level 'list'-type item is expanded in the panel (UI-only)
   multipleSystems: savedPrototypeSettings.multipleSystems ?? false, // hidden-settings toggle: does every property have >1 connected system?
@@ -319,8 +319,9 @@ function resetPath() {
   state.expandedKey = null;
 }
 
-const railEl = document.getElementById('rail');
-const railBrandEl = document.getElementById('railBrand');
+const mergedNavScrollEl = document.getElementById('mergedNavScroll');
+const mergedNavBrandEl = document.getElementById('mergedNavBrand');
+const mergedNavTierEl = document.getElementById('mergedNavTier');
 const railUserEl = document.getElementById('railUser');
 const railAssistantEl = document.getElementById('railAssistant');
 const railNotificationsEl = document.getElementById('railNotifications');
@@ -693,35 +694,73 @@ function resolveChain(rootNode) {
 
 // ---------------------------------------------------------------------------
 
-function renderRail(content) {
+// Merged single-pane nav (v4) — REPLACES the old two-column rail (icon-only,
+// tooltip labels) + secondary panel (current section's own item list only).
+// Robert: "my leaders expect more clarity around the top level sections...
+// should we consider a vertical nav that is just one column with sections
+// instead?" — every top-level section (from getRailItems, unchanged source
+// of truth) now renders as a real, clickable heading with its own items
+// listed directly beneath it, ALL sections visible in one scrollable column
+// at once, so the whole IA reads at a glance rather than depending on an
+// icon language or a click-through per section.
+//
+// State model deliberately UNCHANGED: state.section still means "which
+// section currently owns state.path/routing" — exactly one section is
+// "live" for canvas purposes at a time, same as before. The merged list
+// just displays every section's items visually at once; only the CURRENT
+// section's rows show real active/expanded state (a non-current section's
+// items render collapsed/unrouted, which is correct — nothing is lost,
+// clicking any of its items switches state.section to it in the same
+// gesture, see wireMergedNavClicks). This means resolveSelected/
+// resolveChain/renderCanvas/the wizard/scope-switcher/crossNav layer needs
+// ZERO changes — only this rendering layer changes.
+function renderMergedNav(content) {
   const brandKey = state.accountType === 'LH' ? 'LH' : 'SM';
-  railBrandEl.innerHTML = BRAND_MARKS[brandKey];
-  railBrandEl.title = PRODUCT_TIER_LABELS[state.accountType];
-  const items = getRailItems(state.accountType);
-  railEl.innerHTML = items.map((item) => {
-    // Rail-level bubbling (Robert: "see how we have badges on dynamic
-    // pricing and health check - therefore there should be one on the
-    // distribution rail item") — a section badges if ANY of its own panel
-    // items do, by the same itemHasAttention rule the L2 panel uses.
-    const badge = sectionHasAttention(content?.[item.key])
-      ? `<span class="rail-item__badge" aria-hidden="true"></span>`
-      : '';
-    return `
-      <button class="rail-item${item.key === state.section ? ' is-active' : ''}" data-section="${item.key}" title="${tr(item.label)}" aria-label="${tr(item.label)}">
-        <span class="rail-item__icon">${RAIL_ICONS[item.icon] ?? ''}</span>
-        ${badge}
-      </button>
-    `;
-  }).join('');
+  mergedNavBrandEl.innerHTML = BRAND_MARKS[brandKey];
+  // Current plan tier, permanently visible next to the brand mark (v4,
+  // Robert: "show the tier to the right of the brand, another thing people
+  // seem to want") — a deliberate reversal of an earlier explicit call
+  // against a static tier label ("reads like a dead Slack-workspace-
+  // switcher with no function"): that call assumed a narrow rail with no
+  // room for it; the merged pane is wide enough that showing it costs
+  // nothing and answers real, repeated feedback.
+  mergedNavTierEl.textContent = TIER_LABELS[state.tier] ?? '';
 
-  railEl.querySelectorAll('.rail-item').forEach((el) => {
-    el.addEventListener('click', () => {
-      if (el.dataset.section === state.section) return;
-      state.section = el.dataset.section;
-      resetPath();
-      render();
-    });
+  const sections = getRailItems(state.accountType);
+  let html = '';
+  sections.forEach((section) => {
+    const data = content?.[section.key];
+    if (!data) return;
+    const isCurrentSection = section.key === state.section;
+    // Section-level bubbling (Robert: "see how we have badges on dynamic
+    // pricing and health check - therefore there should be one on the
+    // distribution rail item") — a section's own heading badges if ANY of
+    // its items do, by the same itemHasAttention rule each item uses.
+    const badge = sectionHasAttention(data) ? `<span class="nav-list-item__badge" aria-hidden="true"></span>` : '';
+    // Small icon next to each heading (v4, Robert: "there is too much
+    // noise... probably bring in icons") — a secondary scan-aid this time,
+    // not the sole identifier the old icon-only rail relied on; the real
+    // label still carries the meaning.
+    const icon = `<span class="nav-section-heading__icon" aria-hidden="true">${RAIL_ICONS[section.icon] ?? ''}</span>`;
+    html += `
+      <li class="nav-section-heading${isCurrentSection ? ' is-active-section' : ''}">
+        <a href="#" data-section-heading="${section.key}">${icon}${tr(section.label)}${badge}</a>
+      </li>
+    `;
+    // Collapsed by default (v4, Robert: "there is too much noise... we are
+    // going to need to collapse the non active sections") — only the
+    // CURRENT section's own items render at all; every other section shows
+    // just its heading row until clicked. Same click both switches
+    // state.section AND reveals that section's items (see
+    // wireMergedNavClicks' data-section-heading handler) — no separate
+    // expand step. noPanel sections (Front desk's Calendar) never show
+    // items regardless, same as before.
+    if (isCurrentSection && !data.noPanel) {
+      html += buildNavListHtml(data.items, section.key, isCurrentSection);
+    }
   });
+  mergedNavScrollEl.innerHTML = `<ul class="nav-list">${html}</ul>`;
+  wireMergedNavClicks();
 
   railUserEl.classList.toggle('is-active', state.section === 'my-account');
   railAssistantEl.classList.toggle('is-active', state.section === 'assistant');
@@ -729,11 +768,86 @@ function renderRail(content) {
   // Notifications' own badge (v3, Robert: "can you make the badge work if
   // i have clicked all those notifications? .. or actually just if i click
   // the rail icon will do") — same live state.attention mechanism as every
-  // other rail badge, just on the one rail button that isn't in
-  // getRailItems' own list (it's a fixed utility button in index.html, not
-  // a section), so it needs its own explicit toggle here rather than
-  // falling out of the `items.map()` loop above for free.
+  // other badge, just on the one utility button that isn't in getRailItems'
+  // own list, so it needs its own explicit toggle here.
   railNotificationsBadgeEl.hidden = !state.attention.has('notifications');
+}
+
+// Click wiring for the merged nav's whole scrollable list — one shared pass
+// across every section's rows (unlike the old per-section renderPanel,
+// which only ever wired up whichever one section was currently rendered).
+// Each row carries its own `data-section-key` (see buildNavListHtml/
+// renderMergedNav) so a click on ANY section's item can tell which
+// section's `items` array — and therefore which `state.section` value —
+// it belongs to, switching to it in the same gesture if it isn't already
+// current.
+function wireMergedNavClicks() {
+  mergedNavScrollEl.querySelectorAll('[data-section-heading]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const key = el.dataset.sectionHeading;
+      if (key === state.section) return;
+      state.section = key;
+      resetPath();
+      render();
+    });
+  });
+
+  mergedNavScrollEl.querySelectorAll('[data-item-key]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const key = el.dataset.itemKey;
+      const sectionKey = el.dataset.sectionKey;
+      const switchingSection = sectionKey !== state.section;
+      // Read the CLICKED item from its own owning section's content, not
+      // whatever section happens to be current right now.
+      const capabilities = getCapabilities();
+      const content = getContent(
+        state.accountType,
+        state.propertyCount,
+        state.scope,
+        capabilities.drPlusLevel !== 'none',
+        capabilities.hasDirectBooking,
+        capabilities.hasMultiProperty,
+        state.tier
+      );
+      const item = content?.[sectionKey]?.items?.find((i) => i.key === key);
+      if (switchingSection) {
+        state.section = sectionKey;
+        state.expandedKey = null;
+      }
+      if (item?.content?.type === 'list') {
+        // Expand/collapse only — does not touch the route/canvas. Not a
+        // "visit" of the folder itself, so its own badge (if any) does NOT
+        // clear here — only actually routing to something clears a badge.
+        state.expandedKey = state.expandedKey === key ? null : key;
+      } else {
+        // Real navigation — this IS a visit, clear its badge if it had one.
+        select(0, key);
+        state.expandedKey = null;
+        clearAttention(key);
+      }
+      render();
+    });
+  });
+
+  // Clicking a child inside an expanded list IS real navigation. Expanding a
+  // list never touched state.path (it's UI-only), so path[0] must be set to
+  // the expanded item's own key here — otherwise the canvas has no route.
+  mergedNavScrollEl.querySelectorAll('[data-path-key]').forEach((el) => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      const [depth, key] = el.dataset.pathKey.split(':');
+      const sectionKey = el.dataset.sectionKey;
+      if (sectionKey !== state.section) {
+        state.section = sectionKey;
+      }
+      state.path = [state.expandedKey];
+      state.path[Number(depth)] = key;
+      clearAttention(key);
+      render();
+    });
+  });
 }
 
 // Switches to any section by key — state.section + resetPath + render, the
@@ -959,12 +1073,17 @@ function renderRecordsInboxPanel(data) {
   });
 }
 
-function renderPanel(data) {
-  if (data.customPanel === 'records-inbox') {
-    renderRecordsInboxPanel(data);
-    return;
-  }
-  const items = data.items;
+// Pure string-builder for one section's own `<ul class="nav-list">` — split
+// out of the old single-section `renderPanel` (v4, merged single-pane nav)
+// so `renderMergedNav` can call this once per section instead of once for
+// whatever section happened to be currently selected. No DOM writes, no
+// click wiring — those are the caller's job (see wireMergedNavClicks) since
+// a merged pane needs one shared listener pass across ALL sections' rows,
+// not one per section. `sectionKey` is threaded onto every interactive
+// element as `data-section-key` so a click handler bound once at the
+// container level can tell which section's own `items` array (and
+// therefore which `state.section` value) a given row belongs to.
+function buildNavListHtml(items, sectionKey, isCurrentSection = true) {
   // Grouping headings (e.g. "Products" — a plain label clustering already-
   // visible sibling items, never itself clickable/routable — see
   // PATTERNS.md's folder-vs-heading rule) AND plain-line dividers are
@@ -972,31 +1091,50 @@ function renderPanel(data) {
   // ever sees them, so one can never accidentally become "the routed
   // item" via the nodes[0] fallback if it happened to sit first in the
   // array.
+  //
+  // `isCurrentSection` (v4, merged nav): resolveSelected's own fallback
+  // (explicit path, else `active:true`, else first) would otherwise mark
+  // SOME item active in every section rendered, not just the one the user
+  // is actually on — since every section's items are now visible at once,
+  // that read as several unrelated sections all showing a highlighted row
+  // simultaneously. Only the current section resolves a routed item at
+  // all; every other section's rows render in their plain, unrouted state.
   const routableItems = items.filter((i) => !i.heading && !i.divider);
-  const defaultRoutedItem = routableItems.length ? resolveSelected(routableItems, 0) : null;
+  const defaultRoutedItem = isCurrentSection && routableItems.length ? resolveSelected(routableItems, 0) : null;
   // A crossNav pick anywhere deeper in the tree overrides the plain
   // state.path[0] lookup above — see findCrossNavHomeItemKey.
-  const crossNavHomeItemKey = findCrossNavHomeItemKey(defaultRoutedItem);
+  const crossNavHomeItemKey = isCurrentSection ? findCrossNavHomeItemKey(defaultRoutedItem) : null;
   const routedItem = crossNavHomeItemKey ? routableItems.find((i) => i.key === crossNavHomeItemKey) ?? defaultRoutedItem : defaultRoutedItem;
   // Which 'list' item is expanded in the panel — UI-only, independent of
   // routing. No default: nothing is expanded until explicitly clicked.
-  const expandedItem = items.find((i) => i.key === state.expandedKey) ?? null;
+  // state.expandedKey is a single global value, not per-section — only
+  // meaningful for the current section, same reasoning as routedItem above.
+  const expandedItem = isCurrentSection ? (items.find((i) => i.key === state.expandedKey) ?? null) : null;
 
-  // EXPLORATORY scope switcher moved to the canvas's top-right (see
-  // renderCanvas/renderScopeSwitcher) — repositioned per user feedback,
-  // no longer rendered here in the panel.
   let html = '';
 
   // Sublist HTML renders immediately after its own parent item, inline
   // within the same list — not appended as one block after the whole list.
   // A parent whose sublist renders after unrelated later siblings only
   // "looked right by accident" when it happened to be the last item.
-  html += `<ul class="nav-list">`;
-
   items.forEach((item) => {
+    // `item.hidden` (v4, Plan's own Recommendations item — Robert:
+    // "recommendation is still under plan" / confirmed: hide from the nav,
+    // keep it reachable only via the link) — renders NOTHING for this row,
+    // but the item stays in the underlying array so routing (renderCanvas's
+    // own `resolveSelected(data.items, 0)` call, a SEPARATE code path that
+    // reads `data.items` directly, not through this function) can still
+    // resolve it when reached via an explicit link (e.g. "Tracking past
+    // recommendations performance"'s View all). Distinct from `heading`/
+    // `divider` above, which are excluded from ROUTING too (never a valid
+    // destination at all) — a hidden item is a real, reachable destination,
+    // just not browsable from the nav list itself.
+    if (item.hidden) return;
     if (item.heading) {
       // Grouping heading — plain label, never clickable/routable/expandable.
-      // See PATTERNS.md's folder-vs-heading rule.
+      // See PATTERNS.md's folder-vs-heading rule. Unrelated to the NEW
+      // top-level `.nav-section-heading` (see renderMergedNav) — this is
+      // still the old in-section grouping mechanism, untouched.
       html += `<li class="nav-list-heading">${tr(item.label)}</li>`;
       return;
     }
@@ -1025,12 +1163,12 @@ function renderPanel(data) {
     // `badge` — illustrative "something needs attention" dot, now LIVE
     // (state.attention, seeded via ATTENTION_KEYS) rather than a static
     // flag: bubbles up from a sublist child to its folder parent
-    // (itemHasAttention) and up again to the rail (sectionHasAttention,
-    // renderRail) — Robert: "the badge should bubble up the hierarchy and
-    // disappear when the user clicks into something." Clears the moment
-    // the user actually routes to the item that owns it — see the
-    // data-item-key/data-path-key click handlers below, which call
-    // clearAttention before re-rendering.
+    // (itemHasAttention) and up again to the section heading
+    // (sectionHasAttention, renderMergedNav) — Robert: "the badge should
+    // bubble up the hierarchy and disappear when the user clicks into
+    // something." Clears the moment the user actually routes to the item
+    // that owns it — see wireMergedNavClicks' data-item-key/data-path-key
+    // handlers, which call clearAttention before re-rendering.
     const badge = itemHasAttention(item) ? `<span class="nav-list-item__badge" aria-hidden="true"></span>` : '';
     // `actionIcon` — a leading icon marking this item as an ACTION row
     // (e.g. "+ Add products") rather than a settings-page destination like
@@ -1045,7 +1183,7 @@ function renderPanel(data) {
     const labelGroup = actionIcon ? `<span class="nav-list-item__label-group">${actionIcon}${tr(item.label)}</span>` : tr(item.label);
     html += `
       <li class="nav-list-item${isRouted ? ' is-active' : ''}${isOpen ? ' is-open' : ''}">
-        <a href="#" data-item-key="${item.key}">${labelGroup}${star}${badge}${chevron}</a>
+        <a href="#" data-item-key="${item.key}" data-section-key="${sectionKey}">${labelGroup}${star}${badge}${chevron}</a>
       </li>
     `;
 
@@ -1062,31 +1200,42 @@ function renderPanel(data) {
       html += `<ul class="nav-sublist">${children
         .map((s) => {
           const childBadge = state.attention.has(s.key) ? `<span class="nav-list-item__badge" aria-hidden="true"></span>` : '';
-          return `<li><a href="#" data-path-key="${childPathIndex}:${s.key}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${tr(s.label)}${childBadge}</a></li>`;
+          return `<li><a href="#" data-path-key="${childPathIndex}:${s.key}" data-section-key="${sectionKey}" class="${s.key === explicitChildKey ? 'is-active' : ''}">${tr(s.label)}${childBadge}</a></li>`;
         })
         .join('')}</ul>`;
     }
   });
-  html += `</ul>`;
 
-  if (data.ugc) {
-    html += `<ul class="nav-list">${data.ugc.map((u) => `<li class="nav-list-item"><a href="#">${u}</a></li>`).join('')}</ul>`;
+  return html;
+}
+
+// Secondary panel (v4) — SURVIVES the merged-nav conversion, but now scoped
+// ONLY to the utility destinations (My account/Notifications/AI assistant/
+// Guest messaging) that are deliberately NOT real IA sections (PATTERNS.md)
+// and so don't get a heading row in the merged nav's own scrollable list.
+// Each of these still has its own item list (e.g. My account: Profile/
+// Security/Plan & billing/...) using the exact same list mechanism a real
+// section's items would — this just re-adds a single-section rendering
+// surface for that, reusing buildNavListHtml exactly as the old renderPanel
+// did before it was split apart for the merged nav's own multi-section use.
+function renderPanel(data) {
+  if (data.customPanel === 'records-inbox') {
+    renderRecordsInboxPanel(data);
+    return;
   }
-
-  panelEl.innerHTML = html;
+  const html = `<ul class="nav-list">${buildNavListHtml(data.items, state.section)}</ul>`;
+  panelEl.innerHTML = data.ugc
+    ? html + `<ul class="nav-list">${data.ugc.map((u) => `<li class="nav-list-item"><a href="#">${u}</a></li>`).join('')}</ul>`
+    : html;
 
   panelEl.querySelectorAll('[data-item-key]').forEach((el) => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       const key = el.dataset.itemKey;
-      const item = items.find((i) => i.key === key);
+      const item = data.items.find((i) => i.key === key);
       if (item?.content?.type === 'list') {
-        // Expand/collapse only — does not touch the route/canvas. Not a
-        // "visit" of the folder itself, so its own badge (if any) does NOT
-        // clear here — only actually routing to something clears a badge.
         state.expandedKey = state.expandedKey === key ? null : key;
       } else {
-        // Real navigation — this IS a visit, clear its badge if it had one.
         select(0, key);
         state.expandedKey = null;
         clearAttention(key);
@@ -1095,14 +1244,11 @@ function renderPanel(data) {
     });
   });
 
-  // Clicking a child inside an expanded list IS real navigation. Expanding a
-  // list never touched state.path (it's UI-only), so path[0] must be set to
-  // the expanded item's own key here — otherwise the canvas has no route.
   panelEl.querySelectorAll('[data-path-key]').forEach((el) => {
     el.addEventListener('click', (e) => {
       e.preventDefault();
       const [depth, key] = el.dataset.pathKey.split(':');
-      state.path = [expandedItem.key];
+      state.path = [state.expandedKey];
       state.path[Number(depth)] = key;
       clearAttention(key);
       render();
@@ -1212,7 +1358,31 @@ function renderCanvas(data) {
     return;
   }
 
-  const { trail, bodyHtml } = renderChainBody(chain, 0);
+  const { trail: chainTrail, bodyHtml } = renderChainBody(chain, 0);
+  // `rootItem.crumbBackTo` (v4, Dynamic actions — Robert: "it needs a
+  // breadcrumb back to home") — a HIDDEN top-level item (see
+  // buildNavListHtml's own `item.hidden` comment) has no natural "parent" to
+  // crumb back to the normal way: renderChainBody deliberately never crumbs
+  // the chain's own root step (i === 0, see its own comment — "the root is
+  // already shown via the panel's highlight"), which is correct for a
+  // BROWSABLE item (its own label is already visible in the nav list) but
+  // wrong for a hidden one reached only by a direct link — there's no nav
+  // highlight to substitute for a crumb. `crumbBackTo` names the sibling
+  // item key to link back to; rendered as a synthetic FIRST crumb, using
+  // `0:${key}` — a plain top-level item switch via the same `data-path-key`
+  // mechanism every other in-section link uses, not `truncateTo` (which
+  // only ever shortens THIS item's own path, it can't switch to a
+  // different top-level item).
+  // Chain-based crumbing (renderChainBody) never adds a crumb for the
+  // chain's own root step, so `chainTrail` is normally empty here (Dynamic
+  // actions' own tabs step is that root) — a synthetic back-link ALONE
+  // would leave only 1 trail entry, which visibleBreadcrumbTrail/
+  // renderCanvasHeader's "single crumb is noise" rule would then suppress
+  // right back down to a plain H1. Appending the current item's own label
+  // as a second entry gives a real 2-level trail: "Home / Dynamic actions."
+  const trail = rootItem.crumbBackTo
+    ? [{ label: rootItem.crumbBackTo.label, pathKeyBackTo: `0:${rootItem.crumbBackTo.key}` }, { label: rootItem.label }, ...chainTrail]
+    : chainTrail;
   // Standard content-area margin (PATTERNS.md) applied ONCE here, always —
   // not per-branch inside renderChainBody. A prior version only wrapped
   // content in `.sketch` inside the `tabs` branch, so any leaf item with no
@@ -1565,8 +1735,9 @@ function renderDashboardCards(cards) {
 // minimal control") — used identically by Priority actions' own header and
 // by renderHome's generic row-heading-bar, so all 3 Home rows read the same
 // way instead of stacking 3 near-identical text links down the page.
-function renderViewAllChevron(pathKey) {
-  return `<a href="#" class="home-view-all-chevron" data-path-key="${pathKey}" aria-label="${tr('View all')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></a>`;
+function renderViewAllChevron(pathKey, crossSection = false) {
+  const attr = crossSection ? 'data-cross-section-to' : 'data-path-key';
+  return `<a href="#" class="home-view-all-chevron" ${attr}="${pathKey}" aria-label="${tr('View all')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></a>`;
 }
 
 // Per-item DR+ gating (v3, Robert: "DR+ can sit in the rec level - some
@@ -1599,23 +1770,50 @@ function renderDrPlusTag() {
 // forecasting") — unlike Forecasting's locked-but-visible cards, this row
 // doesn't lock individual items, matching the value-tracker's own
 // DR+-row-dropping treatment.
-function renderPriorityActions(items, viewAllKey, hasDrPlus) {
-  const visibleItems = hasDrPlus ? items : items.filter((item) => !item.drPlusOnly);
-  // `viewAllKey` (e.g. 'recommendations') routes to a real top-level
-  // Insights item via the same `data-path-key` mechanism every other canvas
-  // link uses (wirePathLinks calls select(0, key) + render()) — switches
-  // the rail's selected item, doesn't just point at an inert "#".
-  const viewAllHtml = viewAllKey ? renderViewAllChevron(`0:${viewAllKey}`) : '';
+//
+// `viewAllCount` (v4, Robert: "add a 'view all (25)' to the right of the
+// recommendations widget") — real "View all (N)" TEXT specifically for this
+// row, a deliberate one-off exception to the other 2 Home rows' minimal
+// bare-chevron convention (see renderViewAllChevron's own comment) — this
+// row now has a real destination worth naming: a SECOND, hidden top-level
+// item on Home (see buildSmContentTree's 'home' entry) — not a sibling tab
+// nested inside Home's one visible item, which was tried and reverted
+// (Robert: "having dynamic actions in a tab is a problem - because we might
+// want to have tabs to divide new, actioned, automation etc tabs for the
+// actions" — a flat tab can't itself hold another tab strip). `viewAllKey`
+// targets that sibling item at PATH INDEX 0, same as any other top-level
+// item switch.
+// Extracted the plain card-grid markup (v4 — Robert: "use a grid layout for
+// the recommendations," on Dynamic actions' own full page) so both Home's
+// preview widget AND the full Dynamic actions destination use the same card
+// SHELL — chevron affordance, grid-laid-out — rather than the full page
+// falling back to a generic `records` table just because it's a different
+// destination.
+//
+// `skeleton` (v4, Robert: "make the dynamic action full list more of a
+// wireframe cards grid") — the full-list page trades Home widget's real
+// title+rationale TEXT for plain skeleton bars (same `.sketch-skel-label`/
+// `.sketch-skel-value` convention as the rest of the app), while keeping the
+// exact same card shape/chevron/grid layout — Home's own 3-card preview
+// stays real-content, untouched (confirmed: only the full list goes
+// skeleton, not both).
+function renderActionCardsGrid(items, skeleton = false) {
   return `
-    <div class="priority-actions">
-      <div class="priority-actions__header">
-        <span class="priority-actions__heading">${tr('Dynamic actions')}${hasDrPlus ? renderDrPlusTag() : ''}</span>
-        ${viewAllHtml}
-      </div>
-      <div class="priority-actions__cards">
-        ${visibleItems
-          .map((item) => {
-            return `
+    <div class="priority-actions__cards">
+      ${items
+        .map((item) =>
+          skeleton
+            ? `
+              <div class="priority-actions__card">
+                <div class="priority-actions__card-top">
+                  <div class="sketch-skel-label" style="width: 60%;"></div>
+                  <svg class="priority-actions__card-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+                </div>
+                <div class="sketch-skel-value" style="width: 100%; margin-top: 10px;"></div>
+                <div class="sketch-skel-value" style="width: 70%; margin-top: 6px;"></div>
+              </div>
+            `
+            : `
               <div class="priority-actions__card">
                 <div class="priority-actions__card-top">
                   <h3 class="priority-actions__card-title">${tr(item.title)}</h3>
@@ -1623,10 +1821,25 @@ function renderPriorityActions(items, viewAllKey, hasDrPlus) {
                 </div>
                 <p class="priority-actions__card-rationale">${tr(item.rationale)}</p>
               </div>
-            `;
-          })
-          .join('')}
+            `
+        )
+        .join('')}
+    </div>
+  `;
+}
+
+function renderPriorityActions(items, viewAllKey, hasDrPlus, viewAllCount) {
+  const visibleItems = hasDrPlus ? items : items.filter((item) => !item.drPlusOnly);
+  const viewAllHtml = viewAllKey
+    ? `<a href="#" class="priority-actions__view-all" data-path-key="0:${viewAllKey}">${tr('View all')} (${viewAllCount})</a>`
+    : '';
+  return `
+    <div class="priority-actions">
+      <div class="priority-actions__header">
+        <span class="priority-actions__heading">${tr('Dynamic actions')}${hasDrPlus ? renderDrPlusTag() : ''}</span>
+        ${viewAllHtml}
       </div>
+      ${renderActionCardsGrid(visibleItems)}
     </div>
   `;
 }
@@ -1774,8 +1987,14 @@ function renderMetricGroups(groups, hasDrPlus) {
             `;
             return `<a href="#" class="metric-group is-dr-plus-locked" data-cross-section-to="my-account:manage-products">${header}<div class="metric-group__preview">${stats}${overlay}</div></a>`;
           }
-          const pathKey = group.linkTo ? `data-path-key="0:${group.linkTo[0]}:${group.linkTo[1]}"` : '';
-          return `<a href="#" class="metric-group" ${pathKey}>${header}${stats}</a>`;
+          // CROSS-SECTION, not `data-path-key` — same fix/reasoning as
+          // renderHome's own `row.viewAll` (v4, Robert: "link up those
+          // performance and forecasting chevron clicks to go through into
+          // their new home under plan"): `my-dashboards` lives under
+          // Insights, a different section than wherever this group is
+          // rendered (Home), so a same-section path link can't reach it.
+          const crossSectionTo = group.linkTo ? `data-cross-section-to="insights:${group.linkTo[0]}:${group.linkTo[1]}"` : '';
+          return `<a href="#" class="metric-group" ${crossSectionTo}>${header}${stats}</a>`;
         })
         .join('')}
     </div>
@@ -1871,8 +2090,20 @@ function renderPlanComparison(plan, currentTier) {
       `
     )
     .join('');
+  // Non-admin banner (v4, Robert: "switching to non-admin should update the
+  // plans and billing page to show the banner") — the "Switch to this"
+  // buttons already go `disabled` for non-admins (state.isAdmin, above);
+  // this names WHY, rather than leaving a disabled button as the only
+  // signal. Neutral/informational tone (`--text-muted`/`--surface-sunken`),
+  // deliberately NOT `.tile-tip-banner`'s red `--alert` treatment — that's
+  // reserved for something needing attention/fixing, not a plain permission
+  // state.
+  const nonAdminBanner = state.isAdmin
+    ? ''
+    : `<div class="plan-comparison__admin-banner">${tr('Only an account admin can change your plan.')}</div>`;
   return `
     <div class="manage-products">
+      ${nonAdminBanner}
       <div class="product-tier-comparison">
         <table>
           <thead>
@@ -2099,7 +2330,22 @@ function renderTileTipBanner(tip) {
 // Properties) and renderNavDashboardPage (single-property's collapsed
 // "Property" page) — one button, two entry points into the same
 // 'add-property' wizard depending on which mode the account is in.
+// `content.addPropertyPromo` (v4, single-property's own collapsed "Property"
+// page — Robert: "remove 'add property' for now from the property page - or
+// actually lets put it as a small text footer with a promo... with a link
+// to the product grid") — REPLACES the button entirely for this one caller
+// with a quiet text link instead, pointing at Plan & billing
+// (`manage-products`, under `my-account` — "product grid" now means the
+// tier-comparison page there, per the v4 Manage-products rename) via the
+// same `data-cross-section-to` mechanism Home's DR+ "Learn more" link
+// already uses — no new cross-section-linking code needed. Multi-property's
+// own Properties cards list is UNTOUCHED — it keeps its existing
+// `newButtonLabel`/`newButtonWizard` button, this is a single-property-only
+// change (confirmed via AskUserQuestion).
 function renderNewButton(content) {
+  if (content.addPropertyPromo) {
+    return `<p class="records-page__add-property-promo">${tr('Add another property to this account')} — <a href="#" data-cross-section-to="my-account:manage-products">${tr('View plans')}</a></p>`;
+  }
   return content.newButtonLabel
     ? `<button class="records-page__new-btn" type="button"${content.newButtonWizard ? ` data-wizard-open="${content.newButtonWizard}"` : ''}><span aria-hidden="true">+</span>${tr(content.newButtonLabel)}</button>`
     : '';
@@ -2398,9 +2644,17 @@ function breadcrumbHtml(trail) {
     visibleTrail
       .map((t, i) => {
         const isLast = i === visibleTrail.length - 1;
+        // `t.pathKeyBackTo` (v4, Dynamic actions' synthetic "back to Home"
+        // crumb — see renderCanvas' own comment) — a plain top-level item
+        // switch via `data-path-key` (already wired generically by
+        // wirePathLinks), NOT `data-crumb-truncate` — that mechanism only
+        // shortens the CURRENT item's own path, it can't switch to a
+        // different sibling top-level item the way this crumb needs to.
         const piece = isLast
           ? `<span class="breadcrumb__current">${tr(t.label)}</span>`
-          : `<a href="#" data-crumb-truncate="${t.truncateTo}">${tr(t.label)}</a>`;
+          : t.pathKeyBackTo
+            ? `<a href="#" data-path-key="${t.pathKeyBackTo}">${tr(t.label)}</a>`
+            : `<a href="#" data-crumb-truncate="${t.truncateTo}">${tr(t.label)}</a>`;
         return i === 0 ? piece : `<span class="breadcrumb__sep">/</span>${piece}`;
       })
       .join('') +
@@ -2427,20 +2681,6 @@ function breadcrumbHtml(trail) {
 // (most Configuration items) — in which case the row still renders (for
 // the H1/breadcrumb) but with an empty right-hand side, not collapsing to
 // nothing; a page keeps its title even without a switcher.
-// Product-tier name — a customer-facing tier label (distinct from the
-// debug panel's internal SM/LH/MP toggle values), used only as the rail
-// brand mark's tooltip (see renderRail). MP is "SiteMinder Plus" here
-// since it's sold as a tier of SiteMinder, not a separate product like
-// Little Hotelier. Deliberately NOT also shown as a static panel-header
-// label — that read as a dead Slack-workspace-switcher lookalike with no
-// function, and this scheme is specifically trying to cut chrome like
-// that, not add more of it.
-const PRODUCT_TIER_LABELS = {
-  SM: 'SiteMinder',
-  LH: 'Little Hotelier',
-  MP: 'SiteMinder Plus',
-};
-
 function renderCanvasHeader(pageLabel, trail, switcherMode) {
   const visibleTrail = trail ? visibleBreadcrumbTrail(trail) : [];
   const titleHtml =
@@ -2471,7 +2711,21 @@ function skeletonField() {
   return `<div class="sketch-skel-field"><div class="sketch-skel-label"></div><div class="sketch-skel-value"></div></div>`;
 }
 
-function renderSectionShape(shape) {
+// A REAL field row — real label text, skeleton VALUE only (v4, Direct
+// Booking channel settings — Robert: "i wanted it down to field level from
+// what i had shared"). First departure from this catalog's "no field-level
+// labels or real copy" rule, which held everywhere else in this prototype
+// until now — Robert: "we need to get to this level of detail to solve
+// real IA problems." Deliberately still skeleton VALUE (no fake data),
+// just a real label — this is a read view, not a data mock. Compact
+// single-row layout (label left, value placeholder right) rather than
+// skeletonField's stacked label-then-value — real settings lists need
+// tighter density than anonymous placeholder content did.
+function realField(label) {
+  return `<div class="sketch-real-field"><span class="sketch-real-field__label">${tr(label)}</span><div class="sketch-real-field__value"></div></div>`;
+}
+
+function renderSectionShape(shape, fields) {
   if (shape === 'chips') {
     return `<div class="sketch-chip-row">${Array(7).fill('<div class="sketch-chip"></div>').join('')}</div>`;
   }
@@ -2482,6 +2736,12 @@ function renderSectionShape(shape) {
   }
   if (shape === 'list') {
     return `<div class="sketch-col">${Array(3).fill(skeletonField()).join('')}</div>`;
+  }
+  // `fields`: real field-name strings, one realField() row each — see that
+  // function's own comment. `shape: 'fields'` requires a `fields` array on
+  // the section (nothing else passes one, so this is opt-in per section).
+  if (shape === 'fields') {
+    return `<div class="sketch-real-fields">${fields.map(realField).join('')}</div>`;
   }
   if (shape === 'theme-toggle') return renderThemeToggle();
   return `<div class="sketch-col">${Array(2).fill(skeletonField()).join('')}</div>`;
@@ -2532,9 +2792,45 @@ function renderDirectBookingMappingSketch() {
   return `<div class="sketch-section"><h3 class="sketch-section__title">${tr('Rates to publish')}</h3>${Array(4).fill(row()).join('')}</div>`;
 }
 
-function renderSectionsSketch(sections) {
-  return `<div class="sketch-sections">${sections
-    .map((s) => `<div class="sketch-section"><h3 class="sketch-section__title">${tr(s.title)}</h3>${renderSectionShape(s.shape)}</div>`)
+// `usedBy` (v4, IA-restructure work — Robert: "tag these new fields to say
+// which product uses them, for internal reference at this stage, not so
+// much for customers") — an optional internal-only annotation on a
+// section, e.g. Property settings' new "Property type" field being real
+// Channels Plus config living in the property record, not the product's
+// own screen anymore. Deliberately styled to look like TOOLING, not a
+// product feature (dashed border, monospace, muted) — same instinct as
+// this whole app's own dark debug panel: unmistakably "not part of the
+// real design" at a glance, so nobody mistakes it for customer-facing UI
+// later. Renders as a small tag next to the section's own title.
+// `usedBy` accepts a single product name OR an array (a field can genuinely
+// serve more than one — e.g. Cancellation policy is read by both Channels
+// Plus, for OTA listings, AND Direct Booking, for the booking engine's own
+// enforcement/display) — one small tag per product, not one tag with a
+// comma-joined list, so each stays independently scannable.
+function renderUsedByTag(usedBy) {
+  const products = Array.isArray(usedBy) ? usedBy : [usedBy];
+  return products.map((p) => `<span class="used-by-tag" title="Internal reference — not shown to customers">${tr(p)}</span>`).join('');
+}
+
+// Optional external-link row above a sections list (v4, Direct Booking
+// channel settings — Robert: "we also need a booking engine link in those
+// db channel settings ... lets not get bespoke yet - maybe just at the top
+// of the most relevant tab"). Deliberately generic on `content` (not a
+// Direct-Booking-only mechanism) so any future sections-tab that wants a
+// "view this live" jump-off link can reuse it the same way. Opens in a new
+// tab — this points OUT of the wireframe to a real external surface, not
+// another nav destination inside the app.
+function renderExternalLink(link) {
+  return `<a class="sketch-external-link" href="${link.href}" target="_blank" rel="noopener">${tr(link.label)}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a>`;
+}
+
+function renderSectionsSketch(sections, externalLink) {
+  const linkHtml = externalLink ? renderExternalLink(externalLink) : '';
+  return `${linkHtml}<div class="sketch-sections">${sections
+    .map(
+      (s) =>
+        `<div class="sketch-section"><h3 class="sketch-section__title">${tr(s.title)}${s.usedBy ? renderUsedByTag(s.usedBy) : ''}</h3>${renderSectionShape(s.shape, s.fields)}</div>`
+    )
     .join('')}</div>`;
 }
 
@@ -2555,7 +2851,17 @@ function renderHome(rows) {
       // own `linkTo` (Performance row itself needs a "View all" alongside
       // its individual groups' links). Renders as the same bare chevron
       // Priority actions uses, not repeated "View all" text.
-      const viewAll = row.viewAll ? renderViewAllChevron(`0:${row.viewAll.linkTo[0]}:${row.viewAll.linkTo[1]}`) : '';
+      //
+      // CROSS-SECTION, not `data-path-key` (v4 — Robert: "lets link up
+      // those performance and forecasting chevron clicks to go through into
+      // their new home under plan") — Home split out into its own top-level
+      // rail section this session (see buildSmContentTree's 'home' entry's
+      // own comment); `my-dashboards` still lives under Insights/"Plan", a
+      // DIFFERENT section now, so a same-section `data-path-key` link from
+      // here can't reach it. `data-cross-section-to` is the same mechanism
+      // Home's DR+ "Learn more" link and release notes already use to jump
+      // section + path together.
+      const viewAll = row.viewAll ? renderViewAllChevron(`insights:${row.viewAll.linkTo[0]}:${row.viewAll.linkTo[1]}`, true) : '';
       // `row.drPlusBadge` (v3, Forecasting/Tracking past recommendations
       // performance) — a small colored tag, not the muted greyscale
       // `.product-card__owned-badge` pill everywhere else uses: DR+ is the
@@ -2581,7 +2887,7 @@ function renderSketch(content) {
   if (content.sketch === 'home') return renderHome(content.rows);
   if (content.sketch === 'plan-comparison') return renderPlanComparison(content.plan, content.currentTier);
   if (content.sketch === 'release-note') return renderReleaseNote(content.note);
-  if (content.sketch === 'sections') return renderSectionsSketch(content.sections);
+  if (content.sketch === 'sections') return renderSectionsSketch(content.sections, content.externalLink);
   if (content.sketch === 'media') {
     return `<div class="sketch-cards sketch-cards--media">${Array(8).fill('<div class="sketch-card"></div>').join('')}</div>`;
   }
@@ -2606,7 +2912,18 @@ function renderSketch(content) {
     // widget for now — the v3 Confluence page's "cascading dashboard
     // family" (keeping these separate) is logged as a later refinement,
     // not built here yet (Robert: "for now keep it combined").
-    return renderPriorityActions(content.items, content.viewAllKey, content.hasDrPlus);
+    return renderPriorityActions(content.items, content.viewAllKey, content.hasDrPlus, content.viewAllCount);
+  }
+  // Dynamic actions' own full-page tabs (v4 — Robert: "put the tabs on the
+  // page - and use a grid layout for the recommendations", then "make the
+  // dynamic action full list more of a wireframe cards grid") — same card
+  // SHELL Home's own widget preview uses (see renderActionCardsGrid), but
+  // `skeleton: true` — plain bars, not real title/rationale text. A plain
+  // `sketch`, not a `records` list — these items aren't meant to be
+  // individually drilled into yet (no per-item detail node exists), this is
+  // a grid of cards, matching the widget it's the "view all" of.
+  if (content.sketch === 'action-cards-grid') {
+    return renderActionCardsGrid(content.items, true);
   }
   if (content.sketch === 'metric-groups') {
     // Home's performance row — grouped stat cards, each group a small
@@ -2937,11 +3254,12 @@ wizardNextEl.addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 
 function render() {
-  // Computed before renderRail (which needs the full tree, not just the
-  // current section, to aggregate each rail item's own badge — see
-  // sectionHasAttention). Falls through to an honest empty panel/canvas for
-  // any section with no data for the current state (e.g. an undefined rail
-  // item for a given account type) — no placeholders, just nothing rendered.
+  // Computed before renderMergedNav (which needs the full tree, not just
+  // the current section, to aggregate each section heading's own badge —
+  // see sectionHasAttention). Falls through to an honest empty panel/canvas
+  // for any section with no data for the current state (e.g. an undefined
+  // rail item for a given account type) — no placeholders, just nothing
+  // rendered.
   const capabilities = getCapabilities();
   const content = getContent(
     state.accountType,
@@ -2952,19 +3270,23 @@ function render() {
     capabilities.hasMultiProperty,
     state.tier
   );
-  renderRail(content);
+  renderMergedNav(content);
   const data = content?.[state.section];
   if (!data) {
     panelEl.innerHTML = '';
+    panelEl.classList.add('is-hidden');
     canvasEl.innerHTML = '';
     return;
   }
-  // `noPanel` (CHANGE-QUEUE.md item 1, Front desk's calendar) hides the L2
-  // panel COLUMN entirely — not just rendering it empty, which would still
-  // reserve its fixed width in the flex layout. The canvas needs the full
-  // combined width. See the `.secondary-panel.is-hidden` CSS rule.
-  panelEl.classList.toggle('is-hidden', Boolean(data.noPanel));
-  if (!data.noPanel) {
+  // The secondary panel column now ONLY exists for utility destinations
+  // (My account/Notifications/AI assistant/Guest messaging) — real IA
+  // sections (getRailItems' own keys) show their items in the merged nav's
+  // own column instead, so the panel stays hidden for them. `noPanel`
+  // (Front desk's Calendar) still hides it too, same as before.
+  const isRealSection = getRailItems(state.accountType).some((s) => s.key === state.section);
+  const showPanel = !isRealSection && !data.noPanel;
+  panelEl.classList.toggle('is-hidden', !showPanel);
+  if (showPanel) {
     renderPanel(data);
   } else {
     panelEl.innerHTML = '';
@@ -3047,9 +3369,9 @@ mobileDrawerBackdropEl.addEventListener('click', closeMobileDrawer);
 // desktop rail buttons.
 function renderMobileDrawer() {
   const items = getRailItems(state.accountType);
-  // Same rail-level bubbling as the desktop rail (renderRail) — recomputed
-  // here rather than threaded in, since the drawer opens from its own
-  // gesture (the hamburger), independent of the main render() cycle.
+  // Same section-level bubbling as the desktop merged nav (renderMergedNav)
+  // — recomputed here rather than threaded in, since the drawer opens from
+  // its own gesture (the hamburger), independent of the main render() cycle.
   const mobileCapabilities = getCapabilities();
   const content = getContent(
     state.accountType,
@@ -3128,7 +3450,7 @@ document.querySelectorAll('[data-account-type]').forEach((el) => {
     // setting you update for the current view/route" (user's direction) —
     // changing a setting should react IN PLACE, not relocate the user.
     if (!getRailItems(state.accountType).some((i) => i.key === state.section)) {
-      state.section = 'insights';
+      state.section = 'home';
       resetPath();
     }
     document.querySelectorAll('[data-account-type]').forEach((b) => {

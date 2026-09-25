@@ -614,6 +614,45 @@ toggled via the `hidden` attribute needs its own explicit
 `.my-overlay[hidden] { display: none }` rule if it also sets its own
 `display` value unconditionally.
 
+## Editing-surface decision rule: wizard vs. modal (v4)
+
+As real field-level settings pages start appearing (first case: Direct
+Booking's channel settings, ~20 real fields across 4 groups), this
+prototype now has two DIFFERENT reasons someone might want an editing
+surface, and needs a rule for which pattern applies — otherwise every new
+feature becomes its own coin-flip. Robert, working through this live: "if
+we continue to have both — full screen edit vs editable card — we need a
+reason and a decision making framework."
+
+**The axis: is this CREATING a new entity via sequential steps, or EDITING
+attributes of something that already exists with no inherent sequence?**
+
+- **Full-screen wizard** (`state.wizard`, above) — reserved for bringing a
+  new entity into existence through steps that build on each other (pick →
+  configure → commit), where the steps have a real, meaningful order. Built
+  instance: "Add channel." A settings-heavy edit does NOT default to a
+  wizard just because it has many fields — field COUNT is not the trigger,
+  sequential CREATION is.
+- **Modal editor** (NOT YET BUILT — next instance to design, likely
+  Direct Booking's own settings cards) — the intended pattern for editing
+  an existing object's attributes: a group of sibling fields with no
+  inherent order (e.g. Guest details form's 6 independent toggles), reached
+  via a card's own edit affordance (matches the pencil-icon-per-card
+  convention in Robert's source screenshots), dismissible without losing
+  your place, page visible/dimmed behind it — NOT a full takeover. Distinct
+  from the wizard specifically by NOT having numbered steps or a
+  Back/Next/Done footer; it's "edit this group, Save or Cancel," done.
+- **On mobile**, a modal and a full-screen takeover collapse into the same
+  visual treatment (no room for a modal's own visible edges/backdrop at
+  phone width) — this does NOT collapse the underlying distinction. Mobile
+  edit of a card should still push into a dedicated screen per GROUP (same
+  grouping as desktop's card), not per individual field and not the whole
+  settings page at once.
+
+Don't reach for the wizard mechanism for a future attribute-edit case just
+because it already exists and works — check which side of this axis the
+task is on first.
+
 ## Mobile shell (`@media (max-width: 767px)`)
 
 A standard mobile-web navigation pattern demo, one of the "redesign

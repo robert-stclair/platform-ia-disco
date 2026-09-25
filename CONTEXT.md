@@ -427,6 +427,65 @@ Channels tab's list; the MECHANISM (open → step through → close cleanly) is 
 demonstrates, not a full simulated backend. Extending this to actually mutate visible data is a
 legitimate next step, not yet requested.
 
+## Confirmed framework: the 6-level information hierarchy (v4)
+
+Stated explicitly by Robert once enough real pages existed (Rate plan, Room
+rate, Direct Booking's channel settings) to see the actual shape rather than
+guess at it: "to be clear about info hierarchy we have" a 6-level stack.
+Restated here more precisely, and the intent is to also publish this to
+Confluence once Robert supplies the page link (see "Pending" note below) —
+not yet done.
+
+**Levels 1–2 are fixed app chrome, reached once per session and never
+repeated. Levels 3–6 are a single repeatable UNIT that can nest inside
+itself indefinitely** — this recursive property (level 6 can open a fresh
+3–6) is the actual structural insight, not just "there are six levels":
+
+1. **Primary nav** — the merged-nav section headings (Home / Plan / Sell /
+   Operate / Property). Exactly one active at a time.
+2. **Secondary nav** — the items nested under the active primary section
+   once expanded (e.g. under Sell: Inventory, Rate plans, Yield rules,
+   Channels, Add-ons, Dynamic pricing).
+3. **Section dashboard** (optional — not every level-2 destination has
+   one) — a landing summary reached before drilling into any one thing,
+   `type: 'nav-dashboard'` in this codebase. E.g. Property settings' card
+   grid, Rate plan's Overview tile grid.
+4. **Sub-section** — the tabs themselves are only if needed (a single-
+   purpose sub-section skips the tab strip entirely and goes straight to
+   level 5's content) — `type: 'tabs'` when tabs exist. E.g. Rate plan's
+   Overview / Room rates / Channels / Integrated systems / Policies tabs;
+   Direct Booking's own Search & availability / Booking flow tabs.
+5. **List, or a list inside a tab** — `type: 'records'`. E.g. Channels'
+   Connected/Available tables, Room rates' list inside its own tab, Extras'
+   library list.
+6. **List entity view** — clicking one row from level 5. This is the level
+   that RECURSES: an entity view can itself be a fresh 3–5 (or even a
+   nested 3–6). Confirmed real instance: Rate plan (a level-6 entity from
+   Sell → Rate plans) is ITSELF a level 3 (its own Overview dashboard) with
+   its own level 4 (tabs) and level 5 (its Room rates tab is a list) — and
+   drilling into a Room rate from there opens ANOTHER level 3/4/5 (its own
+   Overview dashboard, its own Extras/Policies tabs). Direct Booking's
+   channel settings is the same shape one level up: a level-6 entity (a row
+   in Sell → Channels) that opens its own level 4 (tabs) straight to level
+   5-shaped content (real field sections), skipping level 3 since a single
+   settings page doesn't need its own dashboard first.
+
+**Not every branch uses every level** — level 3's dashboard, and level 4's
+tab strip specifically, are both optional depending on how much the
+destination actually holds; a simple leaf can go straight from level 2 or 5
+to real content. The levels are a menu of available structure, not a
+mandatory path every destination must pass through.
+
+### Pending: publish this to Confluence
+
+Robert: "capture it here but also publish to confluence i will get you a
+link." Not yet done — waiting on Robert to supply the actual page URL/
+location. When it arrives, check Atlassian MCP connectivity first (this
+repo has a known recurring DNS-level connection failure for
+`plugin:product:atlassian` — see "Pending: publish product-types IA diagram
+to Confluence" below for the exact symptom and what's already been tried)
+before assuming publishing will just work.
+
 ## New redesign stream: mobile responsive shell
 
 The originating draft proposal (linked above) already named "mobile web" as one of the pressures
